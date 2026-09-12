@@ -9,14 +9,22 @@ function primitives(context) {
       if (node.source.value !== "ccstate") return;
       for (const specifier of node.specifiers) {
         if (specifier.type === "ImportSpecifier") names.set(specifier.local.name, specifier.imported.name);
+        if (specifier.type === "ImportNamespaceSpecifier") names.set(specifier.local.name, "*");
       }
     },
     kind(node) {
-      if (node?.type !== "CallExpression" || node.callee.type !== "Identifier") return undefined;
+      if (node?.type !== "CallExpression") return undefined;
+      const callee = node.callee;
+      const name = callee.type === "Identifier" ? callee.name : callee.type === "MemberExpression" ? callee.object.name : undefined;
+      if (!name) return undefined;
       let scope = context.sourceCode.getScope(node);
       while (scope) {
-        const variable = scope.set.get(node.callee.name);
-        if (variable) return variable.defs.some(def => def.type === "ImportBinding") ? names.get(node.callee.name) : undefined;
+        const variable = scope.set.get(name);
+        if (variable) {
+          if (!variable.defs.some(def => def.type === "ImportBinding")) return undefined;
+          const imported = names.get(name);
+          return imported === "*" && callee.type === "MemberExpression" ? (callee.computed ? callee.property.value : callee.property.name) : imported;
+        }
         scope = scope.upper;
       }
       return undefined;
@@ -44,6 +52,11 @@ export const rules = {
           if (variable?.defs.some(def => units.kind(def.node.init) === "state")) context.report({ node: specifier, messageId: "invalid" });
         }
       },
+      ExportDefaultDeclaration(node) {
+        if (node.declaration.type !== "Identifier") return;
+        const variable = context.sourceCode.getScope(node).set.get(node.declaration.name);
+        if (variable?.defs.some(def => units.kind(def.node.init) === "state")) context.report({ node, messageId: "invalid" });
+      },
     };
   }),
   "accessor-scope": rule("Call ccstate get/set directly in their callback; do not pass, alias, store or capture accessors.", context => {
@@ -54,6 +67,9 @@ export const rules = {
         const kind = units.kind(node), callback = node.arguments[0];
         if (!["command", "computed"].includes(kind) || !callback || !isFunction(callback)) return;
         const param = callback.params[0];
+        if (param && kind === "command" && param.type !== "ObjectPattern") {
+          context.report({ node: param, messageId: "invalid" }); return;
+        }
         const names = kind === "computed" ? [param?.name] : param?.properties?.filter(p => ["get", "set"].includes(p.key?.name)).map(p => p.value.name) ?? [];
         for (const variable of context.sourceCode.getDeclaredVariables(callback)) {
           if (!names.includes(variable.name)) continue;
