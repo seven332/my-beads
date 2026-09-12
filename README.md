@@ -20,6 +20,31 @@ The built-in palette is based on the [Pixel Beads MARD color chart](https://www.
 
 Palette data is stored in [`src/data/mard-221-colors.json`](src/data/mard-221-colors.json). Both generators also accept a custom palette with `--palette`.
 
+## Find the Closest Color
+
+Find the MARD 221 color closest to a hex color:
+
+```bash
+npm run match:color -- "#4c4c40"
+```
+
+The command compares colors with CIEDE2000, which measures perceptual color difference. For a visibly tinted input, it searches tinted palette colors so that a dark green or brown is not flattened to a neutral gray. It accepts three-digit and six-digit hex colors, with or without `#`:
+
+```text
+Input: #4C4C40
+Closest: B23 (#303921)
+Delta E: 10.21 (CIEDE2000)
+Mode: preserve chroma
+```
+
+Use `--include-neutral` to search every palette color using only CIEDE2000; for the example above, that mode returns H5. Use `--palette <path>` to search a custom palette.
+
+Pass several colors with `--unique` to find the lowest-total-difference assignment without reusing a MARD color. Use `--series B` when the source colors should remain in MARD's green series:
+
+```bash
+npm run match:color -- 4D4D3D 35352A --unique --series B
+```
+
 ## Setup
 
 Install Node.js and the project dependencies:
