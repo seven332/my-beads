@@ -18,3 +18,13 @@ it("rejects invalid pixel scales and oversized output before rendering", () => {
   const wide = createPattern([Array<string>(65).fill("H7")]);
   expect(() => renderPixelArtSvg(wide.pattern, 512)).toThrow("32768");
 });
+
+it("validates chart width when called without the CLI adapter", () => {
+  const { pattern, counts } = createPattern([["H7"]]);
+  for (const width of [0, -1, 799, 800.5, 10_001, NaN, Infinity]) {
+    expect(() => renderChart(pattern, counts, "Test", width)).toThrow("Chart width must be");
+  }
+  for (const width of [800, 10_000]) {
+    expect(renderChart(pattern, counts, "Test", width)).toContain(`width="${width}"`);
+  }
+});

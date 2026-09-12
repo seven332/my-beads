@@ -10,11 +10,15 @@ export type PatternData = {
 };
 
 function validateShape(rows: readonly (readonly unknown[])[]): void {
-  if (!rows.length || !rows[0].length) throw new Error("Pattern must contain at least one cell");
+  if (!rows.length || !Array.isArray(rows[0]) || !rows[0].length) {
+    throw new Error("Pattern must contain at least one cell");
+  }
   const columns = rows[0].length;
-  const unevenRow = rows.findIndex((row) => row.length !== columns);
-  if (unevenRow !== -1) {
-    throw new Error(`CSV row ${unevenRow + 1} has ${rows[unevenRow].length} columns; expected ${columns}`);
+  for (const [rowIndex, row] of rows.entries()) {
+    if (!Array.isArray(row)) throw new Error(`Pattern row ${rowIndex + 1} must be an array`);
+    if (row.length !== columns) {
+      throw new Error(`CSV row ${rowIndex + 1} has ${row.length} columns; expected ${columns}`);
+    }
   }
 }
 
@@ -79,7 +83,10 @@ export function createPattern(
   const { colors } = validatePalette(palette);
   const codesByHex = new Map(Object.entries(colors).map(([code, hex]) => [hex, code]));
   const counts = new Map<string, number>();
-  const pattern = rows.map((row, rowIndex) => row.map((rawValue, columnIndex) => {
+  const pattern = rows.map((row, rowIndex) => Array.from(row, (rawValue, columnIndex) => {
+    if (rawValue !== null && typeof rawValue !== "string") {
+      throw new Error(`Invalid cell at row ${rowIndex + 1}, column ${columnIndex + 1}; expected a color or null`);
+    }
     const value = rawValue?.trim().toUpperCase() ?? "";
     if (value === "" || value === "TRANSPARENT" || value === "ERASE") {
       return { code: "", hex: "#F7F8F8", transparent: true };

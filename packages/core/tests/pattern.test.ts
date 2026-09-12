@@ -49,6 +49,20 @@ describe("CSV documents", () => {
     expect(result.grid).toEqual(grid);
     expect(createPattern([[null]]).counts.size).toBe(0);
   });
+
+  it("rejects missing cells instead of passing a sparse grid to the renderers", () => {
+    const row = Array<string | null>(2);
+    row[0] = "H7";
+    expect(() => createPattern([row])).toThrow("row 1, column 2; expected a color or null");
+    expect(() => serializePatternCsv([row])).toThrow("row 1, column 2");
+  });
+
+  it("rejects missing rows before deriving a document", () => {
+    const rows = Array<(string | null)[]>(2);
+    expect(() => createPattern(rows)).toThrow("at least one cell");
+    rows[0] = ["H7"];
+    expect(() => createPattern(rows)).toThrow("Pattern row 2 must be an array");
+  });
 });
 
 describe("palettes", () => {

@@ -9,7 +9,9 @@ and draft recovery in [#9](https://github.com/seven332/my-beads/issues/9).
 
 - `packages/core` owns pure palette, grid, CSV, color matching and SVG logic. A document
   is a rectangular array of MARD codes or `null`; derived cells and bead counts come
-  from `createPattern`. Blank documents are valid. Treat returned grids as immutable.
+  from `createPattern`. Blank documents are valid; initialize every cell explicitly
+  with a color or `null`, since sparse rows and cells are rejected. Treat returned
+  grids as immutable. Chart rendering accepts integer widths from 800 to 10000 pixels.
 - The browser app will own ccstate, Snabbdom views, Canvas interaction, file decoding,
   downloads and storage. It will import the core without Node polyfills.
 - `apps/cli` owns filesystem paths, system fonts, macOS sips and native resvg.

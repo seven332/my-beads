@@ -27,6 +27,9 @@ export function renderChart(
   title: string,
   pageWidth: number,
 ): string {
+  if (!Number.isInteger(pageWidth) || pageWidth < 800 || pageWidth > 10_000) {
+    throw new Error("Chart width must be an integer between 800 and 10000");
+  }
   const rows = pattern.length;
   const columns = pattern[0].length;
   const colors = [...counts.entries()]
