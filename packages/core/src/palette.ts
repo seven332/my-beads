@@ -26,7 +26,8 @@ export function validatePalette(value: unknown): PaletteDocument {
   const colors: Record<string, string> = {};
   for (const [rawCode, rawHex] of Object.entries(value.colors)) {
     const code = rawCode.trim().toUpperCase();
-    if (!/^[A-Z]+[0-9]+$/.test(code) || Object.hasOwn(colors, code)) {
+    if (!code || code.startsWith("#") || code === "TRANSPARENT" || code === "ERASE" ||
+        Object.hasOwn(colors, code)) {
       throw new Error(`Invalid or duplicate palette code: ${rawCode}`);
     }
     if (typeof rawHex !== "string") throw new Error(`Invalid palette color: ${rawHex}`);

@@ -67,15 +67,15 @@ describe("CLI compatibility", () => {
   });
 
   it("resolves custom palettes, input and default output paths from the caller's directory", async () => {
-    await writeFile(join(directory, "custom.json"), JSON.stringify({ colors: { X1: "#123456" } }));
-    await writeFile(join(directory, "custom.csv"), "X1,TRANSPARENT");
+    await writeFile(join(directory, "custom.json"), JSON.stringify({ colors: { custom: "#123456" } }));
+    await writeFile(join(directory, "custom.csv"), "custom,TRANSPARENT");
     await run("generate-pixel-art", ["custom.csv", "--palette", "custom.json", "--scale", "1"], directory);
     const png = PNG.sync.read(await readFile(join(directory, "custom-pixel-art.png")));
     expect([...png.data]).toEqual([18, 52, 86, 255, 0, 0, 0, 0]);
     await run("generate-chart", ["custom.csv", "--palette", "custom.json"], directory);
     expect(PNG.sync.read(await readFile(join(directory, "custom-chart.png"))).width).toBe(2400);
     const match = await run("find-closest-color", ["123456", "--palette", "custom.json"], directory);
-    expect(match.stdout).toContain("Closest: X1 (#123456)");
+    expect(match.stdout).toContain("Closest: CUSTOM (#123456)");
     expect(match.stdout).toContain("Delta E: 0.00");
   });
 

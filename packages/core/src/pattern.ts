@@ -105,6 +105,10 @@ export function parsePatternCsv(text: string, palette: PaletteDocument = default
 
 export function serializePatternCsv(grid: PatternGrid, palette: PaletteDocument = defaultPalette): string {
   const normalized = createPattern(grid, palette).grid;
-  // Quoting every empty cell also makes a transparent 1 × 1 file unambiguous.
-  return normalized.map((row) => row.map((code) => code ?? '""').join(",")).join("\n") + "\n";
+  // Quote empty cells and custom codes containing CSV delimiters.
+  const field = (code: string | null): string => {
+    if (code === null) return '""';
+    return /[",\r\n]/.test(code) ? '"' + code.replaceAll('"', '""') + '"' : code;
+  };
+  return normalized.map((row) => row.map(field).join(",")).join("\n") + "\n";
 }

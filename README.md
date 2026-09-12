@@ -102,7 +102,7 @@ pnpm generate:pixel --help
 
 The input must be a nonempty rectangular CSV grid. CSV supports quoted fields, a UTF-8 BOM, and LF or CRLF line endings. Filled cells may contain either a MARD color code such as `H7` or a hex value found in the selected palette. Blank cells and the values `TRANSPARENT` and `ERASE` are treated as transparent.
 
-The core represents a grid as color codes or `null`. Its CSV writer emits codes and quoted empty cells, preserving fully blank documents, including 1 × 1. The command-line generators require at least one bead. Custom palettes use a JSON `colors` object mapping letter-and-number codes (for example, `X1`) to hex colors.
+The core represents a grid as color codes or `null`. Its CSV writer emits codes and quoted empty cells, preserving fully blank documents, including 1 × 1. The command-line generators require at least one bead. Custom palettes use a JSON `colors` object mapping codes or names to hex colors. Codes are trimmed and uppercased; they must be unique after normalization and cannot be empty, start with `#`, or use the reserved names `TRANSPARENT` and `ERASE`.
 
 When `--output` is omitted, the printable chart uses the suffix `-chart.png` and the pixel-art image uses `-pixel-art.png`.
 

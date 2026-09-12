@@ -63,9 +63,16 @@ describe("palettes", () => {
     expect(parsePatternCsv("x1,#123456", palette)).toEqual([["X1", "X2"]]);
   });
 
+  it("preserves custom names and escapes CSV punctuation when serializing them", () => {
+    const palette = validatePalette({ colors: { black: "#000000", 'warm,"red"': "#FF0000" } });
+    const grid = [["BLACK", 'WARM,"RED"', null]];
+    expect(parsePatternCsv(serializePatternCsv(grid, palette), palette)).toEqual(grid);
+  });
+
   it.each([null, [], {}, { colors: null }, { colors: [] }, { colors: {} },
     { colors: { H7: 5 } }, { colors: { H7: "#GGGGGG" } },
     { colors: { H7: "#000000", h7: "#FFFFFF" } }, { colors: { "": "#000000" } },
+    { colors: { TRANSPARENT: "#000000" } }, { colors: { "#000000": "#FFFFFF" } },
   ])("rejects invalid external data %j", (palette) => {
     expect(() => validatePalette(palette)).toThrow();
   });
