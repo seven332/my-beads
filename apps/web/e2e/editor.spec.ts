@@ -177,3 +177,21 @@ test("window blur cancels the active stroke and allows the next gesture", async 
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
 });
+
+test("drawing on a partially visible canvas preserves page scroll and cell targeting", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const { zoom } = await fitCoordinates(page, 50, 50);
+  const canvas = page.getByRole("img", { name: "Pattern canvas" });
+  await canvas.evaluate(element => window.scrollTo(0, window.scrollY + element.getBoundingClientRect().top + 180));
+  const box = (await canvas.boundingBox())!;
+  expect(box.y).toBeLessThan(0);
+  const scrollY = await page.evaluate(() => window.scrollY);
+  await page.mouse.click(box.x + (box.width - 50 * zoom) / 2 + 10.5 * zoom,
+    box.y + (box.height - 50 * zoom) / 2 + 35.5 * zoom);
+  await expect(canvas).toBeFocused();
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
+  const grid = parsePatternCsv((await download(page, "csv")).toString());
+  expect(grid[35][10]).toBe("H7");
+  expect(grid.flat().filter(Boolean)).toHaveLength(1);
+});

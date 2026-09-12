@@ -58,7 +58,7 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
   }
   function down(event: PointerEvent) {
     if (!model || pointer || (event.button !== 0 && event.button !== 1)) return;
-    event.preventDefault(); canvas.focus();
+    event.preventDefault(); canvas.focus({ preventScroll: true });
     const p = position(event);
     pointer = { id: event.pointerId, ...p, pan: model.tool === "pan" || event.button === 1 };
     canvas.setPointerCapture(event.pointerId);
