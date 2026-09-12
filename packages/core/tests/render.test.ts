@@ -28,3 +28,25 @@ it("validates chart width when called without the CLI adapter", () => {
     expect(renderChart(pattern, counts, "Test", width)).toContain(`width="${width}"`);
   }
 });
+
+it("keeps legend cards readable and diagnoses grids wider than the page", () => {
+  const narrow = createPattern([["H7", "H5", "M12", "G17", "H4", "G14", "M9", "H20", "H2"]]);
+  const svg = renderChart(narrow.pattern, narrow.counts, "Nine colors", 800);
+  const cards = [...svg.matchAll(/<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)" rx="14"/g)];
+  expect(cards).toHaveLength(9);
+  expect(new Set(cards.map(match => match[2])).size).toBe(5);
+  for (const card of cards) {
+    expect(Number(card[3])).toBeGreaterThanOrEqual(220);
+    expect(Number(card[1]) + Number(card[3])).toBeLessThanOrEqual(800);
+  }
+  const wide = createPattern([Array<string>(70).fill("H7")]);
+  expect(() => renderChart(wide.pattern, wide.counts, "Wide", 800)).toThrow("at least 1650");
+  expect(renderChart(wide.pattern, wide.counts, "Wide", 1650)).toContain('x="125"');
+});
+
+it("reserves space for three-digit column coordinates", () => {
+  const wide = createPattern([Array<string>(256).fill("H7")]);
+  expect(() => renderChart(wide.pattern, wide.counts, "Wide", 5370)).toThrow("at least 6394");
+  const svg = renderChart(wide.pattern, wide.counts, "Wide", 6394);
+  expect(svg).toContain('width="6144" height="24"');
+});

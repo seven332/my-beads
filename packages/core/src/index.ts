@@ -5,3 +5,4 @@ export { matchColors, hexToLab, deltaE2000, type Lab,
   type MatchOptions, type ColorMatch } from "./color-match.js";
 export { renderChart } from "./chart.js";
 export { renderPixelArtSvg } from "./pixel-art.js";
+export { paintLine, floodFill, type Point } from "./edit.js";

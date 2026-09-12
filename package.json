@@ -11,14 +11,19 @@
     "generate": "tsx apps/cli/src/generate-chart.ts",
     "generate:pixel": "tsx apps/cli/src/generate-pixel-art.ts",
     "match:color": "tsx apps/cli/src/find-closest-color.ts",
-    "typecheck": "tsc --noEmit && pnpm --filter @my-beads/core typecheck",
+    "dev": "pnpm --filter @my-beads/web dev",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit && pnpm --filter @my-beads/core typecheck && pnpm --filter @my-beads/web typecheck",
     "test": "pnpm -r test",
-    "build": "pnpm --filter @my-beads/core build"
+    "test:e2e": "pnpm --filter @my-beads/web test:e2e",
+    "build": "pnpm --filter @my-beads/core build && pnpm --filter @my-beads/web build"
   },
   "devDependencies": {
+    "eslint": "10.10.0",
+    "typescript-eslint": "8.70.0",
     "@types/node": "^22.20.2",
     "esbuild": "0.28.2",
     "tsx": "^4.23.13",
-    "typescript": "^7.0.2"
+    "typescript": "6.0.3"
   }
 }
