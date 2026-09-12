@@ -12,16 +12,13 @@
     "generate:pixel": "tsx apps/cli/src/generate-pixel-art.ts",
     "match:color": "tsx apps/cli/src/find-closest-color.ts",
     "typecheck": "tsc --noEmit && pnpm --filter @my-beads/core typecheck",
-    "test": "vitest run",
+    "test": "pnpm -r test",
     "build": "pnpm --filter @my-beads/core build"
   },
   "devDependencies": {
     "@types/node": "^22.20.2",
-    "@types/pngjs": "6.0.5",
     "esbuild": "0.28.2",
-    "pngjs": "7.0.0",
     "tsx": "^4.23.13",
-    "typescript": "^7.0.2",
-    "vitest": "4.1.11"
+    "typescript": "^7.0.2"
   }
 }

@@ -8,7 +8,8 @@ import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const runFile = promisify(execFile);
-const root = fileURLToPath(new URL("../", import.meta.url));
+const root = fileURLToPath(new URL("../../../", import.meta.url));
+const cliSource = fileURLToPath(new URL("../src/", import.meta.url));
 const sherma = join(root, "templates/hollow-knight/sherma-singing-50x50.csv");
 let directory: string;
 beforeEach(async () => { directory = await mkdtemp(join(tmpdir(), "my-beads-test-")); });
@@ -16,7 +17,7 @@ afterEach(async () => { await rm(directory, { recursive: true, force: true }); }
 
 function run(command: string, args: string[], cwd = root) {
   return runFile(process.execPath, [
-    "--import", import.meta.resolve("tsx"), join(root, "apps/cli/src", command + ".ts"), ...args,
+    "--import", import.meta.resolve("tsx"), join(cliSource, command + ".ts"), ...args,
   ], { cwd });
 }
 

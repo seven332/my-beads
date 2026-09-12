@@ -5,7 +5,11 @@
   "type": "module",
   "exports": "./src/index.ts",
   "scripts": {
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "build": "esbuild src/index.ts --bundle --platform=browser --format=esm --outfile=dist/index.js && tsc --project tsconfig.build.json"
+  },
+  "devDependencies": {
+    "vitest": "4.1.11"
   }
 }

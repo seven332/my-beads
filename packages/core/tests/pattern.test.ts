@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createPattern, defaultPalette, parseCsv, parsePatternCsv, serializePatternCsv,
   validatePalette, type PatternGrid,
-} from "../packages/core/src/index.js";
+} from "../src/index.js";
 
 describe("CSV documents", () => {
   it("normalizes BOM, whitespace, CRLF, hex values and transparent aliases", () => {

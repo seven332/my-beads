@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { createPattern, renderChart, renderPixelArtSvg } from "../packages/core/src/index.js";
+import { createPattern, renderChart, renderPixelArtSvg } from "../src/index.js";
 
 it("renders a blank core document for a future new canvas", () => {
   const { pattern, counts } = createPattern([[null]]);

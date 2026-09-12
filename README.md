@@ -110,9 +110,8 @@ When `--output` is omitted, the printable chart uses the suffix `-chart.png` and
 
 This is a pnpm workspace:
 
-- `packages/core`: browser-compatible TypeScript for palettes, code/null grids, CSV, color matching and SVG rendering.
-- `apps/cli`: Node file access, platform fonts and native PNG generation.
-- `tests`: Vitest unit tests and real CLI integration tests.
+- `packages/core`: browser-compatible TypeScript for palettes, code/null grids, CSV, color matching and SVG rendering, with unit tests in `packages/core/tests`.
+- `apps/cli`: Node file access, platform fonts and native PNG generation, with real CLI integration tests in `apps/cli/tests`.
 
 Run the checks from the repository root:
 
@@ -121,6 +120,8 @@ pnpm typecheck
 pnpm test
 pnpm build
 ```
+
+`pnpm test` runs each package's test script. To test one package, use `pnpm --filter @my-beads/core test` or `pnpm --filter @my-beads/cli test`.
 
 The core has a separate typecheck without Node or DOM globals. Its build emits a browser ESM bundle and type declarations under `packages/core/dist/`; the private workspace package exports TypeScript source for tsx and the future Vite app. CI runs a frozen install and all three checks on Linux and macOS. Tests cover CSV round trips, reference color differences, unique assignments, chart exports, and every pixel/alpha value at 1× and 20× scale.
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultPalette, deltaE2000, hexToLab, matchColors, type Lab } from "../packages/core/src/index.js";
+import { defaultPalette, deltaE2000, hexToLab, matchColors, type Lab } from "../src/index.js";
 
 describe("CIEDE2000", () => {
   // Sharma, Wu & Dalal (2005), supplementary reference data, including hue wrap and zero chroma.
