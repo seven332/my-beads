@@ -1,6 +1,7 @@
 import { command, computed, state } from "ccstate";
 import { createPattern, defaultPalette, floodFill, paintLine, parsePatternCsv,
   type PatternGrid, type Point } from "@my-beads/core";
+import type { DraftStatus } from "./drafts.js";
 
 export const MAX_GRID = 256;
 export const HISTORY_LIMIT = 100;
@@ -31,6 +32,15 @@ const importState$ = state(0);
 const viewportState$ = state<Viewport>({ zoom: 12, x: 32, y: 32 });
 const gridVisibleState$ = state(true);
 const codesVisibleState$ = state(false);
+const draftStatusState$ = state<DraftStatus>({ message: "", action: null, error: false });
+export const draftStatus$ = computed(get => get(draftStatusState$));
+export const reportDraft$ = command(({ set }, status: DraftStatus) => { set(draftStatusState$, status); });
+
+export const documentRevision$ = computed(get => get(historyState$).revision);
+export const committedDocument$ = computed(get => {
+  const history = get(historyState$);
+  return { grid: history.stroke?.before ?? history.grid, title: get(titleState$) };
+});
 
 export const document$ = computed(get => createPattern(get(historyState$).grid));
 export const editor$ = computed(get => {
@@ -138,6 +148,14 @@ const replaceDocument$ = command(({ get, set }, grid: PatternGrid, title: string
   set(historyState$, { grid, past: [], future: [], stroke: null, revision: get(historyState$).revision + 1 });
   set(titleState$, title.slice(0, 100)); set(errorState$, "");
   set(viewportState$, { zoom: 12, x: 32, y: 32 });
+});
+export const restoreDocument$ = command(({ set }, grid: PatternGrid, title: string) => {
+  set(replaceDocument$, createPattern(grid).grid, title);
+});
+export const replaceIfCurrent$ = command(({ get, set }, revision: number, grid: PatternGrid, title: string) => {
+  if (get(historyState$).revision !== revision || get(historyState$).stroke) return false;
+  set(restoreDocument$, grid, title);
+  return true;
 });
 export const newDocument$ = command(({ set }, width: number, height: number) => {
   try { set(replaceDocument$, blank(width, height), "Untitled pattern"); }

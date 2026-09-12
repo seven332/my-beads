@@ -123,7 +123,28 @@ Open the localhost URL printed by Vite. Use **Open CSV** to load a pattern, or *
 - **Keyboard:** focus the canvas, move with arrow keys and draw with Enter or Space. Shift + arrows pans. Cmd/Ctrl + Z undoes; add Shift to redo.
 - **Download:** select CSV, transparent pixel PNG, printable SVG, or printable PNG. Pixel scale is an integer from 1 to 512, including 1×; chart width defaults to 2400. The title is editable. Printable legends keep hex values and bead counts on separate lines and retain the MARD 221 footer.
 
-The editor accepts grids up to 256 × 256, CSV files up to 2 MB and 100 undo steps. PNG exports are limited to 8192 pixels per side and 32 million pixels; SVG avoids the raster limit. Download your work before replacing the document or closing the page. Image import and local draft recovery are tracked in [#9](https://github.com/seven332/my-beads/issues/9).
+The editor accepts grids up to 256 × 256, CSV files up to 2 MB and 100 undo steps. PNG exports are limited to 8192 pixels per side and 32 million pixels; SVG avoids the raster limit. Download a copy before replacing a document you want to keep.
+
+### Import a Pixel Image
+
+Use **Open image** for PNG or WebP. Set the intended **Target columns** and **Target rows**: a 1000 × 1000 image can become a 50 × 50 bead grid. The target defaults to the current grid dimensions. Each cell samples the source pixel at its center with nearest-neighbor sampling, without smoothing or background blending.
+
+**Alpha threshold** defaults to 128 (0–255). Fully transparent pixels always remain empty; other pixels become beads when their alpha is at least the threshold. The preview shows the sampled source and its MARD version before the current document changes.
+
+- **Preserve chroma** favors tinted palette colors for tinted source colors; it is enabled initially.
+- **MARD series** restricts candidates, for example `B` or `B, H`; leave it empty for all colors.
+- **Distinct assignments** gives each source color a different code; it is off initially. If there are too few candidates, the preview reports an error.
+- In **Color mapping**, enter or choose a MARD code to override a source color; clear it for automatic matching. Distinct mode reserves manual choices before assigning other colors.
+
+Click **Update preview** after changing sampling or matching settings; this resets manual overrides. **Apply image** replaces the document and clears history, like opening CSV. Cancel, Escape, invalid files, canceled reads and results made stale by newer work preserve the current document.
+
+Imports are limited to 10 MB, 8192 pixels per side, 16 million decoded pixels and 256 sampled opaque colors. Color-rich images report an error; use pixel art or a smaller target grid. All image processing stays in the browser.
+
+### Local Drafts
+
+The editor automatically saves one versioned draft on this device and restores it after reload. The draft contains the title and grid, including empty cells. It saves completed edits, imports, new grids and undo/redo; unfinished strokes and image previews are excluded. Original images, undo history and viewport settings are not saved.
+
+Corrupt or unsupported drafts remain stored, and automatic saving pauses until you choose **Replace saved draft**. If storage is unavailable or full, the editor keeps your active document, displays an error and provides **Retry saving draft**. Download your work when saving fails. Drafts belong to the current browser origin; different localhost ports have separate drafts, and multiple tabs share the same saved slot. Use downloads for permanent copies or multiple patterns.
 
 ## Development
 
@@ -149,7 +170,7 @@ pnpm build
 
 The core has a separate typecheck without Node or DOM globals. Its build emits a browser ESM bundle and type declarations under `packages/core/dist/`; the private workspace package exports TypeScript source for tsx and Vite. The web production build is in `apps/web/dist/`. TypeScript 6.0.3 is pinned within the supported range of the ESLint TypeScript parser.
 
-CI runs lint, types, tests and production builds on Linux/macOS, plus Chromium/WebKit workflows on Linux. Tests cover CSV round trips, color matching, grouped editing history, state isolation, cancellation, real application bootstrap/teardown and decoded export colors/alpha. CLI pixel regression checks 1× and 20×; browser checks 1× and 3×. Printable exports are checked in both browsers using their system fonts: correct title/counts/legend contents, text inside the page and legend cards, separate legend lines, and complete non-overlapping coordinates. Prefer behavior, file-content and layout assertions over screenshot baselines. Screenshots under `codex-work/screenshots/` are for manual visual review.
+CI runs lint, types, tests and production builds on Linux/macOS, plus Chromium/WebKit workflows on Linux. Tests cover CSV round trips, color matching, image sampling/alpha/overrides, grouped editing history, state isolation, stale import cancellation, real application bootstrap/teardown, draft corruption/storage failures and decoded export colors/alpha. Browser workflows import PNG/WebP through the real preview, apply mappings, edit/export, reload drafts and verify that unfinished strokes are not recovered. CLI pixel regression checks 1× and 20×; browser checks 1× and 3×. Printable exports are checked in both browsers using their system fonts: correct title/counts/legend contents, text inside the page and legend cards, separate legend lines, and complete non-overlapping coordinates. Prefer behavior, file-content and layout assertions over screenshot baselines. Screenshots under `codex-work/screenshots/` are for manual visual review.
 
 The complete web editor is tracked in [#6](https://github.com/seven332/my-beads/issues/6). See [frontend architecture](docs/frontend-architecture.md) for state, lifecycle and testing conventions.
 

@@ -2,12 +2,16 @@ import { h, type VNode, type Hooks } from "snabbdom";
 import { defaultPalette } from "@my-beads/core";
 import type { EditorModel, Tool } from "./state.js";
 import type { ExportOptions } from "./exports.js";
+import { imagePicker, imageView, type ImageActions } from "./image-view.js";
+import type { ImageSession } from "./image-state.js";
+import type { DraftStatus } from "./drafts.js";
 
-export interface Actions {
+export interface Actions extends ImageActions {
   tool(tool: Tool): void; color(code: string): void; search(value: string): void;
   rename(value: string): void; create(width: number, height: number): void; import(file: File): void;
   undo(): void; redo(): void; grid(): void; codes(): void; zoom(factor: number): void; fit(): void;
   export(options: ExportOptions): void;
+  saveDraft(): void;
 }
 function value(event: Event) { return (event.target as HTMLInputElement).value; }
 function button(label: string, action: () => void, attrs: Record<string, string | boolean> = {}, className = "") {
@@ -17,14 +21,18 @@ function button(label: string, action: () => void, attrs: Record<string, string 
 function field(label: string, name: string, initial: string, attrs: Record<string, string | number> = {}) {
   return h("label.field", [h("span", label), h("input", { attrs: { name, ...attrs }, props: { defaultValue: initial } })]);
 }
-export function view(model: EditorModel, actions: Actions, canvasHooks: Hooks): VNode {
+export function view(model: EditorModel, actions: Actions, canvasHooks: Hooks, image: ImageSession | null, draft: DraftStatus): VNode {
   const grid = model.document.grid;
   return h("div.workspace", [
     h("header.topbar", [
       h("a.brand", { attrs: { href: "#", "aria-label": "My Beads" } }, [h("span.brand-mark", "▦"), h("span", "My Beads")]),
       h("span.topbar-note", "A little color. One bead at a time."),
-      h("label.import-button", [h("span", "↑  Open CSV"), h("input.file-input", { attrs: { type: "file", accept: ".csv,text/csv", "aria-label": "Open CSV" },
+      h("div.import-actions", [h("label.import-button", [h("span", "↑  Open CSV"), h("input.file-input", { attrs: { type: "file", accept: ".csv,text/csv", "aria-label": "Open CSV" },
         on: { change: (event: Event) => { const input = event.target as HTMLInputElement; const file = input.files?.[0]; if (file) actions.import(file); input.value = ""; } } })]),
+        imagePicker("↑  Open image", "Open image", actions.importImage)]),
+    ]),
+    h("div.draft-status", { attrs: { role: draft.error ? "alert" : "status", "aria-label": "Draft status" } }, [
+      h("span", draft.message), draft.action ? button(draft.action === "replace" ? "Replace saved draft" : "Retry saving draft", actions.saveDraft) : h("span"),
     ]),
     h("main.editor-layout", [
       h("section.drawing-panel", { attrs: { "aria-label": "Pattern workspace" } }, [
@@ -75,5 +83,6 @@ export function view(model: EditorModel, actions: Actions, canvasHooks: Hooks): 
       ]),
     ]),
     h("footer.app-footer", [h("span", "Made for the joy of making."), h("span", "Local files · MARD 221")]),
+    imageView(image, actions),
   ]);
 }

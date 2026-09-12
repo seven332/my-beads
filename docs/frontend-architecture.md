@@ -2,8 +2,8 @@
 
 The editor is planned in [#6](https://github.com/seven332/my-beads/issues/6).
 The shared core and ccstate/Snabbdom CSV editor are implemented in #7 and
-[#8](https://github.com/seven332/my-beads/issues/8), followed by image import
-and draft recovery in [#9](https://github.com/seven332/my-beads/issues/9).
+[#8](https://github.com/seven332/my-beads/issues/8). Image import and draft recovery
+complete the final delivery slice in [#9](https://github.com/seven332/my-beads/issues/9).
 
 ## Boundaries
 
@@ -15,7 +15,7 @@ and draft recovery in [#9](https://github.com/seven332/my-beads/issues/9).
   with a minimum of `columns * max(20, digits(columns) * 8) + 250` for readable cells
   and separated multi-digit coordinates.
 - The browser app owns ccstate, Snabbdom views, Canvas interaction, file decoding,
-  downloads and storage. It will import the core without Node polyfills.
+  downloads and storage. It imports the core without Node polyfills.
 - `apps/cli` owns filesystem paths, system fonts, macOS sips and native resvg.
   Browser code must never import these adapters.
 
@@ -66,7 +66,8 @@ Keep screenshots for manual review under `codex-work/screenshots/`.
 scope, command construction and asynchronous ownership with valid/invalid examples.
 These are focused syntax checks, not a proof of runtime cancellation. The lifecycle
 adapter in `app.ts` owns AbortControllers; state commands check cancellation after
-awaits. The web graph is declared in `state.ts` and reused with isolated stores.
+awaits. The web graph is declared in `state.ts` and `image-state.ts` and reused
+with isolated stores.
 
 Each drag records its starting grid and commits one history entry on pointerup.
 Cancellation restores the starting grid; no-op gestures preserve redo. At most 100
@@ -80,3 +81,35 @@ own pointer listeners, ResizeObserver and animation frames. Mount destruction ab
 the watch and file work, removes listeners and revokes pending download URLs.
 CI covers real bootstrap/teardown, state isolation, Chromium/WebKit editing and
 decoded downloads, alongside the existing core and CLI regression suites.
+
+## Image imports and drafts
+
+`image-file.ts` owns local PNG/WebP decoding, image events, cancellation and object
+URLs. It checks compressed size and decoded dimensions before Canvas allocation;
+only RGBA data leaves the adapter. Core `image-import.ts` samples cell centers,
+applies the alpha rule, counts source colors and reuses the shared color matcher.
+Manual overrides reserve candidates for distinct assignment. Sampling, source-color
+and raster limits bound the work; general photo quantization is not implicit.
+
+`image-state.ts` owns a separate preview session and its original document revision.
+Its async command accepts an image-source IO boundary and an AbortSignal. A new
+CSV/image import or grid cancels the mount's previous import owner. Apply also
+checks the revision and live-stroke state; canceled or stale work never replaces
+the document. Changed form settings disable Apply until the preview is refreshed.
+The native dialog owns focus and Escape; preview Canvases are independent of the
+stable editor Canvas. Shared MARD suggestions avoid duplicating the full palette
+for every mapping row.
+
+`drafts.ts` owns one version-1 localStorage record containing grid and title.
+Recovery validates size, shape, version and exact palette codes before state changes.
+The committed-document selector uses a live stroke's starting grid. A readonly
+watch supplies snapshots to the adapter, which coalesces saves in a microtask and
+reports results outside that watch. Unchanged initial state, navigation and previews
+do not cause writes. The mount flushes committed work on pagehide/teardown and
+disposes pending work and listeners. Failed recovery pauses saving without deleting
+the original bytes; replacement and retry are explicit user actions.
+
+Tests inject storage/decoder boundaries for deterministic failures and late results;
+they mount the real app and state graph. jsdom lacks native dialog methods, so DOM
+tests adapt those methods while Chromium/WebKit exercise actual dialogs, image
+decoding, storage, reloads and exported contents. No screenshot baseline is required.
