@@ -1,19 +1,90 @@
 # My Beads
 
-My personal collection of perler bead patterns, made from source images with the help of AI and a few finishing tools.
+My personal collection of perler bead patterns. Source images are prepared with AI, refined in an online editor, and converted into printable charts or pixel-art PNGs with TypeScript tools.
 
 All patterns use the **MARD 221** color palette.
 
 ## Workflow
 
-1. **Prepare the image with AI.** Use AI to process the original image into a design suitable for a bead pattern.
-2. **Edit and export.** Import the processed image into [Perler Beads Generator](https://perlerbeads.zippland.com/), refine the pattern, and export the data.
-3. **Generate the final pattern.** Use scripts to turn the exported data into the final pattern sheets.
+1. Process the source image with AI to create a design suitable for perler beads.
+2. Import the result into [Perler Beads Generator](https://perlerbeads.zippland.com/), make the final edits, and export the pattern as CSV.
+3. Use the tools in this repository to generate the final images.
 
 ## Patterns
 
-Patterns are organized by theme under [`templates/`](templates/), with pattern images and exported CSV data.
+Pattern files are stored under [`templates/`](templates/) and grouped by theme.
 
-## Commit Messages
+## Color Palette
+
+The built-in palette is based on the [Pixel Beads MARD color chart](https://www.pixel-beads.com/zh/mard-bead-color-chart). It contains the 221 standard colors from series A–H and M.
+
+Palette data is stored in [`src/data/mard-221-colors.json`](src/data/mard-221-colors.json). Both generators also accept a custom palette with `--palette`.
+
+## Setup
+
+Install Node.js and the project dependencies:
+
+```bash
+npm install
+```
+
+## Printable Chart
+
+Generate a print-friendly PNG or SVG:
+
+```bash
+npm run generate -- templates/<collection>/<pattern>.csv \
+  --output codex-work/pattern-chart.png \
+  --title "Pattern Title"
+```
+
+The chart includes:
+
+- a title and pattern statistics
+- coordinates on all four sides
+- the MARD code inside every filled cell
+- guide lines at five-cell and ten-cell intervals
+- a legend with each color code, hex value, and bead count
+- a `MARD 221` footer
+
+Use `--width` to set the output width in pixels. The default is `2400`. Chart text is in English and uses the platform system font, including SF on macOS.
+
+Run the following command to see every option:
+
+```bash
+npm run generate -- --help
+```
+
+## Pixel Art
+
+Generate a PNG directly from the CSV grid:
+
+```bash
+npm run generate:pixel -- templates/<collection>/<pattern>.csv \
+  --output codex-work/pattern-pixel-art.png \
+  --scale 20
+```
+
+Each CSV cell becomes a square block of pixels. Empty cells remain transparent, and the output contains no labels, guides, or legend. The default scale is `16`; for example, a 50 × 50 pattern at `--scale 20` produces a 1000 × 1000 PNG.
+
+Run the following command to see every option:
+
+```bash
+npm run generate:pixel -- --help
+```
+
+## CSV Format
+
+The input must be a rectangular CSV grid. Filled cells may contain either a MARD color code such as `H7` or a hex value found in the selected palette. Blank cells and the values `TRANSPARENT` and `ERASE` are treated as transparent.
+
+When `--output` is omitted, the printable chart uses the suffix `-chart.png` and the pixel-art image uses `-pixel-art.png`.
+
+## Development
+
+Check the TypeScript source without generating files:
+
+```bash
+npm run typecheck
+```
 
 Commit messages follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
