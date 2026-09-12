@@ -118,3 +118,7 @@ test("default Sherma printable export has complete readable labels and counts", 
 test("maximum-width grid exports separated three-digit coordinates", async ({ page }) => {
   await checkChart(page, Array(256).fill("H7").join(","), 6394, "Wide");
 });
+
+test("wide title letters stay inside a narrow printable page", async ({ page }) => {
+  await checkChart(page, "H7", 800, "W".repeat(20));
+});

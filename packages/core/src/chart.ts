@@ -64,13 +64,15 @@ export function renderChart(
   const pageHeight = Math.ceil(footerY + 45);
   const cellFontSize = Math.max(8, Math.min(17, cellSize * 0.36));
   const axisFontSize = Math.max(12, Math.min(19, cellSize * 0.42));
+  // Budget one em per character so wide letters fit without distorting the title.
+  const titleFontSize = Math.min(52, (pageWidth - 100) / Math.max(1, title.length));
   const svg: string[] = [];
 
   svg.push(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${pageWidth}" height="${pageHeight}" viewBox="0 0 ${pageWidth} ${pageHeight}">`,
     `<rect width="${pageWidth}" height="${pageHeight}" fill="#FFFFFF"/>`,
     `<g font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', '.SF NS', 'Segoe UI', Arial, 'DejaVu Sans', sans-serif">`,
-    `<text x="${pageWidth / 2}" y="62" text-anchor="middle" font-size="52" font-weight="700" fill="#242229"${title.length > (pageWidth - 100) / 32 ? ` textLength="${pageWidth - 100}" lengthAdjust="spacingAndGlyphs"` : ""}>${escapeXml(title)}</text>`,
+    `<text x="${pageWidth / 2}" y="62" text-anchor="middle" font-size="${titleFontSize}" font-weight="700" fill="#242229">${escapeXml(title)}</text>`,
     `<text x="${pageWidth / 2}" y="112" text-anchor="middle" font-size="26" fill="#77737D">${columns} × ${rows} grid · ${colors.length} colors · ${beadCount} beads</text>`,
     `<rect x="${gridX}" y="${gridY}" width="${gridWidth}" height="${gridHeight}" fill="#F7F8F8"/>`,
   );
