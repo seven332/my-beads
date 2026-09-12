@@ -3,7 +3,8 @@ import { dirname, extname, resolve } from "node:path";
 
 import { Resvg } from "@resvg/resvg-js";
 
-import { defaultPalettePath, loadPattern, type PatternCell } from "./pattern.js";
+import { renderPixelArtSvg } from "@my-beads/core";
+import { defaultPalettePath, loadPattern } from "./pattern.js";
 
 type Options = {
   input: string;
@@ -17,7 +18,7 @@ function usage(): string {
     "Generate scaled pixel art directly from a bead-pattern CSV file.",
     "",
     "Usage:",
-    "  npm run generate:pixel -- <input.csv> [options]",
+    "  pnpm generate:pixel <input.csv> [options]",
     "",
     "Options:",
     "  --output <path>   Output .png path",
@@ -85,46 +86,20 @@ function parseArguments(argv: string[]): Options {
   return { input, output, palette, scale };
 }
 
-function renderPixelArt(pattern: PatternCell[][], scale: number): Buffer {
-  const rows = pattern.length;
-  const columns = pattern[0].length;
-  const width = columns * scale;
-  const height = rows * scale;
-  if (width > 32_768 || height > 32_768) {
-    throw new Error("Scaled output dimensions must not exceed 32768 pixels");
-  }
-
-  const svg = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" shape-rendering="crispEdges">`,
-  ];
-  for (let row = 0; row < rows; row += 1) {
-    for (let column = 0; column < columns; column += 1) {
-      const cell = pattern[row][column];
-      if (cell.transparent) continue;
-      svg.push(
-        `<rect x="${column * scale}" y="${row * scale}" width="${scale}" height="${scale}" fill="${cell.hex}"/>`,
-      );
-    }
-  }
-  svg.push("</svg>");
-
-  const renderer = new Resvg(svg.join("\n"), {
-    fitTo: { mode: "original" },
-    font: { loadSystemFonts: false },
-    shapeRendering: 1,
-    imageRendering: 1,
-  });
-  return renderer.render().asPng();
-}
-
 async function main(): Promise<void> {
   const options = parseArguments(process.argv.slice(2));
   const { pattern, counts } = await loadPattern(options.input, options.palette);
   const width = pattern[0].length * options.scale;
   const height = pattern.length * options.scale;
 
+  const renderer = new Resvg(renderPixelArtSvg(pattern, options.scale), {
+    fitTo: { mode: "original" },
+    font: { loadSystemFonts: false },
+    shapeRendering: 1,
+    imageRendering: 1,
+  });
   await mkdir(dirname(options.output), { recursive: true });
-  await writeFile(options.output, renderPixelArt(pattern, options.scale));
+  await writeFile(options.output, renderer.render().asPng());
 
   const beadCount = [...counts.values()].reduce((total, count) => total + count, 0);
   console.log(`Generated ${options.output}`);
