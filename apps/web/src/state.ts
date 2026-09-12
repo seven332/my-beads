@@ -83,7 +83,7 @@ export const moveViewport$ = command(({ get, set }, dx: number, dy: number) => {
 });
 export const zoom$ = command(({ get, set }, factor: number, anchor: Point = { x: 32, y: 32 }) => {
   const view = get(viewportState$);
-  const zoom = Math.max(2, Math.min(64, view.zoom * factor));
+  const zoom = Math.max(0.25, Math.min(64, view.zoom * factor));
   if (!Number.isFinite(zoom)) return;
   const ratio = zoom / view.zoom;
   set(viewportState$, { zoom, x: anchor.x - (anchor.x - view.x) * ratio,
@@ -91,7 +91,7 @@ export const zoom$ = command(({ get, set }, factor: number, anchor: Point = { x:
 });
 export const fitViewport$ = command(({ get, set }, width: number, height: number) => {
   const grid = get(historyState$).grid;
-  const zoom = Math.max(2, Math.min(32, (width - 64) / grid[0].length, (height - 64) / grid.length));
+  const zoom = Math.max(0.25, Math.min(32, (width - 64) / grid[0].length, (height - 64) / grid.length));
   set(viewportState$, { zoom, x: (width - grid[0].length * zoom) / 2, y: (height - grid.length * zoom) / 2 });
 });
 export const beginStroke$ = command(({ get, set }, point: Point) => {
@@ -114,7 +114,7 @@ export const beginStroke$ = command(({ get, set }, point: Point) => {
 });
 export const extendStroke$ = command(({ get, set }, point: Point) => {
   const history = get(historyState$);
-  if (!history.stroke || history.grid[point.y]?.[point.x] === undefined) return;
+  if (!history.stroke || !Number.isSafeInteger(point.x) || !Number.isSafeInteger(point.y)) return;
   set(historyState$, { ...history,
     grid: paintLine(history.grid, history.stroke.last, point, history.stroke.color),
     stroke: { ...history.stroke, last: point }, revision: history.revision + 1 });

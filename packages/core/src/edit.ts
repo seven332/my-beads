@@ -7,9 +7,27 @@ function inside(grid: PatternGrid, point: Point): boolean {
     point.y >= 0 && point.y < grid.length && point.x >= 0 && point.x < grid[0].length;
 }
 
-/** Integer Bresenham line. Endpoints must be inside the canonical rectangular grid. */
+/** Clip to the grid before rasterizing, so captured pointers can leave and re-enter. */
+function clipLine(from: Point, to: Point, width: number, height: number): [Point, Point] | null {
+  if (![from.x, from.y, to.x, to.y].every(Number.isSafeInteger)) return null;
+  const dx = to.x - from.x, dy = to.y - from.y;
+  let first = 0, last = 1;
+  for (const [p, q] of [[-dx, from.x], [dx, width - 1 - from.x], [-dy, from.y], [dy, height - 1 - from.y]]) {
+    if (p === 0) { if (q < 0) return null; continue; }
+    const ratio = q / p;
+    if (p < 0) first = Math.max(first, ratio); else last = Math.min(last, ratio);
+    if (first > last) return null;
+  }
+  const point = (t: number): Point => ({ x: Math.max(0, Math.min(width - 1, Math.round(from.x + t * dx))),
+    y: Math.max(0, Math.min(height - 1, Math.round(from.y + t * dy))) });
+  return [point(first), point(last)];
+}
+
+/** Integer Bresenham line over the visible part of a canonical rectangular grid. */
 export function paintLine(grid: PatternGrid, from: Point, to: Point, color: string | null): PatternGrid {
-  if (!inside(grid, from) || !inside(grid, to)) return grid;
+  const clipped = clipLine(from, to, grid[0].length, grid.length);
+  if (!clipped) return grid;
+  [from, to] = clipped;
   const rows = grid.slice();
   const changed = new Set<number>();
   let { x, y } = from;

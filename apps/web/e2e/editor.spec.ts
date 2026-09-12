@@ -16,7 +16,7 @@ async function download(page: Page, format: string, scale = 1) {
 async function fitCoordinates(page: Page, columns: number, rows: number) {
   await page.getByRole("button", { name: "Fit to window" }).click();
   const box = (await page.getByRole("img", { name: "Pattern canvas" }).boundingBox())!;
-  const zoom = Math.max(2, Math.min(32, (box.width - 64) / columns, (box.height - 64) / rows));
+  const zoom = Math.max(0.25, Math.min(32, (box.width - 64) / columns, (box.height - 64) / rows));
   return { box, zoom, cell: (x: number, y: number) => ({ x: box.x + (box.width - columns * zoom) / 2 + (x + .5) * zoom, y: box.y + (box.height - rows * zoom) / 2 + (y + .5) * zoom }) };
 }
 function verifyPixels(buffer: Buffer, grid: PatternGrid, scale: number) {
@@ -122,6 +122,19 @@ test("keyboard canvas editing and interrupted pointer strokes", async ({ page })
   await page.getByRole("img", { name: "Pattern canvas" }).press("ArrowRight");
   await page.getByRole("img", { name: "Pattern canvas" }).press("Enter");
   await expect(page.getByTestId("counts")).toHaveText("1 beads · 1 colors");
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
+});
+
+test("fast drags paint to the boundary and remain one undo step", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Open CSV").setInputFiles({ name: "blank.csv", mimeType: "text/csv", buffer: Buffer.from('\"\",\"\",\"\",\"\"') });
+  await expect(page.getByLabel("Pattern title")).toHaveValue("blank");
+  const { cell } = await fitCoordinates(page, 4, 1);
+  await page.getByRole("button", { name: "Pencil", exact: true }).click();
+  await page.mouse.move(cell(0, 0).x, cell(0, 0).y); await page.mouse.down();
+  await page.mouse.move(cell(8, 0).x, cell(8, 0).y); await page.mouse.up();
+  await expect(page.getByTestId("counts")).toHaveText("4 beads · 1 colors");
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
 });

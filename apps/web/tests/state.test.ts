@@ -56,6 +56,18 @@ it("caps undo history and centers zoom on its anchor", () => {
   expect(store.get(state.editor$).viewport).toEqual({ zoom: 24, x: 25, y: 13 });
 });
 
+it("fits a maximum-size grid inside a small viewport and draws through the boundary", () => {
+  const store = createStore(); store.set(state.newDocument$, 256, 256);
+  store.set(state.fitViewport$, 320, 360);
+  const viewport = store.get(state.editor$).viewport;
+  expect(viewport.zoom * 256).toBeLessThanOrEqual(256);
+  store.set(state.newDocument$, 4, 1);
+  store.set(state.beginStroke$, { x: 0, y: 0 });
+  store.set(state.extendStroke$, { x: 20, y: 0 }); store.set(state.finishStroke$);
+  expect(store.get(state.editor$).beads).toBe(4);
+  store.set(state.undo$); expect(store.get(state.editor$).beads).toBe(0);
+});
+
 it("imports canonical CSV and preserves the document when validation fails", async () => {
   const store = createStore(), controller = new AbortController();
   await store.set(state.importCsv$, { name: "Test.csv", size: 12, text: async () => 'H7,""\nH2,H7' }, controller.signal);
