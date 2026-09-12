@@ -138,3 +138,23 @@ test("fast drags paint to the boundary and remain one undo step", async ({ page 
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
 });
+
+test("export validates only the settings used by the selected format", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Open CSV").setInputFiles({ name: "single.csv", mimeType: "text/csv", buffer: Buffer.from("H7") });
+  await expect(page.getByLabel("Pattern title")).toHaveValue("single");
+  await page.getByLabel("Chart width").fill("0");
+  expect(parsePatternCsv((await download(page, "csv", 0)).toString())).toEqual([["H7"]]);
+  verifyPixels(await download(page, "pixel", 1), [["H7"]], 1);
+  await page.getByLabel("Chart width").fill("800");
+  expect((await download(page, "svg", 0)).toString()).toContain("MARD 221");
+
+  await page.getByLabel("Export format").selectOption("pixel");
+  await page.getByRole("button", { name: "Download" }).click();
+  await expect(page.getByRole("alert")).toContainText("Pixel scale must be an integer");
+  await page.getByLabel("Export format").selectOption("svg");
+  await page.getByLabel("Chart width").fill("0");
+  await page.getByRole("button", { name: "Download" }).click();
+  await expect(page.getByRole("alert")).toContainText("Chart width must be an integer");
+  await expect(page.getByTestId("counts")).toHaveText("1 beads · 1 colors");
+});

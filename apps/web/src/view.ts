@@ -61,7 +61,8 @@ export function view(model: EditorModel, actions: Actions, canvasHooks: Hooks): 
           model.palette.length ? h("span") : h("p.empty-results", "No matching colors."),
         ]),
         h("details.export-panel", { attrs: { open: true } }, [h("summary", "Export pattern"),
-          h("form.export-form", { on: { submit: (event: Event) => { event.preventDefault(); const data = new FormData(event.target as HTMLFormElement); actions.export({ format: data.get("format") as ExportOptions["format"], scale: Number(data.get("scale")), width: Number(data.get("width")) }); } } }, [
+          // The export adapter validates only the selected format's settings.
+          h("form.export-form", { attrs: { novalidate: true }, on: { submit: (event: Event) => { event.preventDefault(); const data = new FormData(event.target as HTMLFormElement); actions.export({ format: data.get("format") as ExportOptions["format"], scale: Number(data.get("scale")), width: Number(data.get("width")) }); } } }, [
             h("label.field", [h("span", "Format"), h("select", { attrs: { name: "format", "aria-label": "Export format" } }, [h("option", { attrs: { value: "csv" } }, "CSV grid"), h("option", { attrs: { value: "pixel" } }, "Pixel art PNG"), h("option", { attrs: { value: "svg" } }, "Printable SVG"), h("option", { attrs: { value: "chart" } }, "Printable PNG")])]),
             h("div.field-row", [field("Pixel scale", "scale", "16", { type: "number", min: 1, max: 512 }), field("Chart width", "width", "2400", { type: "number", min: 800, max: 10000 })]),
             h("button.primary", { attrs: { type: "submit" } }, "↓  Download"),
