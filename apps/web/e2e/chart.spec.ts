@@ -19,7 +19,11 @@ test("printable geometry and controlled-font visual regression", async ({ page, 
   expect(overflow).toEqual([]);
   await expect(page.locator("svg")).toHaveScreenshot("chart-narrow.png", { maxDiffPixelRatio: 0.01, threshold: 0.2 });
   const sherma = createPattern(parsePatternCsv(await readFile(new URL("../../../templates/hollow-knight/sherma-singing-50x50.csv", import.meta.url), "utf8")));
-  expect(renderChart(sherma.pattern, sherma.counts, "Sherma", 2400)).toContain("1270 beads");
+  const defaultChart = renderChart(sherma.pattern, sherma.counts, "Sherma", 2400);
+  expect(defaultChart).toContain("1270 beads");
+  await page.locator("svg").evaluate((svg, replacement) => { svg.outerHTML = replacement; }, defaultChart);
+  await page.evaluate(() => document.fonts.ready);
+  await expect(page.locator("svg")).toHaveScreenshot("chart-sherma.png", { maxDiffPixelRatio: 0.01, threshold: 0.2 });
   const wide = createPattern([Array<string>(70).fill("H7")]);
   expect(() => renderChart(wide.pattern, wide.counts, "Wide", 800)).toThrow("at least 1650");
   expect(Object.keys(defaultPalette.colors)).toHaveLength(221);

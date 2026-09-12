@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { mountApp } from "../src/app.js";
-import { chooseColor$, newDocument$ } from "../src/state.js";
+import { chooseColor$, newDocument$, editor$ } from "../src/state.js";
 
 let app: ReturnType<typeof mountApp>;
 let host: HTMLElement;
@@ -42,9 +42,12 @@ it("disconnects Canvas and watcher on destroy and allows independent mounts", as
     app.store.set(chooseColor$, "H2");
     await vi.waitFor(() => expect(host.querySelector(".selected-color strong")?.textContent).toBe("H2"));
     expect(otherHost.querySelector(".selected-color strong")?.textContent).toBe("H7");
+    const canvas = host.querySelector("canvas")!;
     app.destroy(); app.store.set(chooseColor$, "H5");
+    canvas.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
     await Promise.resolve();
     expect(host.childElementCount).toBe(0);
+    expect(app.store.get(editor$).beads).toBe(0);
     expect(disconnect).toHaveBeenCalled();
   } finally { other.destroy(); otherHost.remove(); }
 });
