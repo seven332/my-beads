@@ -24,6 +24,17 @@ test("printable geometry and controlled-font visual regression", async ({ page, 
   await page.locator("svg").evaluate((svg, replacement) => { svg.outerHTML = replacement; }, defaultChart);
   await page.evaluate(() => document.fonts.ready);
   await expect(page.locator("svg")).toHaveScreenshot("chart-sherma.png", { maxDiffPixelRatio: 0.01, threshold: 0.2 });
+  const maximum = createPattern([Array<string>(256).fill("H7")]);
+  await page.locator("svg").evaluate((svg, replacement) => { svg.outerHTML = replacement; }, renderChart(maximum.pattern, maximum.counts, "Wide", 6394));
+  await page.evaluate(() => document.fonts.ready);
+  const coordinateSpacing = await page.locator("svg").evaluate(svg => {
+    const text = [...svg.querySelectorAll("text")];
+    const axisY = text.find(label => label.textContent === "100")!.getAttribute("y");
+    const labels = text.filter(label => label.getAttribute("y") === axisY).map(label => label.getBBox());
+    return { count: labels.length, gaps: labels.slice(1).map((label, i) => label.x - labels[i].x - labels[i].width) };
+  });
+  expect(coordinateSpacing.count).toBe(256);
+  expect(Math.min(...coordinateSpacing.gaps)).toBeGreaterThanOrEqual(1);
   const wide = createPattern([Array<string>(70).fill("H7")]);
   expect(() => renderChart(wide.pattern, wide.counts, "Wide", 800)).toThrow("at least 1650");
   expect(Object.keys(defaultPalette.colors)).toHaveLength(221);

@@ -32,7 +32,9 @@ export function renderChart(
   }
   const rows = pattern.length;
   const columns = pattern[0].length;
-  const minimumWidth = Math.max(800, columns * 20 + 250);
+  // Keep multi-digit axis labels separated at the minimum 12px font size.
+  const minimumCellSize = Math.max(20, String(columns).length * 8);
+  const minimumWidth = Math.max(800, columns * minimumCellSize + 250);
   if (pageWidth < minimumWidth) {
     throw new Error(`Chart needs a width of at least ${minimumWidth} pixels for ${columns} columns`);
   }

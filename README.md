@@ -72,7 +72,7 @@ The chart includes:
 - a legend with each color code, hex value, and bead count
 - a `MARD 221` footer
 
-Use `--width` to set the output width in pixels. The default is `2400`. Charts need at least `max(800, columns × 20 + 250)` pixels to keep cell codes and coordinates readable; an undersized page reports the minimum width. Legend cards wrap into additional rows when needed. Chart text is in English and uses the platform system font, including SF on macOS.
+Use `--width` to set the output width in pixels. The default is `2400`. Charts reserve at least 20 pixels per cell, increasing to 24 pixels for three-digit column coordinates, plus 250 pixels for margins (minimum page width: 800). An undersized page reports the required width. Legend cards wrap into additional rows when needed. Chart text is in English and uses the platform system font, including SF on macOS.
 
 Run the following command to see every option:
 

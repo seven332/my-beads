@@ -12,7 +12,8 @@ and draft recovery in [#9](https://github.com/seven332/my-beads/issues/9).
   from `createPattern`. Blank documents are valid; initialize every cell explicitly
   with a color or `null`, since sparse rows and cells are rejected. Treat returned
   grids as immutable. Chart rendering accepts integer widths from 800 to 10000 pixels,
-  with a minimum of `columns * 20 + 250` for readable cells and axes.
+  with a minimum of `columns * max(20, digits(columns) * 8) + 250` for readable cells
+  and separated multi-digit coordinates.
 - The browser app owns ccstate, Snabbdom views, Canvas interaction, file decoding,
   downloads and storage. It will import the core without Node polyfills.
 - `apps/cli` owns filesystem paths, system fonts, macOS sips and native resvg.

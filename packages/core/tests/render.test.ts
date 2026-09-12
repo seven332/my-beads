@@ -43,3 +43,10 @@ it("keeps legend cards readable and diagnoses grids wider than the page", () => 
   expect(() => renderChart(wide.pattern, wide.counts, "Wide", 800)).toThrow("at least 1650");
   expect(renderChart(wide.pattern, wide.counts, "Wide", 1650)).toContain('x="125"');
 });
+
+it("reserves space for three-digit column coordinates", () => {
+  const wide = createPattern([Array<string>(256).fill("H7")]);
+  expect(() => renderChart(wide.pattern, wide.counts, "Wide", 5370)).toThrow("at least 6394");
+  const svg = renderChart(wide.pattern, wide.counts, "Wide", 6394);
+  expect(svg).toContain('width="6144" height="24"');
+});
