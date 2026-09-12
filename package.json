@@ -3,18 +3,25 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "scripts": {
-    "generate": "tsx src/generate-chart.ts",
-    "generate:pixel": "tsx src/generate-pixel-art.ts",
-    "match:color": "tsx src/find-closest-color.ts",
-    "typecheck": "tsc --noEmit"
+  "packageManager": "pnpm@10.28.1",
+  "engines": {
+    "node": ">=24"
   },
-  "dependencies": {
-    "@resvg/resvg-js": "^2.6.2"
+  "scripts": {
+    "generate": "tsx apps/cli/src/generate-chart.ts",
+    "generate:pixel": "tsx apps/cli/src/generate-pixel-art.ts",
+    "match:color": "tsx apps/cli/src/find-closest-color.ts",
+    "typecheck": "tsc --noEmit && pnpm --filter @my-beads/core typecheck",
+    "test": "vitest run",
+    "build": "pnpm --filter @my-beads/core build"
   },
   "devDependencies": {
     "@types/node": "^22.20.2",
+    "@types/pngjs": "6.0.5",
+    "esbuild": "0.28.2",
+    "pngjs": "7.0.0",
     "tsx": "^4.23.13",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "4.1.11"
   }
 }

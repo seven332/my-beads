@@ -1,105 +1,24 @@
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { defaultPalette, normalizeHex, validatePalette } from "./palette.js";
 
-import { defaultPalettePath, type PaletteDocument } from "./pattern.js";
-
-type Lab = [lightness: number, a: number, b: number];
-
-type Options = {
-  includeNeutral: boolean;
-  inputs: string[];
-  palette: string;
-  series: string[];
-  unique: boolean;
+export type Lab = readonly [lightness: number, a: number, b: number];
+export type MatchOptions = {
+  readonly includeNeutral?: boolean;
+  readonly series?: readonly string[];
+  readonly unique?: boolean;
 };
-
-type PaletteColor = {
-  code: string;
-  hex: string;
-  lab: Lab;
-  chroma: number;
+export type ColorMatch = {
+  readonly input: string;
+  readonly code: string;
+  readonly hex: string;
+  readonly deltaE: number;
+  readonly preserveChroma: boolean;
+  readonly neutralFallback: boolean;
 };
-
+type PaletteColor = { code: string; hex: string; lab: Lab; chroma: number };
 const chromaticThreshold = 5;
 
-function usage(): string {
-  return [
-    "Find the closest MARD 221 colors to one or more hex colors.",
-    "",
-    "Usage:",
-    "  npm run match:color -- <hex> [hex...] [options]",
-    "",
-    "Options:",
-    "  --palette <path>   Palette JSON path",
-    "  --series <list>    Limit matches to MARD series, e.g. B or B,M",
-    "  --include-neutral  Include neutral colors for tinted inputs",
-    "  --unique           Assign a different palette color to each input",
-    "  --help             Show this help",
-  ].join("\n");
-}
-
-function normalizeHex(value: string): string {
-  let hex = value.trim().replace(/^#/, "").toUpperCase();
-  if (/^[0-9A-F]{3}$/.test(hex)) {
-    hex = [...hex].map((character) => character.repeat(2)).join("");
-  }
-  if (!/^[0-9A-F]{6}$/.test(hex)) {
-    throw new Error(`Invalid hex color: ${value}`);
-  }
-  return `#${hex}`;
-}
-
-function parseArguments(argv: string[]): Options {
-  let includeNeutral = false;
-  const inputs: string[] = [];
-  let palette = defaultPalettePath;
-  let series: string[] = [];
-  let unique = false;
-
-  for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index];
-    if (argument === "--help" || argument === "-h") {
-      console.log(usage());
-      process.exit(0);
-    }
-    if (argument === "--palette") {
-      palette = argv[++index] ?? "";
-      if (!palette) throw new Error("--palette requires a path");
-      continue;
-    }
-    if (argument === "--include-neutral") {
-      includeNeutral = true;
-      continue;
-    }
-    if (argument === "--series") {
-      const value = argv[++index] ?? "";
-      series = value
-        .split(",")
-        .map((item) => item.trim().toUpperCase())
-        .filter(Boolean);
-      if (!series.length || series.some((item) => !/^[A-Z]+$/.test(item))) {
-        throw new Error("--series requires a comma-separated list of letter prefixes");
-      }
-      continue;
-    }
-    if (argument === "--unique") {
-      unique = true;
-      continue;
-    }
-    if (argument.startsWith("-") && argument !== "-") {
-      throw new Error(`Unknown option: ${argument}`);
-    }
-    inputs.push(normalizeHex(argument));
-  }
-
-  if (!inputs.length) {
-    throw new Error(`Missing hex color.\n\n${usage()}`);
-  }
-
-  return { includeNeutral, inputs, palette: resolve(palette), series, unique };
-}
-
-function hexToLab(hex: string): Lab {
+export function hexToLab(hex: string): Lab {
+  hex = normalizeHex(hex);
   const channels = [1, 3, 5].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16));
   const [red, green, blue] = channels.map((channel) => {
     const value = channel / 255;
@@ -122,7 +41,7 @@ function hexToLab(hex: string): Lab {
   ];
 }
 
-function deltaE2000(first: Lab, second: Lab): number {
+export function deltaE2000(first: Lab, second: Lab): number {
   const [lightness1, a1, b1] = first;
   const [lightness2, a2, b2] = second;
   const radians = Math.PI / 180;
@@ -270,18 +189,22 @@ function assignUniqueColors(costs: number[][]): number[] {
   return assignments;
 }
 
-async function main(): Promise<void> {
-  const options = parseArguments(process.argv.slice(2));
-  const palette = JSON.parse(await readFile(options.palette, "utf8")) as PaletteDocument;
-  if (!palette.colors || typeof palette.colors !== "object" || Array.isArray(palette.colors)) {
-    throw new Error("Palette JSON must contain a 'colors' object");
+export function matchColors(
+  inputHexes: readonly string[],
+  palette: unknown = defaultPalette,
+  options: MatchOptions = {},
+): ColorMatch[] {
+  const validated = validatePalette(palette);
+  const series = (options.series ?? []).map((prefix) => prefix.trim().toUpperCase());
+  if (series.some((prefix) => !/^[A-Z]+$/.test(prefix))) {
+    throw new Error("Series must contain letter prefixes");
   }
-
-  const paletteColors: PaletteColor[] = Object.entries(palette.colors)
+  if (!inputHexes.length) return [];
+  const paletteColors: PaletteColor[] = Object.entries(validated.colors)
     .filter(
       ([code]) =>
-        !options.series.length ||
-        options.series.some((prefix) => code.toUpperCase().startsWith(prefix)),
+        !series.length ||
+        series.some((prefix) => code.toUpperCase().startsWith(prefix)),
     )
     .map(([code, rawHex]) => {
       const hex = normalizeHex(rawHex);
@@ -293,7 +216,8 @@ async function main(): Promise<void> {
   }
 
   const chromaticColors = paletteColors.filter((color) => color.chroma >= chromaticThreshold);
-  const inputs = options.inputs.map((hex) => {
+  const inputs = inputHexes.map((rawHex) => {
+    const hex = normalizeHex(rawHex);
     const lab = hexToLab(hex);
     const preserveChroma =
       !options.includeNeutral &&
@@ -317,22 +241,16 @@ async function main(): Promise<void> {
     ? assignUniqueColors(costs)
     : costs.map((row) => row.indexOf(Math.min(...row)));
 
-  for (let index = 0; index < inputs.length; index += 1) {
+  return inputs.map((input, index) => {
     const colorIndex = assignments[index];
-    const input = inputs[index];
     const closest = paletteColors[colorIndex];
-    if (index > 0) console.log("");
-    console.log(`Input: ${input.hex}`);
-    console.log(`Closest: ${closest.code} (${closest.hex})`);
-    console.log(`Delta E: ${differences[index][colorIndex].toFixed(2)} (CIEDE2000)`);
-    const modes = [input.preserveChroma ? "preserve chroma" : "all colors"];
-    if (options.unique) modes.push("unique colors");
-    if (options.series.length) modes.push(`series ${options.series.join(",")}`);
-    console.log(`Mode: ${modes.join(", ")}`);
-  }
+    return {
+      input: input.hex,
+      code: closest.code,
+      hex: closest.hex,
+      deltaE: differences[index][colorIndex],
+      preserveChroma: input.preserveChroma,
+      neutralFallback: input.preserveChroma && closest.chroma < chromaticThreshold,
+    };
+  });
 }
-
-main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});

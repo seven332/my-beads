@@ -1,0 +1,11 @@
+{
+  "name": "@my-beads/core",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "esbuild src/index.ts --bundle --platform=browser --format=esm --outfile=dist/index.js && tsc --project tsconfig.build.json"
+  }
+}
