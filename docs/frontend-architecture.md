@@ -1,8 +1,8 @@
 # Frontend architecture
 
 The editor is planned in [#6](https://github.com/seven332/my-beads/issues/6).
-The shared core is available now; the ccstate/Snabbdom application and its lint rules
-belong to [#8](https://github.com/seven332/my-beads/issues/8), followed by image import
+The shared core and ccstate/Snabbdom CSV editor are implemented in #7 and
+[#8](https://github.com/seven332/my-beads/issues/8), followed by image import
 and draft recovery in [#9](https://github.com/seven332/my-beads/issues/9).
 
 ## Boundaries
@@ -11,8 +11,9 @@ and draft recovery in [#9](https://github.com/seven332/my-beads/issues/9).
   is a rectangular array of MARD codes or `null`; derived cells and bead counts come
   from `createPattern`. Blank documents are valid; initialize every cell explicitly
   with a color or `null`, since sparse rows and cells are rejected. Treat returned
-  grids as immutable. Chart rendering accepts integer widths from 800 to 10000 pixels.
-- The browser app will own ccstate, Snabbdom views, Canvas interaction, file decoding,
+  grids as immutable. Chart rendering accepts integer widths from 800 to 10000 pixels,
+  with a minimum of `columns * 20 + 250` for readable cells and axes.
+- The browser app owns ccstate, Snabbdom views, Canvas interaction, file decoding,
   downloads and storage. It will import the core without Node polyfills.
 - `apps/cli` owns filesystem paths, system fonts, macOS sips and native resvg.
   Browser code must never import these adapters.
@@ -56,7 +57,21 @@ tests should mount the real application, perform one user action, and assert the
 observable result before the next action. Use a fresh store and owned cleanup for
 each test. Await completion or visible state instead of sleeps or repeated actions.
 
-The editor PR will add focused lint rules with valid/invalid examples for private
-state, accessor scope, command construction and asynchronous ownership, plus
-browser tests for editing and downloads. The current CI covers the core and CLI;
-it does not claim browser or lint coverage before those checks exist.
+`packages/eslint-rules` enforces private state exports, dollar suffixes, accessor
+scope, command construction and asynchronous ownership with valid/invalid examples.
+These are focused syntax checks, not a proof of runtime cancellation. The lifecycle
+adapter in `app.ts` owns AbortControllers; state commands check cancellation after
+awaits. The web graph is declared in `state.ts` and reused with isolated stores.
+
+Each drag records its starting grid and commits one history entry on pointerup.
+Cancellation restores the starting grid; no-op gestures preserve redo. At most 100
+snapshots are retained, sharing unchanged rows. The Canvas draws only visible cells
+into a viewport-sized backing buffer and batches redraws with animation frames.
+Counts come from computed core data. Imports use both an owned AbortSignal and
+revision/token checks, so newer work cannot be overwritten by a late file read.
+
+The root watch patches one retained vnode; the keyed Canvas insert/destroy hooks
+own pointer listeners, ResizeObserver and animation frames. Mount destruction aborts
+the watch and file work, removes listeners and revokes pending download URLs.
+CI covers real bootstrap/teardown, state isolation, Chromium/WebKit editing and
+decoded downloads, alongside the existing core and CLI regression suites.

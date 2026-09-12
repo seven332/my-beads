@@ -32,12 +32,16 @@ export function renderChart(
   }
   const rows = pattern.length;
   const columns = pattern[0].length;
+  const minimumWidth = Math.max(800, columns * 20 + 250);
+  if (pageWidth < minimumWidth) {
+    throw new Error(`Chart needs a width of at least ${minimumWidth} pixels for ${columns} columns`);
+  }
   const colors = [...counts.entries()]
     .map(([code, count]) => ({ code, count, hex: pattern.flat().find((cell) => cell.code === code)!.hex }))
     .sort((left, right) => relativeLuminance(left.hex) - relativeLuminance(right.hex));
   const beadCount = colors.reduce((total, color) => total + color.count, 0);
 
-  const cellSize = Math.max(12, Math.floor(Math.min(48, (pageWidth - 250) / columns)));
+  const cellSize = Math.floor(Math.min(48, (pageWidth - 250) / columns));
   const gridWidth = columns * cellSize;
   const gridHeight = rows * cellSize;
   const gridX = Math.round((pageWidth - gridWidth) / 2);
@@ -47,12 +51,13 @@ export function renderChart(
   const legendGap = Math.max(12, Math.round(pageWidth * 0.006));
   const legendMargin = Math.max(80, Math.round(pageWidth * 0.045));
   const maxLegendColumns = 9;
-  const legendColumns = Math.max(1, Math.min(maxLegendColumns, colors.length));
+  const availableColumns = Math.floor((pageWidth - legendMargin * 2 + legendGap) / (220 + legendGap));
+  const legendColumns = Math.max(1, Math.min(maxLegendColumns, availableColumns, colors.length));
   const legendCardWidth =
     (pageWidth - legendMargin * 2 - legendGap * (legendColumns - 1)) / legendColumns;
   const legendCardHeight = Math.max(104, Math.round(pageWidth * 0.046));
   const legendRows = Math.ceil(colors.length / legendColumns);
-  const legendHeight = legendRows * legendCardHeight + (legendRows - 1) * legendGap;
+  const legendHeight = legendRows * legendCardHeight + Math.max(0, legendRows - 1) * legendGap;
   const footerY = legendTop + legendHeight + 50;
   const pageHeight = Math.ceil(footerY + 45);
   const cellFontSize = Math.max(8, Math.min(17, cellSize * 0.36));
@@ -63,7 +68,7 @@ export function renderChart(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${pageWidth}" height="${pageHeight}" viewBox="0 0 ${pageWidth} ${pageHeight}">`,
     `<rect width="${pageWidth}" height="${pageHeight}" fill="#FFFFFF"/>`,
     `<g font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', '.SF NS', 'Segoe UI', Arial, 'DejaVu Sans', sans-serif">`,
-    `<text x="${pageWidth / 2}" y="62" text-anchor="middle" font-size="52" font-weight="700" fill="#242229">${escapeXml(title)}</text>`,
+    `<text x="${pageWidth / 2}" y="62" text-anchor="middle" font-size="52" font-weight="700" fill="#242229"${title.length > (pageWidth - 100) / 32 ? ` textLength="${pageWidth - 100}" lengthAdjust="spacingAndGlyphs"` : ""}>${escapeXml(title)}</text>`,
     `<text x="${pageWidth / 2}" y="112" text-anchor="middle" font-size="26" fill="#77737D">${columns} × ${rows} grid · ${colors.length} colors · ${beadCount} beads</text>`,
     `<rect x="${gridX}" y="${gridY}" width="${gridWidth}" height="${gridHeight}" fill="#F7F8F8"/>`,
   );

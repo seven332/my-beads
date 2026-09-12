@@ -72,7 +72,7 @@ The chart includes:
 - a legend with each color code, hex value, and bead count
 - a `MARD 221` footer
 
-Use `--width` to set the output width in pixels. The default is `2400`. Chart text is in English and uses the platform system font, including SF on macOS.
+Use `--width` to set the output width in pixels. The default is `2400`. Charts need at least `max(800, columns × 20 + 250)` pixels to keep cell codes and coordinates readable; an undersized page reports the minimum width. Legend cards wrap into additional rows when needed. Chart text is in English and uses the platform system font, including SF on macOS.
 
 Run the following command to see every option:
 
@@ -106,25 +106,51 @@ The core represents a grid as color codes or `null`. Its CSV writer emits codes 
 
 When `--output` is omitted, the printable chart uses the suffix `-chart.png` and the pixel-art image uses `-pixel-art.png`.
 
+## Web Editor
+
+Start the local editor from the repository root:
+
+```bash
+pnpm dev
+```
+
+Open the localhost URL printed by Vite. Use **Open CSV** to load a pattern, or **Start a new pattern** to create a blank grid. Imports are validated before replacing the document; invalid files leave your work intact. All file processing happens in your browser.
+
+- **Pencil / Eraser:** click or drag. Fast drags interpolate cells; one drag is one undo step. Escape or an interrupted pointer gesture cancels the current stroke.
+- **Fill:** recolor a four-connected region. **Pick:** select the color of an existing bead.
+- **Palette:** search MARD codes or hex values, choose a color, and see per-color counts.
+- **Navigate:** use +/− or pinch to zoom around the viewport/pointer; scroll, use Pan, or middle-drag to move the canvas. Fit centers the entire grid. Grid and Codes toggle overlays; codes appear when zoomed in enough to read.
+- **Keyboard:** focus the canvas, move with arrow keys and draw with Enter or Space. Shift + arrows pans. Cmd/Ctrl + Z undoes; add Shift to redo.
+- **Download:** select CSV, transparent pixel PNG, printable SVG, or printable PNG. Pixel scale is an integer from 1 to 512, including 1×; chart width defaults to 2400. The title is editable. Printable legends keep hex values and bead counts on separate lines and retain the MARD 221 footer.
+
+The editor accepts grids up to 256 × 256, CSV files up to 2 MB and 100 undo steps. PNG exports are limited to 8192 pixels per side and 32 million pixels; SVG avoids the raster limit. Download your work before replacing the document or closing the page. Image import and local draft recovery are tracked in [#9](https://github.com/seven332/my-beads/issues/9).
+
 ## Development
 
 This is a pnpm workspace:
 
 - `packages/core`: browser-compatible TypeScript for palettes, code/null grids, CSV, color matching and SVG rendering, with unit tests in `packages/core/tests`.
 - `apps/cli`: Node file access, platform fonts and native PNG generation, with real CLI integration tests in `apps/cli/tests`.
+- `apps/web`: ccstate commands, Snabbdom controls, Canvas interaction and browser file adapters; unit/DOM tests in `apps/web/tests` and browser tests in `apps/web/e2e`.
+- `packages/eslint-rules`: focused ccstate lint conventions and valid/invalid rule tests.
 
 Run the checks from the repository root:
 
 ```bash
+pnpm lint
 pnpm typecheck
 pnpm test
+pnpm --filter @my-beads/web exec playwright install chromium webkit
+pnpm test:e2e
 pnpm build
 ```
 
 `pnpm test` runs each package's test script. To test one package, use `pnpm --filter @my-beads/core test` or `pnpm --filter @my-beads/cli test`.
 
-The core has a separate typecheck without Node or DOM globals. Its build emits a browser ESM bundle and type declarations under `packages/core/dist/`; the private workspace package exports TypeScript source for tsx and the future Vite app. CI runs a frozen install and all three checks on Linux and macOS. Tests cover CSV round trips, reference color differences, unique assignments, chart exports, and every pixel/alpha value at 1× and 20× scale.
+The core has a separate typecheck without Node or DOM globals. Its build emits a browser ESM bundle and type declarations under `packages/core/dist/`; the private workspace package exports TypeScript source for tsx and Vite. The web production build is in `apps/web/dist/`. TypeScript 6.0.3 is pinned within the supported range of the ESLint TypeScript parser.
 
-The browser editor is tracked in [#6](https://github.com/seven332/my-beads/issues/6). Its frontend will use ccstate and Snabbdom, with Canvas for the grid. See [frontend architecture](docs/frontend-architecture.md) for the state, lifecycle and testing conventions to apply when adding it.
+CI runs lint, types, tests and production builds on Linux/macOS, plus Chromium/WebKit workflows on Linux. Tests cover CSV round trips, color matching, grouped editing history, state isolation, cancellation, real application bootstrap/teardown and decoded export colors/alpha. CLI pixel regression checks 1× and 20×; browser checks 1× and 3×. The printable-chart visual baseline uses bundled Roboto Mono in Chromium and is separate from the app's system fonts. Review any intentional baseline change with `pnpm --filter @my-beads/web test:e2e --project chromium --update-snapshots`; do not update snapshots to conceal a layout failure.
+
+The complete web editor is tracked in [#6](https://github.com/seven332/my-beads/issues/6). See [frontend architecture](docs/frontend-architecture.md) for state, lifecycle and testing conventions.
 
 Commit messages follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).

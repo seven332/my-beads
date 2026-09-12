@@ -1,0 +1,5 @@
+{
+  "name": "@my-beads/eslint-rules", "private": true, "type": "module",
+  "exports": "./index.js", "scripts": { "test": "node --test tests/*.test.js" },
+  "devDependencies": { "eslint": "10.10.0", "typescript-eslint": "8.70.0" }
+}
