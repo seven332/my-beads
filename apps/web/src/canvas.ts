@@ -77,6 +77,11 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
     if (!active.pan) actions.finish(event.type !== "pointerup");
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   }
+  function cancel() {
+    const active = pointer; pointer = undefined;
+    actions.finish(true);
+    if (active && canvas.hasPointerCapture(active.id)) canvas.releasePointerCapture(active.id);
+  }
   function wheel(event: WheelEvent) {
     event.preventDefault();
     if (event.ctrlKey || event.metaKey) actions.zoom(Math.exp(-event.deltaY * 0.005), position(event));
@@ -95,15 +100,16 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
       }
     } else if (event.key === " " || event.key === "Enter") {
       event.preventDefault(); actions.begin(cursor); actions.finish();
-    } else if (event.key === "Escape") { actions.finish(true); pointer = undefined; }
+    } else if (event.key === "Escape") cancel();
   }
   function focus() { focused = true; schedule(); }
-  function blur() { focused = false; actions.finish(true); pointer = undefined; schedule(); }
+  function blur() { focused = false; cancel(); schedule(); }
   const observer = new ResizeObserver(schedule); observer.observe(canvas);
   canvas.addEventListener("pointerdown", down); canvas.addEventListener("pointermove", move);
   canvas.addEventListener("pointerup", end); canvas.addEventListener("pointercancel", end);
   canvas.addEventListener("lostpointercapture", end); canvas.addEventListener("wheel", wheel, { passive: false });
   canvas.addEventListener("keydown", key); canvas.addEventListener("focus", focus); canvas.addEventListener("blur", blur);
+  window.addEventListener("blur", cancel);
   return {
     update(next: EditorModel) {
       model = next;
@@ -112,11 +118,12 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
       schedule();
     },
     destroy() {
-      destroyed = true; cancelAnimationFrame(frame); observer.disconnect();
+      destroyed = true; cancel(); cancelAnimationFrame(frame); observer.disconnect();
       canvas.removeEventListener("pointerdown", down); canvas.removeEventListener("pointermove", move);
       canvas.removeEventListener("pointerup", end); canvas.removeEventListener("pointercancel", end);
       canvas.removeEventListener("lostpointercapture", end); canvas.removeEventListener("wheel", wheel);
       canvas.removeEventListener("keydown", key); canvas.removeEventListener("focus", focus); canvas.removeEventListener("blur", blur);
+      window.removeEventListener("blur", cancel);
     },
   };
 }

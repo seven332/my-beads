@@ -158,3 +158,22 @@ test("export validates only the settings used by the selected format", async ({ 
   await expect(page.getByRole("alert")).toContainText("Chart width must be an integer");
   await expect(page.getByTestId("counts")).toHaveText("1 beads · 1 colors");
 });
+
+test("window blur cancels the active stroke and allows the next gesture", async ({ page }) => {
+  await page.goto("/");
+  const { cell } = await fitCoordinates(page, 50, 50);
+  await page.mouse.move(cell(0, 0).x, cell(0, 0).y);
+  await page.mouse.down();
+  await page.mouse.move(cell(3, 0).x, cell(3, 0).y);
+  await expect(page.getByTestId("counts")).toHaveText("4 beads · 1 colors");
+  // Deliver the browser lifecycle event without relying on OS window focus in CI.
+  await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+  await page.mouse.up();
+  await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+  await page.mouse.click(cell(2, 1).x, cell(2, 1).y);
+  expect(parsePatternCsv((await download(page, "csv")).toString())[1][2]).toBe("H7");
+  await expect(page.getByTestId("counts")).toHaveText("1 beads · 1 colors");
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
+});

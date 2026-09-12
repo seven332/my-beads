@@ -116,7 +116,7 @@ pnpm dev
 
 Open the localhost URL printed by Vite. Use **Open CSV** to load a pattern, or **Start a new pattern** to create a blank grid. Imports are validated before replacing the document; invalid files leave your work intact. All file processing happens in your browser.
 
-- **Pencil / Eraser:** click or drag. Fast drags interpolate cells; one drag is one undo step. Escape or an interrupted pointer gesture cancels the current stroke.
+- **Pencil / Eraser:** click or drag. Fast drags interpolate cells; one drag is one undo step. Escape, loss of window focus, or an interrupted pointer gesture cancels the current stroke.
 - **Fill:** recolor a four-connected region. **Pick:** select the color of an existing bead.
 - **Palette:** search MARD codes or hex values, choose a color, and see per-color counts.
 - **Navigate:** use +/− or pinch to zoom around the viewport/pointer; scroll, use Pan, or middle-drag to move the canvas. Fit centers the entire grid. Grid and Codes toggle overlays; codes appear when zoomed in enough to read.
