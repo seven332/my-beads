@@ -57,6 +57,10 @@ Core unit tests cover document transformations and mathematical contracts. Edito
 tests should mount the real application, perform one user action, and assert the
 observable result before the next action. Use a fresh store and owned cleanup for
 each test. Await completion or visible state instead of sleeps or repeated actions.
+Prefer behavior and exported-content assertions over screenshot comparisons. For
+printable layout, inspect the actual downloaded SVG in both browsers and check text
+bounds, legend contents and coordinate spacing with the production system fonts.
+Keep screenshots for manual review under `codex-work/screenshots/`.
 
 `packages/eslint-rules` enforces private state exports, dollar suffixes, accessor
 scope, command construction and asynchronous ownership with valid/invalid examples.

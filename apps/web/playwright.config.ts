@@ -4,7 +4,6 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
   use: { baseURL: "http://127.0.0.1:4173", viewport: { width: 1440, height: 1000 }, trace: "retain-on-failure" },
-  snapshotPathTemplate: "{testDir}/snapshots/{arg}{ext}",
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 1000 } } },
     { name: "webkit", use: { ...devices["Desktop Safari"], viewport: { width: 1440, height: 1000 } } },
