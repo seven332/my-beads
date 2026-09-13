@@ -26,9 +26,9 @@ on:
 permissions:
   contents: read
 
-# Finish an active publication before processing a newer one.
+# Serialize main publications; rejected manual runs cannot displace a pending one.
 concurrency:
-  group: github-pages
+  group: github-pages-${{ github.ref == 'refs/heads/main' && 'production' || github.run_id }}
   cancel-in-progress: false
 
 jobs:

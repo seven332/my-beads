@@ -128,7 +128,8 @@ existing Checks browser job runs this alongside the full development workflows.
 main-only manual runs. Shared dependency files trigger conservatively; this is
 path filtering rather than a byte-equivalence check. A read-only build job validates
 the artifact before uploading only `apps/web/dist`. A dependent deployment job
-owns Pages/OIDC permissions and the `github-pages` environment. One concurrency
-group serializes publications without canceling the active deployment. Keep the
+owns Pages/OIDC permissions and the `github-pages` environment. Main runs share a
+concurrency group without canceling the active deployment; rejected manual runs
+use separate groups so they cannot displace a queued main update. Keep the
 workflow path list current when adding build inputs. Hosting changes neither the
 browser-only IO boundary nor the origin-scoped draft schema.
