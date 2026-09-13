@@ -70,7 +70,9 @@ awaits. The web graph is declared in `state.ts` and `image-state.ts` and reused
 with isolated stores.
 
 Each drag records its starting grid and commits one history entry on pointerup.
-Cancellation restores the starting grid; no-op gestures preserve redo. At most 100
+Capture loss with no buttons pressed also commits, since Chrome may deliver it
+before pointerup. Capture loss while pressed and explicit pointer cancellation
+restore the starting grid; no-op gestures preserve redo. At most 100
 snapshots are retained, sharing unchanged rows. The Canvas draws only visible cells
 into a viewport-sized backing buffer and batches redraws with animation frames.
 Counts come from computed core data. Imports use both an owned AbortSignal and

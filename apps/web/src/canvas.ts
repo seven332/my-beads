@@ -74,7 +74,9 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
   function end(event: PointerEvent) {
     if (!pointer || pointer.id !== event.pointerId) return;
     const active = pointer; pointer = undefined;
-    if (!active.pan) actions.finish(event.type !== "pointerup");
+    // Chrome can report capture loss with released buttons before pointerup.
+    const canceled = event.type === "pointercancel" || (event.type === "lostpointercapture" && event.buttons !== 0);
+    if (!active.pan) actions.finish(canceled);
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   }
   function cancel() {
