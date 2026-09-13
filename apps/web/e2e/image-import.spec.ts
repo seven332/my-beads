@@ -114,6 +114,30 @@ test("invalid settings preserve work and mappings honor series and distinct choi
   expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual([["H7"]]);
 });
 
+test("invalid mappings block Apply across edits to other rows until corrected", async ({ page }) => {
+  await page.goto("/"); await csv(page, "H7,H2");
+  await page.getByLabel("Open image", { exact: true }).setInputFiles({ name: "colors.png", mimeType: "image/png", buffer: enlargedImage() });
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
+  await dialog.getByLabel("Target columns").fill("50");
+  await dialog.getByRole("button", { name: "Update preview" }).click();
+  const black = dialog.getByLabel("Map #000000", { exact: true });
+  const white = dialog.getByLabel("Map #FFFFFF", { exact: true });
+  await black.fill("BAD"); await black.press("Tab");
+  await expect(dialog.getByRole("alert")).toContainText("Overrides");
+  await white.fill("H5"); await white.press("Tab");
+  await expect(black).toHaveValue("BAD"); await expect(white).toHaveValue("H5");
+  await expect(dialog.getByRole("alert")).toContainText("Overrides");
+  await expect(dialog.getByRole("button", { name: "Apply image" })).toBeDisabled();
+  await expect(page.getByTestId("counts")).toHaveText("2 beads · 2 colors");
+  await black.fill(""); await black.press("Tab");
+  await expect(dialog.getByRole("alert")).toHaveCount(0);
+  await expect(white).toHaveValue("H5");
+  await dialog.getByRole("button", { name: "Apply image" }).click();
+  const expected = [Array.from({ length: 50 }, (_, x) => x < 20 ? "H7" : x < 35 ? "H5" : null)];
+  expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual(expected);
+});
+
 test("corrupt drafts survive edits until explicit replacement", async ({ page }) => {
   await page.goto("/"); await page.evaluate(() => localStorage.setItem("my-beads.draft", '{"version":99}'));
   await page.reload();

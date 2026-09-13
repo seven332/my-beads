@@ -66,7 +66,7 @@ export const overrideImage$ = command(({ get, set }, source: string, code: strin
   try {
     const mapped = mapImage(session.sample, session.options, overrides);
     set(sessionState$, { ...session, overrides, mapped, error: "" });
-  } catch (error) { set(sessionState$, { ...session, error: error instanceof Error ? error.message : "Unable to update mapping." }); }
+  } catch (error) { set(sessionState$, { ...session, overrides, error: error instanceof Error ? error.message : "Unable to update mapping." }); }
 });
 export const applyImage$ = command(({ get, set }) => {
   const session = get(sessionState$);

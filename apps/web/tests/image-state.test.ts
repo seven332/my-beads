@@ -46,6 +46,28 @@ it("preserves work on invalid preview, cancellation and stale Apply", async () =
   expect(store.get(editor$).beads).toBe(0);
   expect(store.get(editor$).title).toBe("New title");
 });
+it("keeps invalid mapping inputs until all errors are corrected or cleared", async () => {
+  const store = createStore();
+  store.set(newDocument$, 2, 1);
+  await store.set(loadImage$, { name: "Colors.png", read: async () => pixels }, new AbortController().signal);
+  store.set(overrideImage$, "#000000", "BAD");
+  store.set(overrideImage$, "#FFFFFF", "H5");
+  expect(store.get(imageSession$)?.overrides).toEqual({ "#000000": "BAD", "#FFFFFF": "H5" });
+  expect(store.get(imageSession$)?.error).toContain("Overrides");
+  expect(store.set(applyImage$)).toBe(false);
+  expect(store.get(editor$).beads).toBe(0);
+  store.set(overrideImage$, "#000000", "");
+  expect(store.get(imageSession$)?.error).toBe("");
+  expect(store.get(imageSession$)?.mapped?.grid).toEqual([["H7", "H5"]]);
+  store.set(updateImage$, { columns: 2, rows: 1, alpha: 128, unique: true });
+  store.set(overrideImage$, "#000000", "H2");
+  store.set(overrideImage$, "#FFFFFF", "H2");
+  expect(store.get(imageSession$)?.error).toContain("cannot reuse");
+  expect(store.set(applyImage$)).toBe(false);
+  store.set(overrideImage$, "#000000", "H7");
+  expect(store.get(imageSession$)?.mapped?.grid).toEqual([["H7", "H2"]]);
+  expect(store.set(applyImage$)).toBe(true);
+});
 it("rejects late decodes after edits, CSV, new images, cancellation or abort", async () => {
   for (const action of ["edit", "csv", "image", "cancel", "abort"] as const) {
     const store = createStore(), controller = new AbortController();

@@ -134,7 +134,7 @@ Use **Open image** for PNG or WebP. Set the intended **Target columns** and **Ta
 - **Preserve chroma** favors tinted palette colors for tinted source colors; it is enabled initially.
 - **MARD series** restricts candidates, for example `B` or `B, H`; leave it empty for all colors.
 - **Distinct assignments** gives each source color a different code; it is off initially. If there are too few candidates, the preview reports an error.
-- In **Color mapping**, enter or choose a MARD code to override a source color; clear it for automatic matching. Distinct mode reserves manual choices before assigning other colors.
+- In **Color mapping**, enter or choose a MARD code to override a source color; clear it for automatic matching. Invalid codes and conflicting distinct assignments must be corrected or cleared before Apply. Distinct mode reserves manual choices before assigning other colors.
 
 Click **Update preview** after changing sampling or matching settings; this resets manual overrides. **Apply image** replaces the document and clears history, like opening CSV. Cancel, Escape, invalid files, canceled reads and results made stale by newer work preserve the current document.
 
