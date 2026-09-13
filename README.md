@@ -136,7 +136,7 @@ Use **Open image** for PNG or WebP. Set the intended **Target columns** and **Ta
 - **Distinct assignments** gives each source color a different code; it is off initially. If there are too few candidates, the preview reports an error.
 - In **Color mapping**, enter or choose a MARD code to override a source color; clear it for automatic matching. Invalid codes and conflicting distinct assignments must be corrected or cleared before Apply. Distinct mode reserves manual choices before assigning other colors.
 
-Click **Update preview** after changing sampling or matching settings; this resets manual overrides. **Apply image** replaces the document and clears history, like opening CSV. Cancel, Escape, invalid files, canceled reads and results made stale by newer work preserve the current document.
+Click **Update preview** after changing sampling or matching settings; this resets manual overrides. **Apply image** replaces the document and clears history, like opening CSV. Editor undo/redo shortcuts pause while this dialog is open; text fields retain their normal editing behavior. Cancel, Escape, invalid files, canceled reads and results made stale by newer work preserve the current document.
 
 Imports are limited to 10 MB, 8192 pixels per side, 16 million decoded pixels and 256 sampled opaque colors. Color-rich images report an error; use pixel art or a smaller target grid. All image processing stays in the browser.
 

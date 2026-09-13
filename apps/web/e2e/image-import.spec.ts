@@ -138,6 +138,41 @@ test("invalid mappings block Apply across edits to other rows until corrected", 
   expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual(expected);
 });
 
+test("image dialog isolates undo and redo from the pattern and saved draft", async ({ page }) => {
+  await page.goto("/"); await csv(page, 'H5,"",""');
+  const canvas = page.getByRole("img", { name: "Pattern canvas" });
+  await canvas.focus(); await canvas.press("ArrowRight"); await canvas.press("Enter");
+  await expect(page.getByTestId("counts")).toHaveText("2 beads · 2 colors");
+  await canvas.press("ArrowRight"); await canvas.press("Enter");
+  await expect(page.getByTestId("counts")).toHaveText("3 beads · 2 colors");
+  await canvas.press("Control+z");
+  await expect(page.getByTestId("counts")).toHaveText("2 beads · 2 colors");
+  const before = [["H5", "H7", null]];
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("my-beads.draft")!).grid)).toEqual(before);
+  const saved = await page.evaluate(() => localStorage.getItem("my-beads.draft"));
+  const file = { name: "Preview.png", mimeType: "image/png", buffer: enlargedImage() };
+  await page.getByLabel("Open image", { exact: true }).setInputFiles(file);
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
+  for (const key of ["Control+z", "Control+Shift+z", "Meta+z", "Meta+Shift+z"]) {
+    await dialog.getByRole("button", { name: "Update preview" }).press(key);
+    await expect(page.getByTestId("counts")).toHaveText("2 beads · 2 colors");
+    expect(await page.evaluate(() => localStorage.getItem("my-beads.draft"))).toBe(saved);
+  }
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual(before);
+  await canvas.focus(); await canvas.press("Control+z");
+  await expect(page.getByTestId("counts")).toHaveText("1 beads · 1 colors");
+  await canvas.press("Control+Shift+z");
+  await expect(page.getByTestId("counts")).toHaveText("2 beads · 2 colors");
+  await page.getByLabel("Open image", { exact: true }).setInputFiles(file);
+  await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Update preview" }).press("Control+z");
+  await dialog.getByRole("button", { name: "Apply image" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByLabel("Pattern title")).toHaveValue("Preview");
+});
+
 test("corrupt drafts survive edits until explicit replacement", async ({ page }) => {
   await page.goto("/"); await page.evaluate(() => localStorage.setItem("my-beads.draft", '{"version":99}'));
   await page.reload();

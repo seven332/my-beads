@@ -96,9 +96,10 @@ Its async command accepts an image-source IO boundary and an AbortSignal. A new
 CSV/image import or grid cancels the mount's previous import owner. Apply also
 checks the revision and live-stroke state; canceled or stale work never replaces
 the document. Changed form settings disable Apply until the preview is refreshed.
-The native dialog owns focus and Escape; preview Canvases are independent of the
-stable editor Canvas. Shared MARD suggestions avoid duplicating the full palette
-for every mapping row.
+The native dialog owns focus and Escape. Editor undo/redo shortcuts are suspended
+while an image session is open; native text editing inside its controls remains available.
+Preview Canvases are independent of the stable editor Canvas. Shared MARD
+suggestions avoid duplicating the full palette for every mapping row.
 
 `drafts.ts` owns one version-1 localStorage record containing grid and title.
 Recovery validates size, shape, version and exact palette codes before state changes.

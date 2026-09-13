@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { mountApp } from "../src/app.js";
-import { newDocument$, beginStroke$, finishStroke$, editor$, rename$ } from "../src/state.js";
+import { newDocument$, beginStroke$, finishStroke$, editor$, rename$, undo$ } from "../src/state.js";
 import { decodeDraft, DRAFT_KEY } from "../src/drafts.js";
 import type { RgbaImage } from "@my-beads/core";
 
@@ -72,4 +72,35 @@ it("cancels file work through the real dialog and ignores its late decoder", asy
   expect(host.querySelector("dialog")).toBeNull();
   expect(app.store.get(editor$).beads).toBe(0);
   expect(values.has(DRAFT_KEY)).toBe(false);
+});
+
+it("isolates editor history shortcuts while an image is loading and restores them after Cancel", async () => {
+  const pending = Promise.withResolvers<RgbaImage>();
+  app = mountApp(host, { storage, readImage: () => pending.promise });
+  app.store.set(newDocument$, 2, 1);
+  app.store.set(beginStroke$, { x: 0, y: 0 }); app.store.set(finishStroke$);
+  app.store.set(beginStroke$, { x: 1, y: 0 }); app.store.set(finishStroke$);
+  app.store.set(undo$);
+  await vi.waitFor(() => expect(decodeDraft(values.get(DRAFT_KEY)!).grid).toEqual([["H7", null]]));
+  const saved = values.get(DRAFT_KEY);
+  const input = host.querySelector<HTMLInputElement>('[aria-label="Open image"]')!;
+  Object.defineProperty(input, "files", { value: [new File([], "loading.png", { type: "image/png" })] });
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+  await vi.waitFor(() => expect(host.querySelector("dialog")?.open).toBe(true));
+  const cancel = host.querySelector<HTMLButtonElement>(".image-footer button")!;
+  for (const modifier of [{ ctrlKey: true }, { metaKey: true }]) {
+    for (const shiftKey of [false, true]) {
+      cancel.dispatchEvent(new KeyboardEvent("keydown", { key: "z", bubbles: true, ...modifier, shiftKey }));
+      expect(app.store.get(editor$).document.grid).toEqual([["H7", null]]);
+    }
+  }
+  const textUndo = new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true, cancelable: true });
+  host.querySelector<HTMLInputElement>('dialog input[name="columns"]')!.dispatchEvent(textUndo);
+  expect(textUndo.defaultPrevented).toBe(false);
+  await Promise.resolve(); expect(values.get(DRAFT_KEY)).toBe(saved);
+  cancel.click();
+  host.querySelector("canvas")!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true }));
+  expect(app.store.get(editor$).document.grid).toEqual([[null, null]]);
+  pending.resolve({ width: 1, height: 1, data: new Uint8Array([0, 0, 0, 255]) });
+  await pending.promise;
 });

@@ -91,7 +91,7 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
   fit();
   function shortcut(event: KeyboardEvent) {
     const target = event.target as HTMLElement;
-    if (target.matches("input, textarea, select") || target.isContentEditable) return;
+    if (store.get(images.imageSession$) || target.matches("input, textarea, select") || target.isContentEditable) return;
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
       event.preventDefault(); if (event.shiftKey) actions.redo(); else actions.undo();
     }
