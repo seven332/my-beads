@@ -108,6 +108,8 @@ When `--output` is omitted, the printable chart uses the suffix `-chart.png` and
 
 ## Web Editor
 
+The editor is deployed to [GitHub Pages](https://seven332.github.io/my-beads/) after qualifying changes reach `main`. See [Deployment](#deployment) for setup and trigger rules.
+
 Start the local editor from the repository root:
 
 ```bash
@@ -163,6 +165,7 @@ pnpm typecheck
 pnpm test
 pnpm --filter @my-beads/web exec playwright install chromium webkit
 pnpm test:e2e
+pnpm test:production
 pnpm build
 ```
 
@@ -173,5 +176,23 @@ The core has a separate typecheck without Node or DOM globals. Its build emits a
 CI runs lint, types, tests and production builds on Linux/macOS, plus Chromium/WebKit workflows on Linux. Tests cover CSV round trips, color matching, image sampling/alpha/overrides, grouped editing history, state isolation, stale import cancellation, real application bootstrap/teardown, draft corruption/storage failures and decoded export colors/alpha. Browser workflows import PNG/WebP through the real preview, apply mappings, edit/export, reload drafts and verify that unfinished strokes are not recovered. CLI pixel regression checks 1× and 20×; browser checks 1× and 3×. Printable exports are checked in both browsers using their system fonts: correct title/counts/legend contents, text inside the page and legend cards, separate legend lines, and complete non-overlapping coordinates. Prefer behavior, file-content and layout assertions over screenshot baselines. Screenshots under `codex-work/screenshots/` are for manual visual review.
 
 The complete web editor is tracked in [#6](https://github.com/seven332/my-beads/issues/6). See [frontend architecture](docs/frontend-architecture.md) for state, lifecycle and testing conventions.
+
+## Deployment
+
+GitHub Actions builds and publishes `apps/web/dist` to **https://seven332.github.io/my-beads/**. In repository **Settings → Pages → Build and deployment**, select **GitHub Actions** as the source. The first publication runs after the deployment workflow is merged into `main`.
+
+The **Deploy Pages** workflow runs on `main` pushes that change these inputs:
+
+- Web source, public assets, HTML entry point, Vite/TypeScript configuration, environment files or package manifest.
+- Shared core source (including the MARD palette), TypeScript configuration or package manifest.
+- Root package/workspace/lock files, TypeScript configuration, `.npmrc`, or the deployment workflow itself.
+
+Documentation, templates, CLI source and test-only changes do not independently deploy. Shared dependency files trigger conservatively; the workflow checks paths rather than comparing output bytes. Keep the path list in `.github/workflows/pages.yml` current when adding build inputs. For a deliberate redeployment, open **Actions → Deploy Pages → Run workflow** and select **main**. Both jobs reject other branches, including manual runs.
+
+Before upload, the workflow runs lint, type checks, core/web tests and a production browser smoke test. Only the deploy job receives Pages/OIDC write permissions, and deployments are serialized. Existing PR checks remain enabled; PRs do not publish the site.
+
+`pnpm test:production` builds the web app and tests it with Chromium/WebKit under `/my-beads/` using a separate Vite preview server on port 4174. It checks built JS/CSS paths, CSV import/edit/export and draft recovery. The production build uses relative asset URLs, so local development and repository subpaths both work. Install the Playwright browsers using the Development command before running it locally.
+
+Only the static web artifact is uploaded. Imported files and saved drafts stay in the browser; local-development drafts do not automatically move to the GitHub Pages origin.
 
 Commit messages follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).

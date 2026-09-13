@@ -114,3 +114,22 @@ Tests inject storage/decoder boundaries for deterministic failures and late resu
 they mount the real app and state graph. jsdom lacks native dialog methods, so DOM
 tests adapt those methods while Chromium/WebKit exercise actual dialogs, image
 decoding, storage, reloads and exported contents. No screenshot baseline is required.
+
+## Static deployment
+
+Vite emits relative asset URLs so the same `apps/web/dist` artifact works at a
+domain root or repository subpath. `pnpm test:production` builds it, then starts
+an owned preview server under `/my-beads/` on port 4174 with no server reuse.
+Package-local Chromium/WebKit smoke tests validate asset paths, editing/export
+and draft recovery without a development server or screenshot baseline. The
+existing Checks browser job runs this alongside the full development workflows.
+
+`pages.yml` filters main pushes by declared web/core/build inputs and also allows
+main-only manual runs. Shared dependency files trigger conservatively; this is
+path filtering rather than a byte-equivalence check. A read-only build job validates
+the artifact before uploading only `apps/web/dist`. A dependent deployment job
+owns Pages/OIDC permissions and the `github-pages` environment. Main runs share a
+concurrency group without canceling the active deployment; rejected manual runs
+use separate groups so they cannot displace a queued main update. Keep the
+workflow path list current when adding build inputs. Hosting changes neither the
+browser-only IO boundary nor the origin-scoped draft schema.
