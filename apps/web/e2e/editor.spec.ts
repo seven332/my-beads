@@ -139,6 +139,67 @@ test("fast drags paint to the boundary and remain one undo step", async ({ page 
   await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
 });
 
+for (const tool of ["Pencil", "Eraser"] as const) {
+  test(`${tool} commits when capture is lost at release before pointerup`, async ({ page }) => {
+    await page.goto("/");
+    const original: PatternGrid = [["H2", "H2", "H2", "H2"]];
+    const edited: PatternGrid = [[...Array<string | null>(3).fill(tool === "Pencil" ? "H7" : null), "H2"]];
+    await page.getByLabel("Open CSV").setInputFiles({ name: "release.csv", mimeType: "text/csv", buffer: Buffer.from("H2,H2,H2,H2") });
+    await expect(page.getByLabel("Pattern title")).toHaveValue("release");
+    const { cell } = await fitCoordinates(page, 4, 1);
+    const canvas = page.getByRole("img", { name: "Pattern canvas" });
+    await canvas.evaluate(element => element.addEventListener("pointerdown", event => {
+      element.setAttribute("data-pointer-id", String((event as PointerEvent).pointerId));
+    }, { once: true }));
+    await page.getByRole("button", { name: tool, exact: true }).click();
+    await page.mouse.move(cell(0, 0).x, cell(0, 0).y); await page.mouse.down();
+    await page.mouse.move(cell(2, 0).x, cell(2, 0).y);
+    await expect(page.getByTestId("counts")).toHaveText(tool === "Pencil" ? "4 beads · 2 colors" : "1 beads · 1 colors");
+    // Replay the event order observed in desktop Chrome: capture loss with no
+    // pressed buttons precedes pointerup. Normal automated mouse.up skips it.
+    await canvas.evaluate(element => element.dispatchEvent(new PointerEvent("lostpointercapture", {
+      bubbles: true, pointerId: Number(element.getAttribute("data-pointer-id")), pointerType: "mouse", buttons: 0,
+    })));
+    await page.mouse.up();
+    expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual(edited);
+    await page.getByRole("button", { name: "Undo" }).click();
+    expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual(original);
+    await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+    await page.getByRole("button", { name: "Redo" }).click();
+    expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual(edited);
+    await expect(page.getByLabel("Draft status")).toContainText("saved on this device");
+    await page.reload();
+    expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual(edited);
+  });
+
+  for (const type of ["lostpointercapture", "pointercancel"] as const) {
+    test(`${tool} still cancels an interrupted stroke on ${type}`, async ({ page }) => {
+      await page.goto("/");
+      await page.getByLabel("Open CSV").setInputFiles({ name: "interrupt.csv", mimeType: "text/csv", buffer: Buffer.from("H2,H2,H2,H2") });
+      await expect(page.getByLabel("Pattern title")).toHaveValue("interrupt");
+      const { cell } = await fitCoordinates(page, 4, 1);
+      const canvas = page.getByRole("img", { name: "Pattern canvas" });
+      await canvas.evaluate(element => element.addEventListener("pointerdown", event => {
+        element.setAttribute("data-pointer-id", String((event as PointerEvent).pointerId));
+      }, { once: true }));
+      await page.getByRole("button", { name: tool, exact: true }).click();
+      await page.mouse.move(cell(0, 0).x, cell(0, 0).y); await page.mouse.down();
+      await page.mouse.move(cell(2, 0).x, cell(2, 0).y);
+      await expect(page.getByTestId("counts")).toHaveText(tool === "Pencil" ? "4 beads · 2 colors" : "1 beads · 1 colors");
+      // Capture loss while still pressed is an interruption. Explicit cancel
+      // must roll back even when its event reports no buttons pressed.
+      await canvas.evaluate((element, type) => element.dispatchEvent(new PointerEvent(type, {
+        bubbles: true, pointerId: Number(element.getAttribute("data-pointer-id")), pointerType: "mouse",
+        buttons: type === "lostpointercapture" ? 1 : 0,
+      })), type);
+      await page.mouse.up();
+      expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual([["H2", "H2", "H2", "H2"]]);
+      await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+      await expect(page.getByRole("button", { name: "Redo" })).toBeDisabled();
+    });
+  }
+}
+
 test("export validates only the settings used by the selected format", async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("Open CSV").setInputFiles({ name: "single.csv", mimeType: "text/csv", buffer: Buffer.from("H7") });
