@@ -5,10 +5,13 @@ import { beginStroke$, chooseColor$, newDocument$, editor$ } from "../src/state.
 let app: ReturnType<typeof mountApp>;
 let host: HTMLElement;
 const disconnect = vi.fn();
+let storage: Pick<Storage, "getItem" | "setItem">;
 beforeEach(() => {
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
   vi.stubGlobal("ResizeObserver", class { observe() {} disconnect = disconnect; });
-  host = document.createElement("div"); document.body.append(host); app = mountApp(host);
+  const values = new Map<string, string>();
+  storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => { values.set(key, value); } };
+  host = document.createElement("div"); document.body.append(host); app = mountApp(host, { storage: () => storage });
 });
 afterEach(() => { app.destroy(); host.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -37,7 +40,7 @@ it("shows validation feedback without replacing the current grid", async () => {
 it("disconnects Canvas and watcher on destroy and allows independent mounts", async () => {
   await vi.waitFor(() => expect(host.querySelector("canvas")).not.toBeNull());
   const otherHost = document.createElement("div"); document.body.append(otherHost);
-  const other = mountApp(otherHost);
+  const other = mountApp(otherHost, { storage: () => storage });
   try {
     app.store.set(chooseColor$, "H2");
     await vi.waitFor(() => expect(host.querySelector(".selected-color strong")?.textContent).toBe("H2"));

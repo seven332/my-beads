@@ -6,3 +6,5 @@ export { matchColors, hexToLab, deltaE2000, type Lab,
 export { renderChart } from "./chart.js";
 export { renderPixelArtSvg } from "./pixel-art.js";
 export { paintLine, floodFill, type Point } from "./edit.js";
+export { sampleImage, mapImage, validateImageSize, type RgbaImage, type SamplingOptions,
+  type SampledImage, type MappedImage, type ImageMapping } from "./image-import.js";
