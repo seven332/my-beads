@@ -7,6 +7,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:production": "playwright test --config playwright.production.config.ts",
     "build": "vite build"
   },
   "dependencies": {

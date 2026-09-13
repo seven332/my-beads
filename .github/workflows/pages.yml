@@ -1,0 +1,70 @@
+name: Deploy Pages
+
+on:
+  push:
+    branches: [main]
+    # Runtime/build inputs only. Shared manifests and the lockfile are conservative.
+    paths:
+      - 'apps/web/src/**'
+      - 'apps/web/public/**'
+      - 'apps/web/index.html'
+      - 'apps/web/package.json'
+      - 'apps/web/vite.config.*'
+      - 'apps/web/tsconfig*.json'
+      - 'apps/web/.env*'
+      - 'packages/core/src/**'
+      - 'packages/core/package.json'
+      - 'packages/core/tsconfig*.json'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'tsconfig.json'
+      - '.npmrc'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Finish an active publication before processing a newer one.
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm --filter @my-beads/core --filter @my-beads/web test
+      - run: pnpm --filter @my-beads/web exec playwright install --with-deps chromium webkit
+      - run: pnpm test:production
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: apps/web/dist
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

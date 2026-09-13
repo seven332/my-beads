@@ -1,0 +1,36 @@
+import { test, expect } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+import { parsePatternCsv } from "@my-beads/core";
+
+test("built editor loads at a repository path and preserves editing, exports and drafts", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", error => errors.push(error.message));
+  page.on("requestfailed", request => errors.push(`${request.url()}: ${request.failure()?.errorText}`));
+  page.on("response", response => { if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
+  await page.goto("./");
+  const assets = await page.locator('script[src], link[rel="stylesheet"]').evaluateAll(nodes =>
+    nodes.map(node => new URL(node.getAttribute("src") ?? node.getAttribute("href")!, document.baseURI).pathname));
+  expect(assets.length).toBeGreaterThanOrEqual(2);
+  for (const path of assets) expect(path).toMatch(/^\/my-beads\/assets\//);
+  await expect(page.getByRole("img", { name: "Pattern canvas" })).toBeVisible();
+  await page.getByLabel("Open CSV").setInputFiles({ name: "Pages.csv", mimeType: "text/csv", buffer: Buffer.from('H7,""') });
+  await expect(page.getByLabel("Pattern title")).toHaveValue("Pages");
+  await expect(page.getByTestId("counts")).toHaveText("1 beads · 1 colors");
+  await page.getByLabel("Search colors").fill("H2");
+  await page.getByRole("button", { name: "H2 #FFFFFF", exact: true }).click();
+  const canvas = page.getByRole("img", { name: "Pattern canvas" });
+  await canvas.press("ArrowRight");
+  await canvas.press("Enter");
+  await expect(page.getByTestId("counts")).toHaveText("2 beads · 2 colors");
+  const pending = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download" }).click();
+  const download = await pending;
+  expect(parsePatternCsv(await readFile((await download.path())!, "utf8"))).toEqual([["H7", "H2"]]);
+  await expect(page.getByLabel("Draft status")).toContainText("saved on this device");
+  await page.reload();
+  await expect(page.getByLabel("Pattern title")).toHaveValue("Pages");
+  await expect(page.getByLabel("Draft status")).toContainText("Recovered");
+  await expect(page.getByTestId("counts")).toHaveText("2 beads · 2 colors");
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+  expect(errors).toEqual([]);
+});
