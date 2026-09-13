@@ -52,6 +52,20 @@ h2 { font-size: 15px; margin: 0; font-weight: 650; }
 .color-swatch { width: 28px; height: 28px; border: 1px solid #00000015; border-radius: 5px; }
 .color-code { font-weight: 650; }
 .color-count { color: #8b9683; }
+.search-source { display: flex; gap: 10px; align-items: center; font-size: 11px; }
+.search-source div { display: grid; gap: 3px; }
+.search-source div > span, .search-summary { color: #697762; font-size: 11px; }
+.search-summary { margin: 12px 0 8px; }
+.color-recommendation { display: grid; gap: 10px; width: 100%; text-align: left; margin-top: 8px; padding: 12px; }
+.color-recommendation[aria-pressed="true"] { border-color: #708462; background: #e9eedf; }
+.recommendation-color { display: flex; align-items: center; gap: 9px; }
+.recommendation-color .color-swatch { flex-shrink: 0; }
+.recommendation-hex { display: block; font-size: 10px; margin-top: 3px; color: #697762; }
+.recommendation-count { margin-left: auto; font-size: 10px; color: #697762; }
+.recommendation-rules, .recommendation-rule { display: grid; gap: 4px; }
+.recommendation-rules { gap: 10px; }
+.recommendation-rule { font-size: 11px; line-height: 1.45; }
+.recommendation-rule > span { color: #697762; font-weight: 400; }
 summary { font-weight: 650; font-size: 13px; }
 details[open] summary { margin-bottom: 16px; }
 .field { display: grid; gap: 6px; font-size: 11px; color: #78856e; margin-bottom: 13px; }

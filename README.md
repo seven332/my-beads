@@ -127,6 +127,17 @@ Open the localhost URL printed by Vite. Use **Open CSV** to load a pattern, or *
 
 The editor accepts grids up to 256 × 256, CSV files up to 2 MB and 100 undo steps. PNG exports are limited to 8192 pixels per side and 32 million pixels; SVG avoids the raster limit. Download a copy before replacing a document you want to keep.
 
+### Search for a Color
+
+Search ignores letter case and surrounding spaces. Exact MARD codes take priority: `B23` finds that bead color, while `#B23` means the hex color `#BB2233`. Three- and six-digit hex values work with or without `#`; complete hex colors take priority over partial text matches. Partial queries such as `H` still filter the palette.
+
+When a complete hex color has no exact MARD match, compare its swatch with two recommendations:
+
+- **Closest color:** the smallest CIEDE2000 color difference across all 221 colors, including grays.
+- **Preserve chroma:** favors tinted colors over neutral grays when the input has a tint. This uses the same rule as the color-matching tool and does not guarantee the closest hue.
+
+For example, `#4C4C40` suggests **H5 · #474747** for Closest color and **B23 · #303921** for Preserve chroma. When both rules suggest the same code, one card shows both explanations. Exact hex matches appear directly. Click a color, or focus its button and press Enter or Space, to select it; searching alone leaves the current drawing color and pattern unchanged.
+
 ### Import a Pixel Image
 
 Use **Open image** for PNG or WebP. Set the intended **Target columns** and **Target rows**: a 1000 × 1000 image can become a 50 × 50 bead grid. The target defaults to the current grid dimensions. Each cell samples the source pixel at its center with nearest-neighbor sampling, without smoothing or background blending.

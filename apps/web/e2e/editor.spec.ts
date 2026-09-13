@@ -35,6 +35,58 @@ function verifyPixels(buffer: Buffer, grid: PatternGrid, scale: number) {
   expect(mismatch).toBe(0);
 }
 
+for (const width of [1440, 390]) {
+  test(`palette recommendations can be compared, chosen by keyboard and exported at ${width}px`, async ({ page, browserName }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto("/");
+    await page.getByLabel("Open CSV").setInputFiles({ name: "blank.csv", mimeType: "text/csv", buffer: Buffer.from('\"\",\"\"') });
+    await expect(page.getByLabel("Pattern title")).toHaveValue("blank");
+    const search = page.getByLabel("Search colors");
+    await search.fill(" #4c4c40 ");
+    await expect(page.locator(".search-source")).toContainText("#4C4C40");
+    await expect(page.locator(".color-recommendation")).toHaveCount(2);
+    await expect(page.locator(".selected-color strong")).toHaveText("H7");
+    await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+    const closest = page.getByRole("button", { name: "H5 #474747", exact: true });
+    const chroma = page.getByRole("button", { name: "B23 #303921", exact: true });
+    await expect(closest).toHaveAccessibleDescription(/Closest color.*including grays/);
+    await expect(chroma).toHaveAccessibleDescription(/Preserve chroma.*when the input has a tint/);
+    for (const candidate of [closest, chroma]) {
+      await expect(candidate).toBeVisible();
+      const box = (await candidate.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(width);
+      expect(await candidate.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+    }
+    // macOS WebKit follows Safari's default Option-Tab navigation for buttons.
+    const nextControl = browserName === "webkit" && process.platform === "darwin" ? "Alt+Tab" : "Tab";
+    await search.press(nextControl);
+    await expect(closest).toBeFocused();
+    await page.keyboard.press(nextControl);
+    await expect(chroma).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(chroma).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".selected-color strong")).toHaveText("B23");
+    await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
+    await page.getByRole("img", { name: "Pattern canvas" }).press("Enter");
+    await expect(page.getByTestId("counts")).toHaveText("1 beads · 1 colors");
+    expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual([["B23", null]]);
+    await page.getByRole("button", { name: "Undo" }).click();
+    await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
+    await search.fill("#ff0000");
+    await expect(page.locator(".color-recommendation")).toHaveCount(1);
+    await expect(page.locator(".color-recommendation")).toHaveAccessibleDescription(/Closest color.*Preserve chroma/);
+    await expect(page.locator(".selected-color strong")).toHaveText("B23");
+    await page.getByRole("button", { name: "Redo" }).click();
+    await expect(page.getByTestId("counts")).toHaveText("1 beads · 1 colors");
+    expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual([["B23", null]]);
+    await search.fill("#000");
+    await expect(page.locator(".color-recommendation")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "H7 #000000", exact: true })).toBeVisible();
+    await expect(page.locator(".palette-results")).toContainText("Exact match");
+  });
+}
+
 test("Sherma: all tools, grouped undo, CSV round trip and exact PNG/chart downloads", async ({ page }) => {
   const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
   await page.goto("/");

@@ -36,6 +36,15 @@ introduce a dependency on that checkout or its private rule package.
   selections with computed values; avoid an additional mutable cache for derived data.
 - A view reads state and dispatches intent. It does not mutate the document directly.
 
+Palette search derives from its query in a separate computed unit, so drawing and
+viewport updates reuse the current results. The pure browser search helper resolves
+exact codes before complete three/six-digit hex values, then falls back to partial
+text filtering. Exact palette hex matches bypass approximation; other complete hex
+values reuse both core matching policies and combine duplicate codes with both rule
+labels. The view compares the source swatch and explained suggestions. Only explicit
+color selection dispatches the existing color command; search does not change the
+document, selected color or history. No search results are persisted.
+
 ## Lifecycle and asynchronous work
 
 The application mount owns its root cancellation lifetime. Adapt Snabbdom's

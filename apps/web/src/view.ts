@@ -5,6 +5,7 @@ import type { ExportOptions } from "./exports.js";
 import { imagePicker, imageView, type ImageActions } from "./image-view.js";
 import type { ImageSession } from "./image-state.js";
 import type { DraftStatus } from "./drafts.js";
+import { paletteResults } from "./palette-view.js";
 
 export interface Actions extends ImageActions {
   tool(tool: Tool): void; color(code: string): void; search(value: string): void;
@@ -62,11 +63,7 @@ export function view(model: EditorModel, actions: Actions, canvasHooks: Hooks, i
           h("div.selected-color", [h("span.selected-swatch", { attrs: { style: `background:${defaultPalette.colors[model.color]}` } }),
             h("div", [h("strong", model.color), h("span", defaultPalette.colors[model.color])]), h("span.selected-count", `${model.document.counts.get(model.color) ?? 0} beads`)]),
           h("input.palette-search", { attrs: { type: "search", placeholder: "Search code or hex…", "aria-label": "Search colors" }, props: { value: model.search }, on: { input: (e: Event) => actions.search(value(e)) } }),
-          h("div.palette-grid", { attrs: { "aria-label": "MARD colors" } }, model.palette.map(([code, hex]) =>
-            h("button.color", { key: code, attrs: { type: "button", "aria-label": `${code} ${hex}`, "aria-pressed": String(model.color === code), title: `${code} · ${hex} · ${model.document.counts.get(code) ?? 0} beads` }, on: { click: () => actions.color(code) } }, [
-              h("span.color-swatch", { attrs: { style: `background:${hex}` } }), h("span.color-code", code), h("span.color-count", String(model.document.counts.get(code) || "·")),
-            ]))),
-          model.palette.length ? h("span") : h("p.empty-results", "No matching colors."),
+          paletteResults(model.paletteSearch, model.color, model.document.counts, actions.color),
         ]),
         h("details.export-panel", { attrs: { open: true } }, [h("summary", "Export pattern"),
           // The export adapter validates only the selected format's settings.
