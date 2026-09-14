@@ -82,6 +82,10 @@ test("hovering with different tool cursors preserves the selected cell", async (
     await canvas.focus();
     await expect.poll(() => border(0)).toEqual(orange);
     await move(2);
+    // Verify the post-hover frame, rather than passing on the previous selection.
+    await canvas.evaluate(
+      () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+    );
     await expect.poll(() => border(0)).toEqual(orange);
     expect(await border(2)).not.toEqual(orange);
     expect(await pixel(0)).toEqual(white);
