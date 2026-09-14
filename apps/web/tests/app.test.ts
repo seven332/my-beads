@@ -119,6 +119,7 @@ it("releases removed Canvas listeners and cancels an unfinished stroke on app te
   expect(second).not.toBe(first);
   first.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
   expect(app.store.get(editor$).beads).toBe(0);
+  second.focus();
   second.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
   expect(app.store.get(editor$).beads).toBe(1);
   app.store.set(beginStroke$, { x: 1, y: 0 });

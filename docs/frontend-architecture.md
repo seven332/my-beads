@@ -120,6 +120,13 @@ snapshots are retained, sharing unchanged rows. The Canvas draws only visible ce
 into a viewport-sized backing buffer and batches redraws with animation frames.
 Local cursor movement also schedules a frame when the document and selected color
 stay unchanged, such as picking the same color or filling an already matching region.
+The orange cell cursor is either an in-grid coordinate or absent. Clicking the
+surrounding workspace with an editing tool clears it and does not start a stroke;
+panning and zooming preserve that selection state without snapping it to an edge.
+Strokes started inside the grid still pass raw endpoints to the core for boundary
+clipping, while their cursor disappears outside and reappears on reentry. Keyboard
+focus initializes a cell; arrow keys can restore a cleared cursor, and Enter/Space
+only edit when a cell is selected.
 Counts come from computed core data. Imports use both an owned AbortSignal and
 revision/token checks, so newer work cannot be overwritten by a late file read.
 
