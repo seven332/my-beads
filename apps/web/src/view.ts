@@ -13,6 +13,8 @@ import type { ViewRefs } from "./view-lifecycle.js";
 import { Grid3x3 } from "@lucide/icons";
 import { icon } from "./icon.js";
 import { keyboardHelp } from "./keyboard-help.js";
+import { themePicker } from "./theme-view.js";
+import type { ThemePreference } from "./theme-preference.js";
 
 export interface Actions extends ImageActions, CreateActions, ExportActions {
   tool(tool: Tool): void;
@@ -32,6 +34,7 @@ export interface Actions extends ImageActions, CreateActions, ExportActions {
   fitHighlight(): void;
   saveDraft(): void;
   language(locale: Locale): void;
+  theme(preference: ThemePreference): void;
   openKeyboardHelp(invoker?: HTMLElement): void;
   closeKeyboardHelp(): void;
 }
@@ -46,6 +49,7 @@ export function view(
   t: Translate,
   flow: ReturnType<typeof workflow$.read>,
   exports: ExportSettings,
+  preference: ThemePreference,
 ) {
   const brand = html`<a
     class="brand"
@@ -75,6 +79,9 @@ export function view(
       )}
     </select></label
   >`;
+  const preferences = html`<div class="preferences">
+    ${themePicker(preference, actions.theme, t)}${language}
+  </div>`;
   const status =
     flow.hasDocument || draft.error
       ? html`<div
@@ -93,7 +100,7 @@ export function view(
     ${flow.page === "create"
       ? html`
           <header class="topbar">
-            ${brand}<span class="topbar-note">${t(($) => $.app.tagline)}</span>${language}
+            ${brand}<span class="topbar-note">${t(($) => $.app.tagline)}</span>${preferences}
           </header>
           ${status}${createView(model, flow, actions, t)}
           <footer
@@ -102,7 +109,7 @@ export function view(
             <span>${t(($) => $.app.footer)}</span><span>${t(($) => $.app.localFiles)}</span>
           </footer>
         `
-      : editorView(model, actions, refs.canvas, t, brand, language, status, exports.open)}
+      : editorView(model, actions, refs.canvas, t, brand, preferences, status, exports.open)}
     ${imageView(image, actions, t, refs)}${exportView(
       model,
       exports,

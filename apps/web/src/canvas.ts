@@ -2,6 +2,7 @@ import { defaultPalette, type Point } from "@my-beads/core";
 import { canvasCursor } from "./canvas-cursor.js";
 import { composing } from "./shortcuts.js";
 import type { EditorModel } from "./state.js";
+import type { CanvasTheme } from "./canvas-theme.js";
 
 export interface CanvasActions {
   begin(point: Point): void;
@@ -13,6 +14,7 @@ export interface CanvasActions {
 export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
   const context = canvas.getContext("2d");
   let model: EditorModel | undefined;
+  let theme: CanvasTheme;
   let frame = 0;
   let pointer: { id: number; x: number; y: number; pan: boolean } | undefined;
   let cursor: Point | null = null;
@@ -50,11 +52,11 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
         context.fillStyle = code
           ? defaultPalette.colors[code]
           : (x + y) % 2
-            ? "#e4e6e3"
-            : "#f5f6f2";
+            ? theme.emptyB
+            : theme.emptyA;
         context.fillRect(left + x * zoom, top + y * zoom, zoom, zoom);
         if (model.gridVisible && zoom >= 6) {
-          context.strokeStyle = "#64716440";
+          context.strokeStyle = theme.grid;
           context.lineWidth = 0.5;
           context.strokeRect(left + x * zoom, top + y * zoom, zoom, zoom);
         }
@@ -71,7 +73,7 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
           context.fillText(code, left + (x + 0.5) * zoom, top + (y + 0.5) * zoom);
         }
         if (model.highlightedColor && code !== model.highlightedColor) {
-          context.fillStyle = "#a1aa9ecc";
+          context.fillStyle = theme.mask;
           context.fillRect(left + x * zoom, top + y * zoom, zoom, zoom);
         }
       }
@@ -106,16 +108,16 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
         }
       context.lineCap = "round";
       context.lineJoin = "round";
-      context.strokeStyle = "#17291f";
+      context.strokeStyle = theme.outlineDark;
       context.lineWidth = Math.min(3, zoom * 0.45);
       context.stroke();
-      context.strokeStyle = "#ffffff";
+      context.strokeStyle = theme.outlineLight;
       context.lineWidth = Math.min(1, zoom * 0.15);
       context.stroke();
       context.restore();
     }
     if (focused && cursor) {
-      context.strokeStyle = "#ef7540";
+      context.strokeStyle = theme.selection;
       context.lineWidth = 2;
       context.strokeRect(left + cursor.x * zoom + 1, top + cursor.y * zoom + 1, zoom - 2, zoom - 2);
     }
@@ -274,8 +276,9 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
       panHeld = held;
       updateMouseCursor();
     },
-    update(next: EditorModel) {
+    update(next: EditorModel, colors: CanvasTheme) {
       model = next;
+      theme = colors;
       updateMouseCursor();
       setCursor(cursor);
     },

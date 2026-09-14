@@ -14,14 +14,25 @@ import { readImage } from "./image-file.js";
 import { createDrafts, type DraftStorage } from "./drafts.js";
 import { mountKeyboard } from "./keyboard.js";
 import { composing } from "./shortcuts.js";
+import { mountTheme } from "./theme-browser.js";
+import { theme$, themePreference$, selectTheme$, systemThemeChanged$ } from "./theme-state.js";
 
 /** One mount owns the store, watcher, imports, Canvas resources and download URLs. */
 export function mountApp(
   host: HTMLElement,
-  adapters: { storage?: () => DraftStorage; readImage?: typeof readImage } = {},
+  adapters: {
+    storage?: () => DraftStorage;
+    readImage?: typeof readImage;
+    themeRoot?: HTMLElement;
+  } = {},
 ) {
   const store = createStore();
   const storage = adapters.storage ?? (() => window.localStorage);
+  const appearance = mountTheme(adapters.themeRoot ?? host, storage, (dark) =>
+    store.set(systemThemeChanged$, dark),
+  );
+  store.set(selectTheme$, appearance.preference);
+  store.set(systemThemeChanged$, appearance.systemDark);
   let savedLocale: string | null = null;
   try {
     savedLocale = storage().getItem(LOCALE_KEY);
@@ -94,6 +105,10 @@ export function mountApp(
     focusPage(".title-input");
   }
   const actions: Actions = {
+    theme: (preference) => {
+      store.set(selectTheme$, preference);
+      appearance.save(preference);
+    },
     palette,
     paletteView: (view) => {
       store.set(state.selectPaletteView$, view);
@@ -287,6 +302,8 @@ export function mountApp(
   store.watch(
     (get) => {
       const model = get(state.editor$);
+      const theme = get(theme$);
+      appearance.sync(theme);
       const locale = get(locale$),
         t = get(translation$);
       document.documentElement.lang = locale;
@@ -303,10 +320,11 @@ export function mountApp(
           t,
           get(state.workflow$),
           get(exports.exportSettings$),
+          get(themePreference$),
         ),
         root,
       );
-      lifecycle.sync(model, image);
+      lifecycle.sync(model, image, theme);
       keyboard.sync();
       drafts.observe(get(state.committedDocument$));
     },
@@ -344,6 +362,7 @@ export function mountApp(
       drafts.dispose();
       window.removeEventListener("pagehide", flushDraft);
       lifetime.abort();
+      appearance.destroy();
       importController?.abort();
       exportController?.abort();
       window.removeEventListener("keydown", shortcut);

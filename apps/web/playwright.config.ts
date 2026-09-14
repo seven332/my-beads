@@ -11,6 +11,7 @@ export default defineConfig({
     ? [["github"], ["html", { outputFolder: "playwright-report/e2e", open: "never" }]]
     : "list",
   use: {
+    colorScheme: "light",
     baseURL: "http://127.0.0.1:4173",
     viewport: { width: 1440, height: 1000 },
     trace: process.env.CI ? "on-first-retry" : "retain-on-failure",

@@ -210,11 +210,38 @@ stylesheet for sorting. Static `class` attributes inside `html` templates are so
 do not assume conditional strings or `classMap` keys are sorted. Prefer static
 ARIA/data variants for styling existing state when appropriate.
 
-This foundation does not yet provide dark mode. A future implementation can override
-the semantic values on a theme root and provide light/dark/system preferences,
-early initialization, persistence, and system-change handling. Canvas empty cells,
-grid lines, locator masks, and selection strokes require separate theme inputs and
-redraws. MARD bead colors and export renderers remain independent of interface theme.
+Light and dark values share semantic names in `theme.css`. The appearance selector
+offers System (default), Light and Dark with translated labels and static Lucide
+icons. It uses a native select over a visible icon, retaining native menu/keyboard
+behavior; the wrapper supplies a visible focus outline and a current-choice tooltip.
+
+`theme-preference.ts` owns strict preference parsing, the `my-beads.theme` storage
+key and effective-theme resolution. `theme-state.ts` holds preference and OS state
+outside the editor document/history graph. `theme-browser.ts` owns the media-query
+listener, preference IO, root attributes and native `color-scheme`. Its cleanup
+removes the listener and restores its owned presentation. Mounts default to their
+host as the theme root; only `main.ts` opts into the document root and browser
+`theme-color`. This keeps independent embedded/test mounts isolated. Storage denial
+falls back to System on load and leaves subsequent in-memory choices usable.
+
+Vite bundles `theme-bootstrap.ts` with the existing esbuild dependency and inserts
+the small classic script before CSS and the main module. It shares the runtime
+resolver and sets the root attribute and native color scheme before app startup;
+the HTML color-scheme metadata declares both schemes. Production tests block only
+the main bundle to check real saved/system initial appearance, including denied
+storage, at the Pages subpath. Any future CSP must authorize this generated inline
+script (for example through its build-specific hash).
+
+The synchronous app watch applies the effective theme before lifecycle synchronization.
+`canvas-theme.ts` reads auxiliary CSS colors once per Canvas mount or effective
+theme change. The existing controller receives those values and schedules its
+normal animation frame; it retains the same node, selection, viewport and pointer
+capture. Empty checkerboard cells, grid lines, locator masks/edges and selection
+strokes follow the theme. MARD fills and code-label contrast remain tied to palette
+data. Source/mapped preview pixels and export renderers never consume theme state.
+Browser tests verify theme-only redraw without pointer movement, OS changes during
+a stroke, unchanged drafts/exports and preserved open image settings. Screenshots
+remain local review artifacts rather than test baselines.
 
 Tailwind v4's core browser baseline is Chrome 111+, Safari 16.4+, and Firefox 128+;
 Chromium and WebKit are covered by the project's browser tests. See the official
