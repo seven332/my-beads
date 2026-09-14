@@ -85,6 +85,13 @@ for (const [width, height] of [[1440, 900], [390, 844], [320, 390]]) {
     await expect(canvas).not.toHaveAttribute("data-wheel-seen", "true");
     await fixedWorkspace(page);
     await expect(page.getByLabel("Zoom level")).toHaveText(zoom!);
+    if (await page.locator(".palette-toggle").isVisible()) {
+      await page.keyboard.press("Escape");
+      await openPalette(page);
+      await expect(page.locator(".palette-search")).toBeFocused();
+      await expect(page.locator(".palette-search")).toBeInViewport({ ratio: 1 });
+      await fixedWorkspace(page);
+    }
     await page.locator(".palette-search").fill("#4c4c40");
     await expect(page.locator(".color-recommendation")).toHaveCount(2);
     await page.getByRole("button", { name: "B23 #303921", exact: true }).click();
