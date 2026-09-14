@@ -37,6 +37,37 @@ it("shows validation feedback without replacing the current grid", async () => {
   expect(host.querySelector(".canvas-status")?.textContent).toContain("3 × 2 cells");
 });
 
+it("compares source and recommended colors, explains both rules and requires explicit selection", async () => {
+  await vi.waitFor(() => expect(host.querySelector("canvas")).not.toBeNull());
+  const canvas = host.querySelector("canvas");
+  const search = host.querySelector<HTMLInputElement>('[aria-label="Search colors"]')!;
+  search.value = "#4c4c40"; search.dispatchEvent(new Event("input", { bubbles: true }));
+  await vi.waitFor(() => expect(host.querySelectorAll(".color-recommendation")).toHaveLength(2));
+  expect(host.querySelector(".search-source strong")?.textContent).toBe("#4C4C40");
+  expect(host.querySelector<HTMLElement>(".search-source .color-swatch")?.style.backgroundColor).toBe("rgb(76, 76, 64)");
+  expect(host.querySelector(".selected-color strong")?.textContent).toBe("H7");
+  const closest = host.querySelector<HTMLButtonElement>('[aria-label="H5 #474747"]')!;
+  expect(closest.textContent).toContain("Closest color");
+  expect(closest.textContent).toContain("including grays");
+  const chroma = host.querySelector<HTMLButtonElement>('[aria-label="B23 #303921"]')!;
+  expect(chroma.textContent).toContain("Preserve chroma");
+  expect(chroma.textContent).toContain("when the input has a tint");
+  expect(chroma.getAttribute("aria-describedby")).toBe("palette-rules-B23");
+  chroma.click();
+  await vi.waitFor(() => expect(chroma.getAttribute("aria-pressed")).toBe("true"));
+  expect(host.querySelector(".selected-color strong")?.textContent).toBe("B23");
+  expect(host.querySelector('[data-testid="counts"]')?.textContent).toBe("0 beads · 0 colors");
+  search.value = "#ff0000"; search.dispatchEvent(new Event("input", { bubbles: true }));
+  await vi.waitFor(() => expect(host.querySelectorAll(".color-recommendation")).toHaveLength(1));
+  expect(host.querySelector(".color-recommendation")?.textContent).toContain("Closest color");
+  expect(host.querySelector(".color-recommendation")?.textContent).toContain("Preserve chroma");
+  search.value = " h7 "; search.dispatchEvent(new Event("input", { bubbles: true }));
+  await vi.waitFor(() => expect(host.querySelectorAll("button.color")).toHaveLength(1));
+  expect(host.querySelector(".color-recommendation")).toBeNull();
+  expect(host.querySelector(".search-source")).toBeNull();
+  expect(host.querySelector("canvas")).toBe(canvas);
+});
+
 it("disconnects Canvas and watcher on destroy and allows independent mounts", async () => {
   await vi.waitFor(() => expect(host.querySelector("canvas")).not.toBeNull());
   const otherHost = document.createElement("div"); document.body.append(otherHost);

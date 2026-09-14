@@ -2,6 +2,7 @@ import { command, computed, state } from "ccstate";
 import { createPattern, defaultPalette, floodFill, paintLine, parsePatternCsv,
   type PatternGrid, type Point } from "@my-beads/core";
 import type { DraftStatus } from "./drafts.js";
+import { findPaletteColors } from "./palette-search.js";
 
 export const MAX_GRID = 256;
 export const HISTORY_LIMIT = 100;
@@ -27,6 +28,7 @@ const titleState$ = state("Untitled pattern");
 const toolState$ = state<Tool>("pencil");
 const colorState$ = state("H7");
 const searchState$ = state("");
+const paletteSearch$ = computed(get => findPaletteColors(get(searchState$)));
 const errorState$ = state("");
 const importState$ = state(0);
 const viewportState$ = state<Viewport>({ zoom: 12, x: 32, y: 32 });
@@ -54,8 +56,7 @@ export const editor$ = computed(get => {
     canUndo: history.past.length > 0 && !history.stroke,
     canRedo: history.future.length > 0 && !history.stroke,
     beads: [...document.counts.values()].reduce((sum, count) => sum + count, 0),
-    palette: Object.entries(defaultPalette.colors).filter(([code, hex]) =>
-      `${code} ${hex}`.toLowerCase().includes(search.toLowerCase())),
+    paletteSearch: get(paletteSearch$),
   };
 });
 export type EditorModel = ReturnType<typeof editor$.read>;
