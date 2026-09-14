@@ -12,6 +12,7 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@lucide/icons": "1.45.0",
     "@my-beads/core": "workspace:*",
     "ccstate": "5.5.0",
     "i18next": "26.3.6",

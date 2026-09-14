@@ -2,6 +2,8 @@ import { h, type VNode } from "snabbdom";
 import type { EditorModel, workflow$ } from "./state.js";
 import type { Translate } from "./i18n/index.js";
 import { imagePicker } from "./image-view.js";
+import { FileSpreadsheet, Grid3x3, ImagePlus } from "@lucide/icons";
+import { icon } from "./icon.js";
 
 export interface CreateActions {
   create(width: number, height: number): void;
@@ -30,7 +32,7 @@ export function createView(model: EditorModel, flow: ReturnType<typeof workflow$
     ]) : h("span"),
     h("div.creation-options", [
       h("section.creation-card.blank-card", { attrs: { "aria-labelledby": "blank-heading" } }, [
-        h("div.creation-icon", { attrs: { "aria-hidden": "true" } }, "▦"),
+        h("div.creation-icon", [icon(Grid3x3)]),
         h("h2", { attrs: { id: "blank-heading" } }, t($ => $.create.blank)),
         h("p.card-description", t($ => $.create.blankDescription)),
         h("form.blank-form", { attrs: { novalidate: true }, on: { submit: (event: Event) => {
@@ -42,7 +44,7 @@ export function createView(model: EditorModel, flow: ReturnType<typeof workflow$
           h("button.primary", { attrs: { type: "submit" } }, t($ => $.newPattern.create))]),
       ]),
       h("section.creation-card", { attrs: { "aria-labelledby": "csv-heading" } }, [
-        h("div.creation-icon", { attrs: { "aria-hidden": "true" } }, "↥"),
+        h("div.creation-icon", [icon(FileSpreadsheet)]),
         h("h2", { attrs: { id: "csv-heading" } }, t($ => $.create.csv)),
         h("p.card-description", t($ => $.create.csvDescription)),
         h("p.card-detail", t($ => $.create.csvDetail)),
@@ -57,7 +59,7 @@ export function createView(model: EditorModel, flow: ReturnType<typeof workflow$
         })]),
       ]),
       h("section.creation-card", { attrs: { "aria-labelledby": "picture-heading" } }, [
-        h("div.creation-icon", { attrs: { "aria-hidden": "true" } }, "◈"),
+        h("div.creation-icon", [icon(ImagePlus)]),
         h("h2", { attrs: { id: "picture-heading" } }, t($ => $.create.image)),
         h("p.card-description", t($ => $.create.imageDescription)),
         h("p.card-detail", t($ => $.create.imageDetail)),
