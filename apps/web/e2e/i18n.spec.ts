@@ -21,6 +21,7 @@ test("uses the Chinese brand, persists language and keeps exports in English", a
   await expect(page).toHaveTitle("我来拼豆 — 拼豆图纸编辑器");
   await page.getByLabel("打开 CSV").setInputFiles({ name: "Bilingual.csv", mimeType: "text/csv", buffer: Buffer.from("H7,,H5\nH2,H7,") });
   await expect(page.getByTestId("counts")).toHaveText("4 颗 · 3 色");
+  await openPalette(page);
   await page.getByLabel("搜索颜色").fill("#4C4C40");
   await expect(page.getByText("色差最小", { exact: true })).toBeVisible();
   await expect(page.getByText("保留色彩倾向", { exact: true })).toBeVisible();

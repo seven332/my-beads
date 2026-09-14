@@ -45,6 +45,26 @@ labels. The view compares the source swatch and explained suggestions. Only expl
 color selection dispatches the existing color command; search does not change the
 document, selected color or history. No search results are persisted.
 
+Used colors is a separate palette view derived from the live document counts in
+natural MARD code order. Nonempty replacements/recovery start in Used, blanks in
+All; edits preserve the user's selected view. Locator buttons change an independent
+transient highlighted code, preserving the brush, revision, history and committed
+draft. A zero-count highlight remains clearable and can reappear through undo.
+Document replacement clears it; create/resume navigation and locale changes retain it.
+
+The Canvas dims nonmatching cells and traces only exposed target edges, checking
+actual neighbors beyond the visible bounds. Dark/light strokes adapt to zoom;
+below three pixels per cell, dimming provides emphasis without obscuring cells
+with outlines. The existing frame scheduler redraws changes, with the keyboard
+cursor last. No geometry cache or additional animation loop is maintained.
+Show all locations uses `color-locations.ts` bounds and the unobscured area; normal
+highlighting preserves the viewport. Mobile activation closes the palette and
+focuses the persistent clear control. The status area owns the highlight summary,
+fit and clear actions. In short windows the open palette spans the status and
+canvas rows, with its close button beside the view switch, leaving room for colors.
+Closing the panel reveals the status again. Existing export adapters still read
+only document data.
+
 ## Lifecycle and asynchronous work
 
 The application mount owns its root cancellation lifetime. Adapt Snabbdom's

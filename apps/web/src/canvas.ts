@@ -42,6 +42,28 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
         context.textAlign = "center"; context.textBaseline = "middle";
         context.fillText(code, left + (x + 0.5) * zoom, top + (y + 0.5) * zoom);
       }
+      if (model.highlightedColor && code !== model.highlightedColor) {
+        context.fillStyle = "#a1aa9ecc";
+        context.fillRect(left + x * zoom, top + y * zoom, zoom, zoom);
+      }
+    }
+    if (model.highlightedColor && zoom >= 3) {
+      context.save();
+      context.beginPath();
+      const code = model.highlightedColor;
+      // Read actual neighbors, even outside the viewport, so panning never invents edges.
+      for (let y = startY; y < endY; y++) for (let x = startX; x < endX; x++) {
+        if (grid[y][x] !== code) continue;
+        const l = left + x * zoom, t = top + y * zoom, r = l + zoom, b = t + zoom;
+        if (grid[y - 1]?.[x] !== code) { context.moveTo(l, t); context.lineTo(r, t); }
+        if (grid[y + 1]?.[x] !== code) { context.moveTo(l, b); context.lineTo(r, b); }
+        if (grid[y][x - 1] !== code) { context.moveTo(l, t); context.lineTo(l, b); }
+        if (grid[y][x + 1] !== code) { context.moveTo(r, t); context.lineTo(r, b); }
+      }
+      context.lineCap = "round"; context.lineJoin = "round";
+      context.strokeStyle = "#17291f"; context.lineWidth = Math.min(3, zoom * 0.45); context.stroke();
+      context.strokeStyle = "#ffffff"; context.lineWidth = Math.min(1, zoom * 0.15); context.stroke();
+      context.restore();
     }
     if (focused) {
       context.strokeStyle = "#ef7540"; context.lineWidth = 2;

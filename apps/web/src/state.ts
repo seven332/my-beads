@@ -5,10 +5,13 @@ import { createPattern, defaultPalette, floodFill, paintLine, parsePatternCsv,
 import { translation$ } from "./locale.js";
 import { draftText, type DraftStatus } from "./drafts.js";
 import { findPaletteColors } from "./palette-search.js";
+import { colorBounds } from "./color-locations.js";
+import type { ViewArea } from "./canvas-viewport.js";
 
 export const MAX_GRID = 256;
 export const HISTORY_LIMIT = 100;
 export type Tool = "pencil" | "eraser" | "bucket" | "eyedropper" | "pan";
+export type PaletteView = "used" | "all";
 interface History {
   grid: PatternGrid;
   past: readonly PatternGrid[];
@@ -38,6 +41,8 @@ const viewportState$ = state<Viewport>({ zoom: 12, x: 32, y: 32 });
 const gridVisibleState$ = state(true);
 const codesVisibleState$ = state(false);
 const paletteOpenState$ = state(false);
+const paletteViewState$ = state<PaletteView>("all");
+const highlightedColorState$ = state<string | null>(null);
 const draftStatusState$ = state<DraftStatus>({ kind: null, action: null, error: false });
 const pageState$ = state<"create" | "edit">("create");
 const hasDocumentState$ = state(false);
@@ -57,6 +62,8 @@ export const committedDocument$ = computed(get => {
 });
 
 export const document$ = computed(get => createPattern(get(historyState$).grid));
+const codeOrder = new Intl.Collator("en", { numeric: true });
+const usedColors$ = computed(get => [...get(document$).counts].sort(([a], [b]) => codeOrder.compare(a, b)));
 export const editor$ = computed(get => {
   const history = get(historyState$);
   const document = get(document$);
@@ -65,6 +72,7 @@ export const editor$ = computed(get => {
     document, title: get(titleState$), tool: get(toolState$), color: get(colorState$),
     search, error: errorText(get(errorState$), get(translation$)), viewport: get(viewportState$),
     gridVisible: get(gridVisibleState$), codesVisible: get(codesVisibleState$), paletteOpen: get(paletteOpenState$),
+    paletteView: get(paletteViewState$), highlightedColor: get(highlightedColorState$), usedColors: get(usedColors$),
     canUndo: history.past.length > 0 && !history.stroke,
     canRedo: history.future.length > 0 && !history.stroke,
     beads: [...document.counts.values()].reduce((sum, count) => sum + count, 0),
@@ -111,6 +119,19 @@ export const searchPalette$ = command(({ set }, search: string) => { set(searchS
 export const toggleGrid$ = command(({ get, set }) => { set(gridVisibleState$, !get(gridVisibleState$)); });
 export const toggleCodes$ = command(({ get, set }) => { set(codesVisibleState$, !get(codesVisibleState$)); });
 export const showPalette$ = command(({ set }, open: boolean) => { set(paletteOpenState$, open); });
+export const selectPaletteView$ = command(({ set }, view: PaletteView) => { set(paletteViewState$, view); });
+export const highlightColor$ = command(({ get, set }, code: string | null) => {
+  if (code !== null && !get(document$).counts.has(code)) return;
+  set(highlightedColorState$, code === get(highlightedColorState$) ? null : code);
+});
+export const fitHighlightedColor$ = command(({ get, set }, area: ViewArea) => {
+  const code = get(highlightedColorState$);
+  const bounds = code ? colorBounds(get(document$).grid, code) : null;
+  if (!bounds) return;
+  const zoom = Math.max(0.25, Math.min(32, (area.width - 64) / bounds.width, (area.height - 64) / bounds.height));
+  set(viewportState$, { zoom, x: area.x + (area.width - bounds.width * zoom) / 2 - bounds.x * zoom,
+    y: area.y + (area.height - bounds.height * zoom) / 2 - bounds.y * zoom });
+});
 export const moveViewport$ = command(({ get, set }, dx: number, dy: number) => {
   if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
   const view = get(viewportState$);
@@ -172,6 +193,8 @@ const replaceDocument$ = command(({ get, set }, grid: PatternGrid, title: string
   if (grid.length > MAX_GRID || grid[0].length > MAX_GRID) throw new UiError("editorSize", { max: MAX_GRID });
   set(historyState$, { grid, past: [], future: [], stroke: null, revision: get(historyState$).revision + 1 });
   set(titleState$, title.slice(0, 100)); set(reportError$, "");
+  set(highlightedColorState$, null);
+  set(paletteViewState$, grid.some(row => row.some(code => code !== null)) ? "used" : "all");
   set(viewportState$, { zoom: 12, x: 32, y: 32 });
   set(hasDocumentState$, true); set(pageState$, "edit");
 });

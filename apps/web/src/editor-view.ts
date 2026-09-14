@@ -3,7 +3,7 @@ import { defaultPalette } from "@my-beads/core";
 import type { EditorModel } from "./state.js";
 import type { Actions } from "./view.js";
 import type { Translate } from "./i18n/index.js";
-import { paletteResults } from "./palette-view.js";
+import { paletteResults, usedColors } from "./palette-view.js";
 import { Download, Eraser, Hand, Minus, PaintBucket, Pencil, Pipette, Plus, Redo2, Undo2, X } from "@lucide/icons";
 import { icon } from "./icon.js";
 
@@ -55,13 +55,27 @@ export function editorView(model: EditorModel, actions: Actions, canvasHooks: Ho
       h("div.selected-color", [h("span.selected-swatch", { attrs: { style: `background:${defaultPalette.colors[model.color]}` } }),
         h("div", [h("strong", model.color), h("span", defaultPalette.colors[model.color])]),
         h("span.selected-count", t($ => $.beads, { count: model.document.counts.get(model.color) ?? 0 }))]),
-      h("input.palette-search", { attrs: { type: "search", placeholder: t($ => $.palette.searchPlaceholder), "aria-label": t($ => $.palette.search) },
-        props: { value: model.search }, on: { input: (event: Event) => actions.search((event.target as HTMLInputElement).value) } }),
-      paletteResults(model.paletteSearch, model.color, model.document.counts, actions.color, t),
+      h("div.palette-view", { attrs: { role: "group", "aria-label": t($ => $.palette.view) } }, [
+        button(t($ => $.palette.used), () => actions.paletteView("used"), { "aria-pressed": model.paletteView === "used" }),
+        button(t($ => $.palette.all), () => actions.paletteView("all"), { "aria-pressed": model.paletteView === "all" }),
+      ]),
+      model.paletteView === "all" ? h("input.palette-search", { key: "search", attrs: { type: "search", placeholder: t($ => $.palette.searchPlaceholder), "aria-label": t($ => $.palette.search) },
+        props: { value: model.search }, on: { input: (event: Event) => actions.search((event.target as HTMLInputElement).value) } })
+        : h("span.editor-placeholder", { key: "search" }),
+      model.paletteView === "all" ? paletteResults(model.paletteSearch, model.color, model.document.counts, actions.color, t)
+        : usedColors(model, actions.color, actions.highlight, t),
     ]),
     h("div.editor-status.floating-panel", { attrs: { "data-canvas-panel": "" } }, [
       h("div.canvas-status", [h("span", t($ => $.app.dimensions, { columns: grid[0].length, rows: grid.length })),
         h("span.counts", { attrs: { "data-testid": "counts" } }, `${t($ => $.beads, { count: model.beads })} · ${t($ => $.colors, { count: model.document.counts.size })}`)]),
+      model.highlightedColor ? h("div.highlight-status", [
+        h("span.highlight-summary", { attrs: { role: "status" } }, [
+          h("span.color-swatch", { attrs: { style: `background:${defaultPalette.colors[model.highlightedColor]}` } }),
+          h("span", `${t($ => $.palette.highlighting, { code: model.highlightedColor })} · ${t($ => $.beads, { count: model.document.counts.get(model.highlightedColor) ?? 0 })}`),
+        ]),
+        button(t($ => $.palette.showLocations), actions.fitHighlight, { disabled: !model.document.counts.has(model.highlightedColor) }),
+        button(icon(X), () => actions.highlight(null), { "aria-label": t($ => $.palette.clearHighlight), title: t($ => $.palette.clearHighlight) }, "highlight-clear"),
+      ]) : h("span.editor-placeholder"),
       draft,
     ]),
     h("p.canvas-help.sr-only", { attrs: { id: "canvas-help" } }, t($ => $.app.canvasHelp)),

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { parsePatternCsv } from "@my-beads/core";
-import { openExport } from "../helpers.js";
+import { openExport, openPalette } from "../helpers.js";
 
 test("built editor loads at a repository path and preserves editing, exports and drafts", async ({ page }) => {
   const errors: string[] = [];
@@ -17,6 +17,7 @@ test("built editor loads at a repository path and preserves editing, exports and
   await page.getByLabel("Open CSV").setInputFiles({ name: "Pages.csv", mimeType: "text/csv", buffer: Buffer.from('H7,""') });
   await expect(page.getByLabel("Pattern title")).toHaveValue("Pages");
   await expect(page.getByTestId("counts")).toHaveText("1 bead · 1 color");
+  await openPalette(page);
   await page.getByLabel("Search colors").fill("H2");
   await page.getByRole("button", { name: "H2 #FFFFFF", exact: true }).click();
   const canvas = page.getByRole("img", { name: "Pattern canvas" });
