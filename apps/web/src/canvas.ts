@@ -10,7 +10,7 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
   let model: EditorModel | undefined;
   let frame = 0;
   let pointer: { id: number; x: number; y: number; pan: boolean } | undefined;
-  let cursor: Point = { x: 0, y: 0 };
+  let cursor: Point | null = null;
   let focused = false;
   let destroyed = false;
   function paint() {
@@ -65,14 +65,17 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
       context.strokeStyle = "#ffffff"; context.lineWidth = Math.min(1, zoom * 0.15); context.stroke();
       context.restore();
     }
-    if (focused) {
+    if (focused && cursor) {
       context.strokeStyle = "#ef7540"; context.lineWidth = 2;
       context.strokeRect(left + cursor.x * zoom + 1, top + cursor.y * zoom + 1, zoom - 2, zoom - 2);
     }
   }
   function schedule() { if (!frame && !destroyed) frame = requestAnimationFrame(paint); }
-  function setCursor(point: Point) {
-    cursor = point;
+  function insideGrid(point: Point) {
+    return !!model && point.x >= 0 && point.y >= 0 && point.x < model.document.grid[0].length && point.y < model.document.grid.length;
+  }
+  function setCursor(point: Point | null) {
+    cursor = point && insideGrid(point) ? point : null;
     // Cursor movement is local; picking the same color may not update the store.
     schedule();
   }
@@ -85,17 +88,25 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
   }
   function down(event: PointerEvent) {
     if (!model || pointer || (event.button !== 0 && event.button !== 1)) return;
+    const p = position(event), pan = model.tool === "pan" || event.button === 1;
+    // Pointer focus must not create a keyboard cursor while panning or clicking outside the grid.
+    const target = pan ? cursor : cell(p);
     event.preventDefault(); canvas.focus({ preventScroll: true });
-    const p = position(event);
-    pointer = { id: event.pointerId, ...p, pan: model.tool === "pan" || event.button === 1 };
+    setCursor(target);
+    if (!pan && !cursor) return;
+    pointer = { id: event.pointerId, ...p, pan };
     canvas.setPointerCapture(event.pointerId);
-    if (!pointer.pan) { setCursor(cell(p)); actions.begin(cursor); }
+    if (!pan && cursor) actions.begin(cursor);
   }
   function move(event: PointerEvent) {
     if (!pointer || pointer.id !== event.pointerId || !model) return;
     const p = position(event);
     if (pointer.pan) actions.pan(p.x - pointer.x, p.y - pointer.y);
-    else { setCursor(cell(p)); actions.extend(cursor); }
+    else {
+      const point = cell(p); setCursor(point);
+      // Keep raw endpoints for clipping a stroke that began inside the grid.
+      actions.extend(point);
+    }
     pointer = { ...pointer, ...p };
   }
   function end(event: PointerEvent) {
@@ -123,14 +134,14 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
       event.preventDefault();
       if (event.shiftKey) actions.pan(-delta[0] * 30, -delta[1] * 30);
       else {
-        setCursor({ x: Math.max(0, Math.min(model.document.grid[0].length - 1, cursor.x + delta[0])),
-          y: Math.max(0, Math.min(model.document.grid.length - 1, cursor.y + delta[1])) });
+        setCursor(cursor ? { x: Math.max(0, Math.min(model.document.grid[0].length - 1, cursor.x + delta[0])),
+          y: Math.max(0, Math.min(model.document.grid.length - 1, cursor.y + delta[1])) } : { x: 0, y: 0 });
       }
     } else if (event.key === " " || event.key === "Enter") {
-      event.preventDefault(); actions.begin(cursor); actions.finish();
+      event.preventDefault(); if (cursor) { actions.begin(cursor); actions.finish(); }
     } else if (event.key === "Escape") cancel();
   }
-  function focus() { focused = true; schedule(); }
+  function focus() { focused = true; setCursor(cursor ?? { x: 0, y: 0 }); }
   function blur() { focused = false; cancel(); schedule(); }
   const observer = new ResizeObserver(schedule); observer.observe(canvas);
   canvas.addEventListener("pointerdown", down); canvas.addEventListener("pointermove", move);
@@ -141,8 +152,7 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
   return {
     update(next: EditorModel) {
       model = next;
-      setCursor({ x: Math.max(0, Math.min(cursor.x, next.document.grid[0].length - 1)),
-        y: Math.max(0, Math.min(cursor.y, next.document.grid.length - 1)) });
+      setCursor(cursor);
     },
     destroy() {
       destroyed = true; cancel(); cancelAnimationFrame(frame); observer.disconnect();
