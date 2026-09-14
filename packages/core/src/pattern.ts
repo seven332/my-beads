@@ -1,3 +1,4 @@
+import { BeadError } from "./errors.js";
 import { defaultPalette, normalizeHex, validatePalette, type PaletteDocument } from "./palette.js";
 
 /** A rectangular document: MARD codes for beads, null for empty cells. */
@@ -11,13 +12,13 @@ export type PatternData = {
 
 function validateShape(rows: readonly (readonly unknown[])[]): void {
   if (!rows.length || !Array.isArray(rows[0]) || !rows[0].length) {
-    throw new Error("Pattern must contain at least one cell");
+    throw new BeadError("patternEmpty", "Pattern must contain at least one cell");
   }
   const columns = rows[0].length;
   for (const [rowIndex, row] of rows.entries()) {
-    if (!Array.isArray(row)) throw new Error(`Pattern row ${rowIndex + 1} must be an array`);
+    if (!Array.isArray(row)) throw new BeadError("patternRow", `Pattern row ${rowIndex + 1} must be an array`, { row: rowIndex + 1 });
     if (row.length !== columns) {
-      throw new Error(`CSV row ${rowIndex + 1} has ${row.length} columns; expected ${columns}`);
+      throw new BeadError("csvColumns", `CSV row ${rowIndex + 1} has ${row.length} columns; expected ${columns}`, { row: rowIndex + 1, actual: row.length, expected: columns });
     }
   }
 }
@@ -25,7 +26,7 @@ function validateShape(rows: readonly (readonly unknown[])[]): void {
 /** Parse quoted CSV, including BOM, CRLF and explicit empty one-cell documents. */
 export function parseCsv(text: string): string[][] {
   const source = text.replace(/^\uFEFF/, "");
-  if (!source.length) throw new Error("CSV does not contain a pattern grid");
+  if (!source.length) throw new BeadError("csvEmpty", "CSV does not contain a pattern grid");
   const rows: string[][] = [];
   let row: string[] = [];
   let field = "";
@@ -59,13 +60,13 @@ export function parseCsv(text: string): string[][] {
     } else if (character === '"' && mode === "start") {
       mode = "quoted";
     } else if (character === '"' || (mode === "closed" && character.trim())) {
-      throw new Error("CSV contains an unexpected character outside a quoted field");
+      throw new BeadError("csvCharacter", "CSV contains an unexpected character outside a quoted field");
     } else if (mode !== "closed") {
       field += character;
       if (character.trim()) mode = "plain";
     }
   }
-  if (mode === "quoted") throw new Error("CSV contains an unterminated quoted field");
+  if (mode === "quoted") throw new BeadError("csvQuote", "CSV contains an unterminated quoted field");
   if (!endedRow) {
     endField();
     rows.push(row);
@@ -85,7 +86,7 @@ export function createPattern(
   const counts = new Map<string, number>();
   const pattern = rows.map((row, rowIndex) => Array.from(row, (rawValue, columnIndex) => {
     if (rawValue !== null && typeof rawValue !== "string") {
-      throw new Error(`Invalid cell at row ${rowIndex + 1}, column ${columnIndex + 1}; expected a color or null`);
+      throw new BeadError("patternCell", `Invalid cell at row ${rowIndex + 1}, column ${columnIndex + 1}; expected a color or null`, { row: rowIndex + 1, column: columnIndex + 1 });
     }
     const value = rawValue?.trim().toUpperCase() ?? "";
     if (value === "" || value === "TRANSPARENT" || value === "ERASE") {
@@ -94,7 +95,7 @@ export function createPattern(
     const code = value.startsWith("#") ? codesByHex.get(normalizeHex(value)) : value;
     const hex = code === undefined ? undefined : colors[code];
     if (!code || !hex) {
-      throw new Error(`Unknown MARD color '${rawValue}' at row ${rowIndex + 1}, column ${columnIndex + 1}`);
+      throw new BeadError("unknownColor", `Unknown MARD color '${rawValue}' at row ${rowIndex + 1}, column ${columnIndex + 1}`, { value: String(rawValue), row: rowIndex + 1, column: columnIndex + 1 });
     }
     counts.set(code, (counts.get(code) ?? 0) + 1);
     return { code, hex, transparent: false };

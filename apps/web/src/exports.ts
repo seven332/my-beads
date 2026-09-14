@@ -1,3 +1,4 @@
+import { UiError } from "./errors.js";
 import { defaultPalette, renderChart, serializePatternCsv, type PatternData } from "@my-beads/core";
 
 export type ExportFormat = "csv" | "pixel" | "svg" | "chart";
@@ -5,12 +6,12 @@ export interface ExportOptions { format: ExportFormat; scale: number; width: num
 export function rasterBudget(width: number, height: number): void {
   if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 ||
       width > 8192 || height > 8192 || width * height > 32_000_000) {
-    throw new Error("PNG output is limited to 8192 pixels per side and 32 million pixels. Reduce the scale or chart width, or export SVG.");
+    throw new UiError("pngSize");
   }
 }
 function png(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise((resolve, reject) => canvas.toBlob(blob => {
-    if (blob) resolve(blob); else reject(new Error("The browser could not encode this PNG."));
+    if (blob) resolve(blob); else reject(new UiError("pngEncode"));
   }, "image/png"));
 }
 export async function exportPattern(document: PatternData, title: string, options: ExportOptions,
@@ -20,13 +21,13 @@ export async function exportPattern(document: PatternData, title: string, option
   if (options.format === "csv") return { blob: new Blob([serializePatternCsv(document.grid)], { type: "text/csv;charset=utf-8" }), filename: `${name}.csv` };
   let blob: Blob;
   if (options.format === "pixel") {
-    if (!Number.isInteger(options.scale) || options.scale < 1 || options.scale > 512) throw new Error("Pixel scale must be an integer from 1 to 512.");
+    if (!Number.isInteger(options.scale) || options.scale < 1 || options.scale > 512) throw new UiError("pixelScale");
     const width = document.grid[0].length * options.scale, height = document.grid.length * options.scale;
     rasterBudget(width, height);
     const canvas = window.document.createElement("canvas");
     canvas.width = width; canvas.height = height;
     const context = canvas.getContext("2d");
-    if (!context) throw new Error("Canvas is unavailable in this browser.");
+    if (!context) throw new UiError("canvasUnavailable");
     document.grid.forEach((row, y) => row.forEach((code, x) => {
       if (code) { context.fillStyle = defaultPalette.colors[code]; context.fillRect(x * options.scale, y * options.scale, options.scale, options.scale); }
     }));
@@ -46,7 +47,7 @@ export async function exportPattern(document: PatternData, title: string, option
         const cleanup = () => { signal.removeEventListener("abort", abort); image.onload = null; image.onerror = null; };
         const abort = () => { cleanup(); image.src = ""; reject(signal.reason); };
         image.onload = () => { cleanup(); resolve(); };
-        image.onerror = () => { cleanup(); reject(new Error("The browser could not render the chart.")); };
+        image.onerror = () => { cleanup(); reject(new UiError("chartRender")); };
         signal.addEventListener("abort", abort, { once: true });
         image.src = url;
       });
@@ -54,7 +55,7 @@ export async function exportPattern(document: PatternData, title: string, option
       const canvas = window.document.createElement("canvas");
       canvas.width = width; canvas.height = height;
       const context = canvas.getContext("2d");
-      if (!context) throw new Error("Canvas is unavailable in this browser.");
+      if (!context) throw new UiError("canvasUnavailable");
       context.drawImage(image, 0, 0);
       blob = await png(canvas);
       signal.throwIfAborted();

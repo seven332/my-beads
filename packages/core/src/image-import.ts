@@ -1,3 +1,4 @@
+import { BeadError } from "./errors.js";
 import { defaultPalette, type PaletteDocument } from "./palette.js";
 import { matchColors, type MatchOptions } from "./color-match.js";
 import type { PatternGrid } from "./pattern.js";
@@ -10,19 +11,19 @@ export interface MappedImage { grid: PatternGrid; mappings: readonly ImageMappin
 
 export function validateImageSize(width: number, height: number): void {
   if (![width, height].every(n => Number.isInteger(n) && n > 0 && n <= 8192) || width * height > 16_000_000) {
-    throw new Error("Images are limited to 8192 pixels per side and 16 million pixels.");
+    throw new BeadError("imageSize", "Images are limited to 8192 pixels per side and 16 million pixels.");
   }
 }
 
 /** Sample the source pixel at each target cell's center; never blend neighboring colors. */
 export function sampleImage(image: RgbaImage, options: SamplingOptions): SampledImage {
   validateImageSize(image.width, image.height);
-  if (image.data.length !== image.width * image.height * 4) throw new Error("Image RGBA data has an invalid length.");
+  if (image.data.length !== image.width * image.height * 4) throw new BeadError("imageData", "Image RGBA data has an invalid length.");
   const { columns, rows, alpha } = options;
   if (![columns, rows].every(n => Number.isInteger(n) && n >= 1 && n <= 256)) {
-    throw new Error("Target grid dimensions must be integers from 1 to 256.");
+    throw new BeadError("targetDimensions", "Target grid dimensions must be integers from 1 to 256.");
   }
-  if (!Number.isInteger(alpha) || alpha < 0 || alpha > 255) throw new Error("Alpha threshold must be an integer from 0 to 255.");
+  if (!Number.isInteger(alpha) || alpha < 0 || alpha > 255) throw new BeadError("alpha", "Alpha threshold must be an integer from 0 to 255.");
   const counts = new Map<string, number>();
   const grid = Array.from({ length: rows }, (_, y) => Array.from({ length: columns }, (_, x) => {
     const sx = Math.floor((x + .5) * image.width / columns);
@@ -31,7 +32,7 @@ export function sampleImage(image: RgbaImage, options: SamplingOptions): Sampled
     if (image.data[offset + 3] === 0 || image.data[offset + 3] < alpha) return null;
     const hex = "#" + [0, 1, 2].map(i => image.data[offset + i].toString(16).padStart(2, "0")).join("").toUpperCase();
     counts.set(hex, (counts.get(hex) ?? 0) + 1);
-    if (counts.size > 256) throw new Error("The sampled image has more than 256 colors. Use pixel art or a smaller target grid.");
+    if (counts.size > 256) throw new BeadError("sampleColors", "The sampled image has more than 256 colors. Use pixel art or a smaller target grid.");
     return hex;
   }));
   const colors = [...counts].map(([hex, count]) => ({ hex, count })).sort((a, b) => b.count - a.count || a.hex.localeCompare(b.hex));
@@ -42,21 +43,21 @@ export function sampleImage(image: RgbaImage, options: SamplingOptions): Sampled
 export function mapImage(sample: SampledImage, options: MatchOptions = {},
   overrides: Readonly<Record<string, string>> = {}): MappedImage {
   const series = (options.series ?? []).map(s => s.trim().toUpperCase());
-  if (series.some(s => !/^[A-Z]+$/.test(s))) throw new Error("Series must contain letter prefixes.");
+  if (series.some(s => !/^[A-Z]+$/.test(s))) throw new BeadError("series", "Series must contain letter prefixes.");
   const candidates = Object.entries(defaultPalette.colors).filter(([code]) => !series.length || series.some(s => code.startsWith(s)));
-  if (!candidates.length) throw new Error("No MARD colors match the selected series.");
+  if (!candidates.length) throw new BeadError("seriesEmpty", "No MARD colors match the selected series.");
   const palette = Object.fromEntries(candidates);
   const sources = new Set(sample.colors.map(color => color.hex));
   const reserved = new Set<string>();
   for (const [hex, code] of Object.entries(overrides)) {
-    if (!sources.has(hex) || !Object.hasOwn(palette, code)) throw new Error("Overrides must use a source color and a MARD code in the selected series.");
-    if (options.unique && reserved.has(code)) throw new Error("Distinct assignments cannot reuse an overridden MARD code.");
+    if (!sources.has(hex) || !Object.hasOwn(palette, code)) throw new BeadError("overrides", "Overrides must use a source color and a MARD code in the selected series.");
+    if (options.unique && reserved.has(code)) throw new BeadError("overrideUnique", "Distinct assignments cannot reuse an overridden MARD code.");
     reserved.add(code);
   }
   const pending = sample.colors.filter(color => !Object.hasOwn(overrides, color.hex));
   const available: PaletteDocument = { colors: Object.fromEntries(candidates.filter(([code]) => !options.unique || !reserved.has(code))) };
   if (options.unique && pending.length > Object.keys(available.colors).length) {
-    throw new Error("Not enough MARD colors for distinct assignments. Allow shared codes or select more series.");
+    throw new BeadError("paletteSize", "Not enough MARD colors for distinct assignments. Allow shared codes or select more series.");
   }
   const matches = new Map((pending.length ? matchColors(pending.map(c => c.hex), available, options) : []).map(m => [m.input, m]));
   const mappings = sample.colors.map(({ hex: source, count }) => {

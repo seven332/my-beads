@@ -36,7 +36,7 @@ it("persists committed work through the real mount and recovers without live str
   app.store.set(newDocument$, 2, 1); app.store.set(rename$, "My draft");
   await vi.waitFor(() => expect(values.has(DRAFT_KEY)).toBe(true));
   app.store.set(beginStroke$, { x: 0, y: 0 });
-  await vi.waitFor(() => expect(host.querySelector('[data-testid="counts"]')?.textContent).toBe("1 beads · 1 colors"));
+  await vi.waitFor(() => expect(host.querySelector('[data-testid="counts"]')?.textContent).toBe("1 bead · 1 color"));
   expect(decodeDraft(values.get(DRAFT_KEY)!).grid).toEqual([[null, null]]);
   app.store.set(finishStroke$);
   await vi.waitFor(() => expect(decodeDraft(values.get(DRAFT_KEY)!).grid).toEqual([["H7", null]]));
@@ -51,7 +51,7 @@ it("keeps corrupt drafts on edits and replaces them only through the visible act
   expect(host.querySelector('[role="alert"]')?.textContent).toContain("Saving is paused");
   app.store.set(newDocument$, 1, 1);
   app.store.set(beginStroke$, { x: 0, y: 0 }); app.store.set(finishStroke$);
-  await vi.waitFor(() => expect(host.querySelector('[data-testid="counts"]')?.textContent).toBe("1 beads · 1 colors"));
+  await vi.waitFor(() => expect(host.querySelector('[data-testid="counts"]')?.textContent).toBe("1 bead · 1 color"));
   expect(values.get(DRAFT_KEY)).toBe("broken");
   host.querySelector<HTMLButtonElement>(".draft-status button")!.click();
   expect(decodeDraft(values.get(DRAFT_KEY)!).grid).toEqual([["H7"]]);

@@ -1,3 +1,4 @@
+import { BeadError } from "./errors.js";
 import mard from "./data/mard-221-colors.json" with { type: "json" };
 
 export type PaletteDocument = {
@@ -12,7 +13,7 @@ export function normalizeHex(value: string): string {
     hex = [...hex].map((character) => character.repeat(2)).join("");
   }
   if (!/^[0-9A-F]{6}$/.test(hex)) {
-    throw new Error(`Invalid hex color: ${value}`);
+    throw new BeadError("invalidHex", `Invalid hex color: ${value}`, { value });
   }
   return `#${hex}`;
 }

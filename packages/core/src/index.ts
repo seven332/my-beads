@@ -8,3 +8,4 @@ export { renderPixelArtSvg } from "./pixel-art.js";
 export { paintLine, floodFill, type Point } from "./edit.js";
 export { sampleImage, mapImage, validateImageSize, type RgbaImage, type SamplingOptions,
   type SampledImage, type MappedImage, type ImageMapping } from "./image-import.js";
+export { BeadError, type BeadErrorCode } from "./errors.js";

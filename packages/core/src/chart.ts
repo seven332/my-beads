@@ -1,3 +1,4 @@
+import { BeadError } from "./errors.js";
 import type { PatternCell } from "./pattern.js";
 
 function escapeXml(value: string): string {
@@ -28,7 +29,7 @@ export function renderChart(
   pageWidth: number,
 ): string {
   if (!Number.isInteger(pageWidth) || pageWidth < 800 || pageWidth > 10_000) {
-    throw new Error("Chart width must be an integer between 800 and 10000");
+    throw new BeadError("chartWidth", "Chart width must be an integer between 800 and 10000");
   }
   const rows = pattern.length;
   const columns = pattern[0].length;
@@ -36,7 +37,7 @@ export function renderChart(
   const minimumCellSize = Math.max(20, String(columns).length * 8);
   const minimumWidth = Math.max(800, columns * minimumCellSize + 250);
   if (pageWidth < minimumWidth) {
-    throw new Error(`Chart needs a width of at least ${minimumWidth} pixels for ${columns} columns`);
+    throw new BeadError("chartMinimum", `Chart needs a width of at least ${minimumWidth} pixels for ${columns} columns`, { width: minimumWidth, columns });
   }
   const colors = [...counts.entries()]
     .map(([code, count]) => ({ code, count, hex: pattern.flat().find((cell) => cell.code === code)!.hex }))

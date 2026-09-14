@@ -126,6 +126,63 @@ they mount the real app and state graph. jsdom lacks native dialog methods, so D
 tests adapt those methods while Chromium/WebKit exercise actual dialogs, image
 decoding, storage, reloads and exported contents. No screenshot baseline is required.
 
+## Interface languages
+
+The web app follows vm0's i18next, JSON resource and typed-selector approach,
+adapted to Snabbdom. English (`en-US`) and Simplified Chinese (`zh-CN`) are bundled
+statically and initialized before mounting. The English brand is My Beads; the
+Chinese brand is 我来拼豆. No React binding, translation backend or runtime fetch
+is needed. `locale.ts` owns a private language atom, readonly locale/translator
+selectors and a semantic selection command. Fixed translators avoid a mutable
+global language shared between stores. Views receive the translator explicitly.
+
+The mount reads the separate `my-beads.locale` preference before its first render.
+A supported saved choice wins; otherwise the first English or Chinese browser
+language is used, with English as the final fallback. Chinese variants resolve to
+Simplified Chinese. Manual selection updates the HTML language and page title and
+persists the preference when storage allows. Preference failures leave switching
+and editing usable. Locale changes never rename document data, replace the Canvas,
+reset history or alter draft bytes; the default document title remains English.
+CSV and pixel exports are unchanged, and printable chart labels stay English.
+
+UI copy, accessible names and known validation errors belong in both catalogs.
+Use typed selectors (`t($ => $.app.name)`) and i18next plural/count formatting;
+do not translate when storing an error or concatenate language-specific sentences.
+Core `BeadError` codes and interpolation values preserve English CLI messages
+without depending on the web app. Browser errors and draft statuses also keep
+their identity until presentation, allowing existing alerts to change language.
+Unknown browser/IO diagnostics retain their original detail inside a translated
+message. Snabbdom renders translations and interpolated user values as text.
+
+`pnpm lint` validates catalog keys, nonempty values, interpolation placeholders and
+locale-specific plural forms. TypeScript checks selector keys. Package-local tests
+cover language resolution/persistence, independent stores, preserved editing and
+form state, retranslated errors and unchanged draft recovery. Chromium/WebKit
+tests cover Chinese image import, English exports, reloads and responsive layouts.
+
+The web-only ESLint rule `ccstate/no-hardcoded-ui-text` checks Snabbdom child text,
+visible attributes (including accessible names, placeholders and tooltips), local
+rendering-helper arguments, DOM text assignments and browser error messages. It
+follows local constants, aliases, destructuring, conditional/template expressions,
+return values and common array/object mappings. It resolves imported `h` bindings,
+so aliases work and unrelated or shadowed functions are not treated as Snabbdom.
+There is no exemption for a function merely named `t`.
+
+Use `h("button", t($ => $.export.download))` instead of `h("button", "Download")`.
+For an imported helper, list its module, export name and text-argument indexes in
+`textFunctions` in the ESLint config; `imagePicker` is registered this way. Keep
+literal exceptions exact and explained: palette codes come from the actual MARD
+catalog, while format names, language names and keyboard identifiers are listed
+explicitly. Icons, numbers and complete hex colors are also allowed. Do not add a
+broad pattern exemption for English words or all uppercase strings.
+
+This is static, file-local analysis, not a proof for arbitrary JavaScript. Unknown
+imported values, runtime user data and unsupported dynamic transformations are not
+traced across modules. Review new UI data sources and helper boundaries. The rule
+does not inspect catalog JSON, CLI/chart output or test fixtures. RuleTester cases
+and a test against the repository's actual ESLint config verify both enforcement
+and exclusions; these run in the existing CI package-test job.
+
 ## Static deployment
 
 Vite emits relative asset URLs so the same `apps/web/dist` artifact works at a

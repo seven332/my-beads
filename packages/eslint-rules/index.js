@@ -1,4 +1,5 @@
-// Focused ccstate conventions, independent of any external application or React.
+// Project rules for ccstate boundaries and translated Snabbdom UI.
+import noHardcodedUiText from "./no-hardcoded-ui-text.js";
 const isFunction = node => ["ArrowFunctionExpression", "FunctionExpression", "FunctionDeclaration"].includes(node.type);
 const rule = (description, create) => ({ meta: { type: "problem", docs: { description }, schema: [], messages: { invalid: description } }, create });
 
@@ -32,6 +33,7 @@ function primitives(context) {
   };
 }
 export const rules = {
+  "no-hardcoded-ui-text": noHardcodedUiText,
   "signal-boundaries": rule("Keep ccstate units dollar-suffixed, writable state private, and command graphs outside commands/views.", context => {
     const units = primitives(context);
     return {

@@ -1,3 +1,6 @@
+import { captureError } from "./errors.js";
+import { LOCALE_KEY, resolveLocale } from "./i18n/index.js";
+import { locale$, translation$, selectLocale$ } from "./locale.js";
 import { createStore } from "ccstate";
 import { init, h, attributesModule, propsModule, eventListenersModule, type VNode } from "snabbdom";
 import * as state from "./state.js";
@@ -11,6 +14,10 @@ import { createDrafts, type DraftStorage } from "./drafts.js";
 /** One mount owns the store, watcher, imports, Canvas resources and download URLs. */
 export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftStorage; readImage?: typeof readImage } = {}) {
   const store = createStore();
+  const storage = adapters.storage ?? (() => window.localStorage);
+  let savedLocale: string | null = null;
+  try { savedLocale = storage().getItem(LOCALE_KEY); } catch { /* Language switching also works without storage. */ }
+  store.set(selectLocale$, resolveLocale(savedLocale, navigator.languages.length ? navigator.languages : [navigator.language]));
   const lifetime = new AbortController();
   let importController: AbortController | undefined;
   const downloads = new Map<string, ReturnType<typeof setTimeout>>();
@@ -19,9 +26,9 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
   let vnode: VNode | Element = root;
   let canvas: ReturnType<typeof mountCanvas> | undefined;
   const fail = (error: unknown) => {
-    if (!lifetime.signal.aborted) store.set(state.reportError$, error instanceof Error ? error.message : String(error));
+    if (!lifetime.signal.aborted) store.set(state.reportError$, captureError(error));
   };
-  const drafts = createDrafts(adapters.storage ?? (() => window.localStorage), status => store.set(state.reportDraft$, status));
+  const drafts = createDrafts(storage, status => store.set(state.reportDraft$, status));
   const recovered = drafts.load();
   if (recovered) store.set(state.restoreDocument$, recovered.grid, recovered.title);
   function cancelImport() { importController?.abort(); store.set(images.cancelImage$); }
@@ -31,6 +38,10 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
     if (element) { const rect = element.getBoundingClientRect(); store.set(state.fitViewport$, rect.width, rect.height); }
   }
   const actions: Actions = {
+    language: locale => {
+      store.set(selectLocale$, locale);
+      try { storage().setItem(LOCALE_KEY, locale); } catch { /* A preference failure must not interrupt editing. */ }
+    },
     tool: tool => store.set(state.chooseTool$, tool), color: code => store.set(state.chooseColor$, code),
     search: value => store.set(state.searchPalette$, value), rename: value => store.set(state.rename$, value),
     create: (width, height) => { cancelImport(); store.set(state.newDocument$, width, height); fit(); },
@@ -83,7 +94,10 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
   };
   store.watch(get => {
     const model = get(state.editor$);
-    vnode = patch(vnode, view(model, actions, canvasHooks, get(images.imageSession$), get(state.draftStatus$)));
+    const locale = get(locale$), t = get(translation$);
+    document.documentElement.lang = locale;
+    document.title = t($ => $.app.pageTitle);
+    vnode = patch(vnode, view(model, actions, canvasHooks, get(images.imageSession$), get(state.draftStatus$), locale, t));
     canvas?.update(model);
     drafts.observe(get(state.committedDocument$));
   }, { signal: lifetime.signal });
