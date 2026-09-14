@@ -8,7 +8,25 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: checks-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  changes:
+    name: Browser change detection
+    runs-on: ubuntu-latest
+    outputs:
+      browser: ${{ steps.changes.outputs.browser }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - id: changes
+        run: node .github/scripts/browser-ci.mjs changes
   validate:
     name: Validate (${{ matrix.os }})
     strategy:
@@ -28,9 +46,16 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      - run: pnpm test:ci
       - run: pnpm build
-  browser:
-    name: Browser workflows
+  e2e:
+    name: Browser E2E (${{ matrix.shard }}/2)
+    needs: changes
+    if: needs.changes.outputs.browser == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,12 +65,52 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @my-beads/web exec playwright install --with-deps chromium webkit
-      - run: pnpm test:e2e
+      - run: pnpm --filter @my-beads/web exec playwright install --with-deps --only-shell chromium webkit
+      - run: pnpm test:e2e --shard=${{ matrix.shard }}/2
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: browser-e2e-${{ matrix.shard }}
+          path: |
+            apps/web/test-results/e2e/
+            apps/web/playwright-report/e2e/
+          if-no-files-found: ignore
+          retention-days: 7
+  production:
+    name: Browser production smoke
+    needs: changes
+    if: needs.changes.outputs.browser == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @my-beads/web exec playwright install --with-deps --only-shell chromium webkit
       - run: pnpm test:production
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: ${{ !cancelled() }}
         with:
-          name: browser-failures
-          path: apps/web/test-results/
+          name: browser-production
+          path: |
+            apps/web/test-results/production/
+            apps/web/playwright-report/production/
+          if-no-files-found: ignore
           retention-days: 7
+  browser:
+    name: Browser workflows
+    needs: [changes, e2e, production]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check browser results
+        env:
+          BROWSER_NEEDS: ${{ toJSON(needs) }}
+        run: node .github/scripts/browser-ci.mjs gate

@@ -46,8 +46,17 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm --filter @my-beads/core --filter @my-beads/web test
-      - run: pnpm --filter @my-beads/web exec playwright install --with-deps chromium webkit
+      - run: pnpm --filter @my-beads/web exec playwright install --with-deps --only-shell chromium webkit
       - run: pnpm test:production
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: pages-browser-production
+          path: |
+            apps/web/test-results/production/
+            apps/web/playwright-report/production/
+          if-no-files-found: ignore
+          retention-days: 7
       - uses: actions/upload-pages-artifact@v4
         with:
           path: apps/web/dist

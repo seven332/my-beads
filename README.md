@@ -69,6 +69,7 @@ pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm test:ci
 pnpm build
 ```
 
@@ -82,6 +83,6 @@ pnpm test:production
 
 Tests live alongside their packages. See the [frontend architecture guide](docs/frontend-architecture.md) for state, rendering, translation, and testing conventions.
 
-GitHub Actions checks pull requests and deploys the editor to GitHub Pages when changes affecting the web build reach `main`. See the [deployment workflow](.github/workflows/pages.yml) for its triggers.
+GitHub Actions checks pull requests and deploys the editor to GitHub Pages when changes affecting the web build reach `main`. See the [browser CI guide](docs/browser-ci.md) for filtering, sharding, and test reports, and the [deployment workflow](.github/workflows/pages.yml) for its triggers.
 
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).

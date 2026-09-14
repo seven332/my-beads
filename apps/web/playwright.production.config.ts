@@ -5,6 +5,10 @@ export default defineConfig({
   ...development,
   testDir: "./e2e/production",
   testIgnore: [],
+  outputDir: "./test-results/production",
+  reporter: process.env.CI
+    ? [["github"], ["html", { outputFolder: "playwright-report/production", open: "never" }]]
+    : "list",
   use: { ...development.use, baseURL: "http://127.0.0.1:4174/my-beads/" },
   webServer: {
     command: "pnpm exec vite preview --host 127.0.0.1 --port 4174 --strictPort --base /my-beads/",

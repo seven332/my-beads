@@ -5,11 +5,15 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   testIgnore: "**/production/**",
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? "github" : "list",
+  workers: process.env.CI ? 2 : undefined,
+  outputDir: "./test-results/e2e",
+  reporter: process.env.CI
+    ? [["github"], ["html", { outputFolder: "playwright-report/e2e", open: "never" }]]
+    : "list",
   use: {
     baseURL: "http://127.0.0.1:4173",
     viewport: { width: 1440, height: 1000 },
-    trace: "retain-on-failure",
+    trace: process.env.CI ? "on-first-retry" : "retain-on-failure",
   },
   projects: [
     {

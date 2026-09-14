@@ -17,6 +17,7 @@
     "lint": "eslint . && pnpm --filter @my-beads/web lint:i18n",
     "typecheck": "tsc --noEmit && pnpm --filter @my-beads/core typecheck && pnpm --filter @my-beads/web typecheck",
     "test": "pnpm -r test",
+    "test:ci": "node --test .github/scripts/*.test.mjs",
     "test:e2e": "pnpm --filter @my-beads/web test:e2e",
     "test:production": "pnpm --filter @my-beads/web build && pnpm --filter @my-beads/web test:production",
     "build": "pnpm --filter @my-beads/core build && pnpm --filter @my-beads/web build"
