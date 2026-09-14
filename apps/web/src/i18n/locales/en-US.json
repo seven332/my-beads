@@ -1,4 +1,11 @@
 {
+  "appearance": {
+    "label": "Appearance",
+    "current": "Appearance: {{mode}}",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  },
   "app": {
     "name": "My Beads",
     "pageTitle": "My Beads — Pattern editor",

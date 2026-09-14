@@ -16,6 +16,8 @@ Search the palette by MARD code or hex color. When a hex color has no exact matc
 
 Files are processed locally in your browser. The editor keeps a local draft between visits; export a CSV to keep a separate copy or move your work to another device. Printable chart labels stay in English in either interface language.
 
+Use **Appearance** beside the language selector to choose **System**, **Light**, or **Dark**. The default follows your system, including changes while the editor is open. Your choice is remembered on this device. Appearance changes the interface and canvas guides; bead colors and exported files retain their original colors.
+
 ## Keyboard Shortcuts
 
 Open **Keyboard shortcuts** in the editor or press **?** for the full list in your interface language.

@@ -1,6 +1,7 @@
 /* Interface colors only. MARD colors belong to pattern data, not the UI theme. */
 @layer theme {
-  :root {
+  :root,
+  [data-theme="light"] {
     --ui-font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
     --ui-foreground: #283c35;
     --ui-page: #f4f3ef;
@@ -52,6 +53,73 @@
     --ui-used-border: #e1e6dc;
     --ui-on-primary: #fff;
     --ui-divider: #dde2d9;
+    --ui-canvas-empty-a: #f5f6f2;
+    --ui-canvas-empty-b: #e4e6e3;
+    --ui-canvas-grid: #64716440;
+    --ui-canvas-mask: #a1aa9ecc;
+    --ui-canvas-outline-dark: #17291f;
+    --ui-canvas-outline-light: #ffffff;
+    --ui-canvas-selection: #ef7540;
+  }
+
+  [data-theme="dark"] {
+    --ui-foreground: #e3e9df;
+    --ui-page: #191d1b;
+    --ui-control: #2a332d;
+    --ui-control-border: #71816d;
+    --ui-control-hover: #364333;
+    --ui-control-hover-border: #a0b58f;
+    --ui-focus: #ffac76;
+    --ui-header-border: #44503f;
+    --ui-header: #202722;
+    --ui-brand-mark: #b2ce96;
+    --ui-tagline: #a9b6a1;
+    --ui-import-border: #71816d;
+    --ui-eyebrow: #adc299;
+    --ui-danger: #ffb6a3;
+    --ui-danger-surface: #482d28;
+    --ui-subtle: #35412f;
+    --ui-badge-text: #c0d8a9;
+    --ui-swatch-outline: #8b9b81;
+    --ui-muted: #a4b29e;
+    --ui-selected-count: #b2c2a7;
+    --ui-input-subtle: #252e27;
+    --ui-selection-border: #b4ce94;
+    --ui-selection: #3b4b32;
+    --ui-swatch-border: #ffffff70;
+    --ui-color-count: #b2c2a7;
+    --ui-secondary: #b2bdae;
+    --ui-label: #b8c6ad;
+    --ui-primary: #acc98f;
+    --ui-primary-hover: #bbd89d;
+    --ui-footer: #a4b29e;
+    --ui-border: #4d5b46;
+    --ui-surface: #242b26;
+    --ui-accent: #b9d89f;
+    --ui-featured-border: #7d9865;
+    --ui-detail: #aebb9f;
+    --ui-backdrop: #080d0bc9;
+    --ui-mapping-divider: #485341;
+    --ui-mapping-swatch-border: #ffffff70;
+    --ui-workspace: #202624;
+    --ui-workspace-dot: #424b44;
+    --ui-keycap: #303a2c;
+    --ui-floating: #29312bf7;
+    --ui-floating-border: #59674f;
+    --ui-shadow-near: #00000030;
+    --ui-shadow-far: #00000040;
+    --ui-shadow-active: #00000050;
+    --ui-status: #bdcdb0;
+    --ui-used-border: #4b5843;
+    --ui-on-primary: #172117;
+    --ui-divider: #53604c;
+    --ui-canvas-empty-a: #383c3e;
+    --ui-canvas-empty-b: #303436;
+    --ui-canvas-grid: #a6b0a170;
+    --ui-canvas-mask: #151916d9;
+    --ui-canvas-outline-dark: #111914;
+    --ui-canvas-outline-light: #f4f7f1;
+    --ui-canvas-selection: #ffac76;
   }
 }
 

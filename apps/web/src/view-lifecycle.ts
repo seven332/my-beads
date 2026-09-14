@@ -3,6 +3,8 @@ import { defaultPalette, type PatternGrid } from "@my-beads/core";
 import { mountCanvas, type CanvasActions } from "./canvas.js";
 import type { EditorModel } from "./state.js";
 import type { ImageSession } from "./image-state.js";
+import { readCanvasTheme, type CanvasTheme } from "./canvas-theme.js";
+import type { Theme } from "./theme-preference.js";
 
 export type ViewRefs = ReturnType<typeof createViewLifecycle>["refs"];
 
@@ -17,7 +19,12 @@ export function createViewLifecycle(actions: CanvasActions) {
     mappedPreview: createRef<HTMLCanvasElement>(),
   };
   let canvas:
-    | { element: HTMLCanvasElement; controller: ReturnType<typeof mountCanvas> }
+    | {
+        element: HTMLCanvasElement;
+        controller: ReturnType<typeof mountCanvas>;
+        theme: Theme;
+        colors: CanvasTheme;
+      }
     | undefined;
   let dialogs: HTMLDialogElement[] = [];
   const previews = new Map<HTMLCanvasElement, PatternGrid>();
@@ -54,16 +61,24 @@ export function createViewLifecycle(actions: CanvasActions) {
     holdPan(held: boolean) {
       canvas?.controller.holdPan(held);
     },
-    sync(model: EditorModel, image: ImageSession | null) {
+    sync(model: EditorModel, image: ImageSession | null, theme: Theme) {
       if (canvas?.element !== refs.canvas.value) {
         releaseCanvas();
         if (refs.canvas.value)
           canvas = {
             element: refs.canvas.value,
             controller: mountCanvas(refs.canvas.value, actions),
+            theme,
+            colors: readCanvasTheme(refs.canvas.value),
           };
       }
-      canvas?.controller.update(model);
+      if (canvas) {
+        if (canvas.theme !== theme) {
+          canvas.theme = theme;
+          canvas.colors = readCanvasTheme(canvas.element);
+        }
+        canvas.controller.update(model, canvas.colors);
+      }
       const previous = dialogs;
       dialogs = [refs.imageDialog.value, refs.exportDialog.value, refs.keyboardDialog.value].filter(
         (dialog): dialog is HTMLDialogElement => !!dialog,

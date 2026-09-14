@@ -1,4 +1,11 @@
 {
+  "appearance": {
+    "label": "外观",
+    "current": "外观：{{mode}}",
+    "system": "跟随系统",
+    "light": "浅色",
+    "dark": "深色"
+  },
   "app": {
     "name": "我来拼豆",
     "pageTitle": "我来拼豆 — 拼豆图纸编辑器",

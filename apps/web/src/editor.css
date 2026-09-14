@@ -144,7 +144,8 @@
 .editor-actions {
   flex-shrink: 0;
 }
-.editor-actions .language-picker {
+.editor-actions .language-picker,
+.editor-actions .preferences {
   margin: 0;
 }
 .editor-actions .language-picker > span {
@@ -497,7 +498,7 @@
     padding: 6px;
     pointer-events: auto;
     background: var(--ui-floating);
-    border: 1px solid var(--ui-control);
+    border: 1px solid var(--ui-floating-border);
     border-radius: 16px;
     box-shadow:
       0 3px 7px var(--ui-shadow-near),
@@ -650,6 +651,17 @@
 
   .editor-error {
     top: 108px;
+  }
+}
+@media (max-width: 460px) {
+  .editor-actions {
+    gap: 8px;
+  }
+  .editor-actions .document-actions .primary {
+    padding-inline: 10px;
+  }
+  .editor-actions .document-actions .primary > span {
+    display: none;
   }
 }
 @media (max-height: 600px) {
