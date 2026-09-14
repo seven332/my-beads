@@ -2,10 +2,10 @@ import { captureError } from "./errors.js";
 import { LOCALE_KEY, resolveLocale } from "./i18n/index.js";
 import { locale$, translation$, selectLocale$ } from "./locale.js";
 import { createStore } from "ccstate";
-import { init, h, attributesModule, propsModule, eventListenersModule, type VNode } from "snabbdom";
+import { render, nothing, type RootPart } from "lit-html";
 import * as state from "./state.js";
 import { view, type Actions } from "./view.js";
-import { mountCanvas } from "./canvas.js";
+import { createViewLifecycle } from "./view-lifecycle.js";
 import { editingArea, paletteIsOverlay } from "./canvas-viewport.js";
 import { exportPattern } from "./exports.js";
 import * as images from "./image-state.js";
@@ -24,10 +24,8 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
   let importController: AbortController | undefined;
   let exportController: AbortController | undefined;
   const downloads = new Map<string, ReturnType<typeof setTimeout>>();
-  const patch = init([attributesModule, propsModule, eventListenersModule]);
   const root = document.createElement("div"); host.append(root);
-  let vnode: VNode | Element = root;
-  let canvas: ReturnType<typeof mountCanvas> | undefined;
+  let part: RootPart | undefined;
   const fail = (error: unknown) => {
     if (!lifetime.signal.aborted) store.set(state.reportError$, captureError(error));
   };
@@ -129,25 +127,20 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
       }, error => { if (!signal.aborted) { store.set(exports.reportExportPending$, false); fail(error); } });
     },
   };
-  const canvasHooks = {
-    insert(node: VNode) {
-      canvas = mountCanvas(node.elm as HTMLCanvasElement, {
-        begin: point => store.set(state.beginStroke$, point), extend: point => store.set(state.extendStroke$, point),
-        finish: cancel => store.set(state.finishStroke$, cancel),
-        pan: (dx, dy) => store.set(state.moveViewport$, dx, dy),
-        zoom: (factor, anchor) => store.set(state.zoom$, factor, anchor),
-      });
-      canvas.update(store.get(state.editor$));
-    },
-    destroy() { canvas?.destroy(); canvas = undefined; },
-  };
+  const lifecycle = createViewLifecycle({
+    begin: point => store.set(state.beginStroke$, point), extend: point => store.set(state.extendStroke$, point),
+    finish: cancel => store.set(state.finishStroke$, cancel),
+    pan: (dx, dy) => store.set(state.moveViewport$, dx, dy),
+    zoom: (factor, anchor) => store.set(state.zoom$, factor, anchor),
+  });
   store.watch(get => {
     const model = get(state.editor$);
     const locale = get(locale$), t = get(translation$);
     document.documentElement.lang = locale;
     document.title = t($ => $.app.pageTitle);
-    vnode = patch(vnode, view(model, actions, canvasHooks, get(images.imageSession$), get(state.draftStatus$), locale, t, get(state.workflow$), get(exports.exportSettings$)));
-    canvas?.update(model);
+    const image = get(images.imageSession$);
+    part = render(view(model, actions, lifecycle.refs, image, get(state.draftStatus$), locale, t, get(state.workflow$), get(exports.exportSettings$)), root);
+    lifecycle.sync(model, image);
     drafts.observe(get(state.committedDocument$));
   }, { signal: lifetime.signal });
   // watch runs immediately; fitting is outside the read-only watch callback.
@@ -175,7 +168,7 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
       flushDraft(); drafts.dispose(); window.removeEventListener("pagehide", flushDraft);
       lifetime.abort(); importController?.abort(); exportController?.abort(); window.removeEventListener("keydown", shortcut);
       for (const [url, timer] of downloads) { clearTimeout(timer); URL.revokeObjectURL(url); }
-      downloads.clear(); vnode = patch(vnode, h("div")); (vnode.elm as Element).remove();
+      downloads.clear(); lifecycle.destroy(); part?.setConnected(false); render(nothing, root); root.remove();
     },
   };
 }

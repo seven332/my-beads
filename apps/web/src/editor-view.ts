@@ -1,4 +1,6 @@
-import { h, type Hooks, type VNode } from "snabbdom";
+import { html, nothing, type TemplateResult } from "lit-html";
+import { live } from "lit-html/directives/live.js";
+import { ref, type Ref } from "lit-html/directives/ref.js";
 import { defaultPalette } from "@my-beads/core";
 import type { EditorModel } from "./state.js";
 import type { Actions } from "./view.js";
@@ -7,78 +9,89 @@ import { paletteResults, usedColors } from "./palette-view.js";
 import { Download, Eraser, Hand, Minus, PaintBucket, Pencil, Pipette, Plus, Redo2, Undo2, X } from "@lucide/icons";
 import { icon } from "./icon.js";
 
-function button(label: string | VNode | (string | VNode)[], action: () => void, attrs: Record<string, string | boolean> = {}, className = "") {
-  return h("button", { attrs: { type: "button", class: className,
-    ...Object.fromEntries(Object.entries(attrs).map(([name, value]) => [name, name.startsWith("aria-") ? String(value) : value])) }, on: { click: action } }, label);
-}
-
-export function editorView(model: EditorModel, actions: Actions, canvasHooks: Hooks, t: Translate,
-  brand: VNode, language: VNode, draft: VNode, exporting: boolean): VNode {
+export function editorView(model: EditorModel, actions: Actions, canvas: Ref<HTMLCanvasElement>, t: Translate,
+  brand: TemplateResult, language: TemplateResult, draft: TemplateResult | typeof nothing, exporting: boolean) {
   const grid = model.document.grid;
-  return h("main.editor-layout", { key: "edit", attrs: { "aria-label": t($ => $.app.workspace), "data-palette-open": String(model.paletteOpen) } }, [
-    h("div.canvas-container", [h("canvas.pattern-canvas", { key: "pattern-canvas", hook: canvasHooks,
-      attrs: { tabindex: "0", role: "img", "aria-label": t($ => $.app.canvas), "aria-describedby": "canvas-help" } })]),
-    h("header.editor-topbar", [
-      h("div.editor-document.floating-panel", { attrs: { "data-canvas-panel": "" } }, [brand,
-        h("input.title-input", { attrs: { "aria-label": t($ => $.app.patternTitle), maxlength: "100" }, props: { value: model.title },
-          on: { input: (event: Event) => actions.rename((event.target as HTMLInputElement).value) } }),
-      ]),
-      h("div.editor-actions.floating-panel", { attrs: { "data-canvas-panel": "" } }, [language,
-        h("div.document-actions", [button(t($ => $.create.new), actions.startNew),
-          button([icon(Download), h("span", t($ => $.export.open))], actions.openExport, { "aria-label": t($ => $.export.open) }, "primary with-icon")]),
-      ]),
-    ]),
-    h("div.editor-dock", { attrs: { "data-canvas-panel": "" } }, [
-      h("div.editor-tools.floating-panel", { attrs: { "data-canvas-panel": "" } }, [
-        h("div.tools", { attrs: { role: "group", "aria-label": t($ => $.app.tools) } }, ([
-          ["pencil", Pencil], ["eraser", Eraser], ["bucket", PaintBucket], ["eyedropper", Pipette], ["pan", Hand],
-        ] as const).map(([tool, graphic]) => {
-          const label = tool === "bucket" ? t($ => $.tools.bucketLabel) : tool === "eyedropper" ? t($ => $.tools.eyedropperLabel) : t($ => $.tools[tool]);
-          return h("button.tool", { attrs: { type: "button", "aria-label": label, title: label, "aria-pressed": String(model.tool === tool) },
-            on: { click: () => actions.tool(tool) } }, [h("span.tool-icon", [icon(graphic)]), h("span.tool-label", t($ => $.tools[tool]))]);
-        })),
-        h("div.history-controls", [button(icon(Undo2), actions.undo, { disabled: !model.canUndo, "aria-label": t($ => $.app.undo), title: t($ => $.app.undo) }),
-          button(icon(Redo2), actions.redo, { disabled: !model.canRedo, "aria-label": t($ => $.app.redo), title: t($ => $.app.redo) })]),
-      ]),
-      h("div.editor-navigation.floating-panel", { attrs: { "data-canvas-panel": "" } }, [
-        h("button.palette-toggle", { attrs: { type: "button", "aria-label": t($ => $.palette.open), "aria-controls": "editor-palette", "aria-expanded": String(model.paletteOpen) },
-          on: { click: () => actions.palette(!model.paletteOpen) } }, [h("span.color-swatch", { attrs: { style: `background:${defaultPalette.colors[model.color]}` } }), h("span", model.color)]),
-        h("div.display-controls", [button(t($ => $.app.grid), actions.grid, { "aria-pressed": model.gridVisible }), button(t($ => $.app.codes), actions.codes, { "aria-pressed": model.codesVisible })]),
-        h("div.zoom-controls", [button(icon(Minus), () => actions.zoom(1 / 1.25), { "aria-label": t($ => $.app.zoomOut) }),
-          h("output", { attrs: { "aria-label": t($ => $.app.zoomLevel) } }, `${Math.round(model.viewport.zoom / 12 * 100)}%`),
-          button(icon(Plus), () => actions.zoom(1.25), { "aria-label": t($ => $.app.zoomIn) }), button(t($ => $.app.fit), actions.fit, { "aria-label": t($ => $.app.fitWindow) })]),
-      ]),
-    ]),
-    h("aside.palette-panel.floating-panel", { attrs: { id: "editor-palette", "aria-label": t($ => $.palette.heading), "data-canvas-panel": "" } }, [
-      h("div.section-heading", [h("h2", t($ => $.palette.heading)), h("span.tag", "MARD 221"),
-        button(icon(X), () => actions.palette(false), { "aria-label": t($ => $.palette.close) }, "palette-close icon-button")]),
-      h("div.selected-color", [h("span.selected-swatch", { attrs: { style: `background:${defaultPalette.colors[model.color]}` } }),
-        h("div", [h("strong", model.color), h("span", defaultPalette.colors[model.color])]),
-        h("span.selected-count", t($ => $.beads, { count: model.document.counts.get(model.color) ?? 0 }))]),
-      h("div.palette-view", { attrs: { role: "group", "aria-label": t($ => $.palette.view) } }, [
-        button(t($ => $.palette.used), () => actions.paletteView("used"), { "aria-pressed": model.paletteView === "used" }),
-        button(t($ => $.palette.all), () => actions.paletteView("all"), { "aria-pressed": model.paletteView === "all" }),
-      ]),
-      model.paletteView === "all" ? h("input.palette-search", { key: "search", attrs: { type: "search", placeholder: t($ => $.palette.searchPlaceholder), "aria-label": t($ => $.palette.search) },
-        props: { value: model.search }, on: { input: (event: Event) => actions.search((event.target as HTMLInputElement).value) } })
-        : h("span.editor-placeholder", { key: "search" }),
-      model.paletteView === "all" ? paletteResults(model.paletteSearch, model.color, model.document.counts, actions.color, t)
-        : usedColors(model, actions.color, actions.highlight, t),
-    ]),
-    h("div.editor-status.floating-panel", { attrs: { "data-canvas-panel": "" } }, [
-      h("div.canvas-status", [h("span", t($ => $.app.dimensions, { columns: grid[0].length, rows: grid.length })),
-        h("span.counts", { attrs: { "data-testid": "counts" } }, `${t($ => $.beads, { count: model.beads })} · ${t($ => $.colors, { count: model.document.counts.size })}`)]),
-      model.highlightedColor ? h("div.highlight-status", [
-        h("span.highlight-summary", { attrs: { role: "status" } }, [
-          h("span.color-swatch", { attrs: { style: `background:${defaultPalette.colors[model.highlightedColor]}` } }),
-          h("span", `${t($ => $.palette.highlighting, { code: model.highlightedColor })} · ${t($ => $.beads, { count: model.document.counts.get(model.highlightedColor) ?? 0 })}`),
-        ]),
-        button(t($ => $.palette.showLocations), actions.fitHighlight, { disabled: !model.document.counts.has(model.highlightedColor) }),
-        button(icon(X), () => actions.highlight(null), { "aria-label": t($ => $.palette.clearHighlight), title: t($ => $.palette.clearHighlight) }, "highlight-clear"),
-      ]) : h("span.editor-placeholder"),
-      draft,
-    ]),
-    h("p.canvas-help.sr-only", { attrs: { id: "canvas-help" } }, t($ => $.app.canvasHelp)),
-    model.error && !exporting ? h("p.editor-error.error.floating-panel", { attrs: { role: "alert", "data-canvas-panel": "" } }, model.error) : h("span.editor-placeholder"),
-  ]);
+  return html`<main class="editor-layout" aria-label=${t($ => $.app.workspace)} data-palette-open=${String(model.paletteOpen)}>
+    <div class="canvas-container"><canvas class="pattern-canvas" ${ref(canvas)}
+      tabindex="0" role="img" aria-label=${t($ => $.app.canvas)} aria-describedby="canvas-help"></canvas></div>
+    <header class="editor-topbar">
+      <div class="editor-document floating-panel" data-canvas-panel>${brand}
+        <input class="title-input" aria-label=${t($ => $.app.patternTitle)} maxlength="100" .value=${live(model.title)}
+          @input=${(event: Event) => actions.rename((event.target as HTMLInputElement).value)}>
+      </div>
+      <div class="editor-actions floating-panel" data-canvas-panel>${language}
+        <div class="document-actions">
+          <button type="button" @click=${actions.startNew}>${t($ => $.create.new)}</button>
+          <button type="button" class="primary with-icon" aria-label=${t($ => $.export.open)} @click=${actions.openExport}>${icon(Download)}<span>${t($ => $.export.open)}</span></button>
+        </div>
+      </div>
+    </header>
+    <div class="editor-dock" data-canvas-panel>
+      <div class="editor-tools floating-panel" data-canvas-panel>
+        <div class="tools" role="group" aria-label=${t($ => $.app.tools)}>
+          ${([
+            ["pencil", Pencil], ["eraser", Eraser], ["bucket", PaintBucket], ["eyedropper", Pipette], ["pan", Hand],
+          ] as const).map(([tool, graphic]) => {
+            const label = tool === "bucket" ? t($ => $.tools.bucketLabel) : tool === "eyedropper" ? t($ => $.tools.eyedropperLabel) : t($ => $.tools[tool]);
+            return html`<button class="tool" type="button" aria-label=${label} title=${label} aria-pressed=${String(model.tool === tool)} @click=${() => actions.tool(tool)}>
+              <span class="tool-icon">${icon(graphic)}</span><span class="tool-label">${t($ => $.tools[tool])}</span>
+            </button>`;
+          })}
+        </div>
+        <div class="history-controls">
+          <button type="button" ?disabled=${!model.canUndo} aria-label=${t($ => $.app.undo)} title=${t($ => $.app.undo)} @click=${actions.undo}>${icon(Undo2)}</button>
+          <button type="button" ?disabled=${!model.canRedo} aria-label=${t($ => $.app.redo)} title=${t($ => $.app.redo)} @click=${actions.redo}>${icon(Redo2)}</button>
+        </div>
+      </div>
+      <div class="editor-navigation floating-panel" data-canvas-panel>
+        <button class="palette-toggle" type="button" aria-label=${t($ => $.palette.open)} aria-controls="editor-palette" aria-expanded=${String(model.paletteOpen)} @click=${() => actions.palette(!model.paletteOpen)}>
+          <span class="color-swatch" style=${`background:${defaultPalette.colors[model.color]}`}></span><span>${model.color}</span>
+        </button>
+        <div class="display-controls">
+          <button type="button" aria-pressed=${String(model.gridVisible)} @click=${actions.grid}>${t($ => $.app.grid)}</button>
+          <button type="button" aria-pressed=${String(model.codesVisible)} @click=${actions.codes}>${t($ => $.app.codes)}</button>
+        </div>
+        <div class="zoom-controls">
+          <button type="button" aria-label=${t($ => $.app.zoomOut)} @click=${() => actions.zoom(1 / 1.25)}>${icon(Minus)}</button>
+          <output aria-label=${t($ => $.app.zoomLevel)}>${Math.round(model.viewport.zoom / 12 * 100)}%</output>
+          <button type="button" aria-label=${t($ => $.app.zoomIn)} @click=${() => actions.zoom(1.25)}>${icon(Plus)}</button>
+          <button type="button" aria-label=${t($ => $.app.fitWindow)} @click=${actions.fit}>${t($ => $.app.fit)}</button>
+        </div>
+      </div>
+    </div>
+    <aside class="palette-panel floating-panel" id="editor-palette" aria-label=${t($ => $.palette.heading)} data-canvas-panel>
+      <div class="section-heading"><h2>${t($ => $.palette.heading)}</h2><span class="tag">MARD 221</span>
+        <button type="button" class="palette-close icon-button" aria-label=${t($ => $.palette.close)} @click=${() => actions.palette(false)}>${icon(X)}</button>
+      </div>
+      <div class="selected-color">
+        <span class="selected-swatch" style=${`background:${defaultPalette.colors[model.color]}`}></span>
+        <div><strong>${model.color}</strong><span>${defaultPalette.colors[model.color]}</span></div>
+        <span class="selected-count">${t($ => $.beads, { count: model.document.counts.get(model.color) ?? 0 })}</span>
+      </div>
+      <div class="palette-view" role="group" aria-label=${t($ => $.palette.view)}>
+        <button type="button" aria-pressed=${String(model.paletteView === "used")} @click=${() => actions.paletteView("used")}>${t($ => $.palette.used)}</button>
+        <button type="button" aria-pressed=${String(model.paletteView === "all")} @click=${() => actions.paletteView("all")}>${t($ => $.palette.all)}</button>
+      </div>
+      ${model.paletteView === "all" ? html`<input class="palette-search" type="search" placeholder=${t($ => $.palette.searchPlaceholder)} aria-label=${t($ => $.palette.search)}
+        .value=${live(model.search)} @input=${(event: Event) => actions.search((event.target as HTMLInputElement).value)}>` : nothing}
+      ${model.paletteView === "all" ? paletteResults(model.paletteSearch, model.color, model.document.counts, actions.color, t) : usedColors(model, actions.color, actions.highlight, t)}
+    </aside>
+    <div class="editor-status floating-panel" data-canvas-panel>
+      <div class="canvas-status"><span>${t($ => $.app.dimensions, { columns: grid[0].length, rows: grid.length })}</span>
+        <span class="counts" data-testid="counts">${t($ => $.beads, { count: model.beads })} · ${t($ => $.colors, { count: model.document.counts.size })}</span>
+      </div>
+      ${model.highlightedColor ? html`<div class="highlight-status">
+        <span class="highlight-summary" role="status">
+          <span class="color-swatch" style=${`background:${defaultPalette.colors[model.highlightedColor]}`}></span>
+          <span>${t($ => $.palette.highlighting, { code: model.highlightedColor })} · ${t($ => $.beads, { count: model.document.counts.get(model.highlightedColor) ?? 0 })}</span>
+        </span>
+        <button type="button" ?disabled=${!model.document.counts.has(model.highlightedColor)} @click=${actions.fitHighlight}>${t($ => $.palette.showLocations)}</button>
+        <button type="button" class="highlight-clear" aria-label=${t($ => $.palette.clearHighlight)} title=${t($ => $.palette.clearHighlight)} @click=${() => actions.highlight(null)}>${icon(X)}</button>
+      </div>` : nothing}
+      ${draft}
+    </div>
+    <p class="canvas-help sr-only" id="canvas-help">${t($ => $.app.canvasHelp)}</p>
+    ${model.error && !exporting ? html`<p class="editor-error error floating-panel" role="alert" data-canvas-panel>${model.error}</p>` : nothing}
+  </main>`;
 }

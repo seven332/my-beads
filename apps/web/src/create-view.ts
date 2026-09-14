@@ -1,4 +1,4 @@
-import { h, type VNode } from "snabbdom";
+import { html, nothing } from "lit-html";
 import type { EditorModel, workflow$ } from "./state.js";
 import type { Translate } from "./i18n/index.js";
 import { imagePicker } from "./image-view.js";
@@ -11,62 +11,55 @@ export interface CreateActions {
   importImage(file: File): void;
   resume(): void;
 }
-export function createView(model: EditorModel, flow: ReturnType<typeof workflow$.read>, actions: CreateActions, t: Translate): VNode {
+export function createView(model: EditorModel, flow: ReturnType<typeof workflow$.read>, actions: CreateActions, t: Translate) {
   function error(source: typeof flow.errorSource) {
-    return model.error && flow.errorSource === source ? h("p.error", { attrs: { role: "alert" } }, model.error) : h("span");
+    return model.error && flow.errorSource === source ? html`<p class="error" role="alert">${model.error}</p>` : nothing;
   }
   function dimension(name: "columns" | "rows") {
-    return h("label.field", [h("span", t($ => $.newPattern[name])), h("input", {
-      attrs: { type: "number", name, min: 1, max: 256, required: true }, props: { defaultValue: "50" },
-    })]);
+    return html`<label class="field"><span>${t($ => $.newPattern[name])}</span>
+      <input type="number" name=${name} min="1" max="256" required .defaultValue=${"50"}>
+    </label>`;
   }
-  return h("main.create-page", { key: "create", attrs: { "aria-labelledby": "create-heading" } }, [
-    h("div.create-intro", [h("span.eyebrow", t($ => $.app.studio)),
-      h("h1", { attrs: { id: "create-heading", tabindex: "-1" } }, t($ => $.create.heading)),
-      h("p", t($ => $.create.intro))]),
-    flow.hasDocument ? h("div.resume-pattern", [
-      h("div", [h("span.eyebrow", t($ => $.create.current)), h("strong", model.title),
-        h("p", { attrs: { "data-testid": "counts" } }, `${t($ => $.beads, { count: model.beads })} · ${t($ => $.colors, { count: model.document.counts.size })}`),
-        h("p", t($ => $.create.keepCurrent))]),
-      h("button", { attrs: { type: "button" }, on: { click: actions.resume } }, t($ => $.create.resume)),
-    ]) : h("span"),
-    h("div.creation-options", [
-      h("section.creation-card.blank-card", { attrs: { "aria-labelledby": "blank-heading" } }, [
-        h("div.creation-icon", [icon(Grid3x3)]),
-        h("h2", { attrs: { id: "blank-heading" } }, t($ => $.create.blank)),
-        h("p.card-description", t($ => $.create.blankDescription)),
-        h("form.blank-form", { attrs: { novalidate: true }, on: { submit: (event: Event) => {
+  return html`<main class="create-page" aria-labelledby="create-heading">
+    <div class="create-intro"><span class="eyebrow">${t($ => $.app.studio)}</span>
+      <h1 id="create-heading" tabindex="-1">${t($ => $.create.heading)}</h1><p>${t($ => $.create.intro)}</p>
+    </div>
+    ${flow.hasDocument ? html`<div class="resume-pattern">
+      <div><span class="eyebrow">${t($ => $.create.current)}</span><strong>${model.title}</strong>
+        <p data-testid="counts">${t($ => $.beads, { count: model.beads })} · ${t($ => $.colors, { count: model.document.counts.size })}</p>
+        <p>${t($ => $.create.keepCurrent)}</p></div>
+      <button type="button" @click=${actions.resume}>${t($ => $.create.resume)}</button>
+    </div>` : nothing}
+    <div class="creation-options">
+      <section class="creation-card blank-card" aria-labelledby="blank-heading">
+        <div class="creation-icon">${icon(Grid3x3)}</div><h2 id="blank-heading">${t($ => $.create.blank)}</h2>
+        <p class="card-description">${t($ => $.create.blankDescription)}</p>
+        <form class="blank-form" novalidate @submit=${(event: Event) => {
           event.preventDefault(); const data = new FormData(event.target as HTMLFormElement);
           actions.create(Number(data.get("columns")), Number(data.get("rows")));
-        } } }, [h("div.field-row", [dimension("columns"), dimension("rows")]),
-          h("p.muted", t($ => $.create.sizeHelp)),
-          error("blank"),
-          h("button.primary", { attrs: { type: "submit" } }, t($ => $.newPattern.create))]),
-      ]),
-      h("section.creation-card", { attrs: { "aria-labelledby": "csv-heading" } }, [
-        h("div.creation-icon", [icon(FileSpreadsheet)]),
-        h("h2", { attrs: { id: "csv-heading" } }, t($ => $.create.csv)),
-        h("p.card-description", t($ => $.create.csvDescription)),
-        h("p.card-detail", t($ => $.create.csvDetail)),
-        error("csv"),
-        flow.csvLoading ? h("p.import-progress", { attrs: { role: "status" } }, t($ => $.create.readingCsv)) : h("span"),
-        h("label.import-button", [h("span", t($ => $.app.openCsv)), h("input.file-input", {
-          attrs: { type: "file", accept: ".csv,text/csv", "aria-label": t($ => $.app.openCsv) },
-          on: { change: (event: Event) => {
+        }}>
+          <div class="field-row">${dimension("columns")}${dimension("rows")}</div>
+          <p class="muted">${t($ => $.create.sizeHelp)}</p>${error("blank")}
+          <button class="primary" type="submit">${t($ => $.newPattern.create)}</button>
+        </form>
+      </section>
+      <section class="creation-card" aria-labelledby="csv-heading">
+        <div class="creation-icon">${icon(FileSpreadsheet)}</div><h2 id="csv-heading">${t($ => $.create.csv)}</h2>
+        <p class="card-description">${t($ => $.create.csvDescription)}</p><p class="card-detail">${t($ => $.create.csvDetail)}</p>
+        ${error("csv")}${flow.csvLoading ? html`<p class="import-progress" role="status">${t($ => $.create.readingCsv)}</p>` : nothing}
+        <label class="import-button"><span>${t($ => $.app.openCsv)}</span>
+          <input class="file-input" type="file" accept=".csv,text/csv" aria-label=${t($ => $.app.openCsv)} @change=${(event: Event) => {
             const input = event.target as HTMLInputElement, file = input.files?.[0];
             if (file) actions.import(file); input.value = "";
-          } },
-        })]),
-      ]),
-      h("section.creation-card", { attrs: { "aria-labelledby": "picture-heading" } }, [
-        h("div.creation-icon", [icon(ImagePlus)]),
-        h("h2", { attrs: { id: "picture-heading" } }, t($ => $.create.image)),
-        h("p.card-description", t($ => $.create.imageDescription)),
-        h("p.card-detail", t($ => $.create.imageDetail)),
-        imagePicker(t($ => $.app.openImage), t($ => $.app.openImage), actions.importImage),
-      ]),
-    ]),
-    error(null),
-    h("p.creation-note", t($ => $.create.local)),
-  ]);
+          }}>
+        </label>
+      </section>
+      <section class="creation-card" aria-labelledby="picture-heading">
+        <div class="creation-icon">${icon(ImagePlus)}</div><h2 id="picture-heading">${t($ => $.create.image)}</h2>
+        <p class="card-description">${t($ => $.create.imageDescription)}</p><p class="card-detail">${t($ => $.create.imageDetail)}</p>
+        ${imagePicker(t($ => $.app.openImage), t($ => $.app.openImage), actions.importImage)}
+      </section>
+    </div>
+    ${error(null)}<p class="creation-note">${t($ => $.create.local)}</p>
+  </main>`;
 }

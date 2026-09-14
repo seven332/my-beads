@@ -20,11 +20,12 @@
     "build": "pnpm --filter @my-beads/core build && pnpm --filter @my-beads/web build"
   },
   "devDependencies": {
-    "eslint": "10.10.0",
-    "typescript-eslint": "8.70.0",
     "@types/node": "^22.20.2",
     "esbuild": "0.28.2",
+    "eslint": "10.10.0",
+    "eslint-plugin-lit": "2.3.1",
     "tsx": "^4.23.13",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.0"
   }
 }

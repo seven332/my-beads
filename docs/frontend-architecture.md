@@ -1,9 +1,10 @@
 # Frontend architecture
 
 The editor is planned in [#6](https://github.com/seven332/my-beads/issues/6).
-The shared core and ccstate/Snabbdom CSV editor are implemented in #7 and
+The shared core and CSV editor are implemented in #7 and
 [#8](https://github.com/seven332/my-beads/issues/8). Image import and draft recovery
 complete the final delivery slice in [#9](https://github.com/seven332/my-beads/issues/9).
+Standalone lit-html replaces the original renderer in [#32](https://github.com/seven332/my-beads/issues/32).
 
 ## Boundaries
 
@@ -14,7 +15,7 @@ complete the final delivery slice in [#9](https://github.com/seven332/my-beads/i
   grids as immutable. Chart rendering accepts integer widths from 800 to 10000 pixels,
   with a minimum of `columns * max(20, digits(columns) * 8) + 250` for readable cells
   and separated multi-digit coordinates.
-- The browser app owns ccstate, Snabbdom views, Canvas interaction, file decoding,
+- The browser app owns ccstate, lit-html views, Canvas interaction, file decoding,
   downloads and storage. It imports the core without Node polyfills.
 - `apps/cli` owns filesystem paths, system fonts, macOS sips and native resvg.
   Browser code must never import these adapters.
@@ -67,9 +68,22 @@ only document data.
 
 ## Lifecycle and asynchronous work
 
-The application mount owns its root cancellation lifetime. Adapt Snabbdom's
-insert/destroy hooks for Canvas setup and disposal, retain the vnode returned by
-patch, and keep the Canvas keyed so unrelated UI updates preserve its element.
+The application mount owns its root cancellation lifetime and a dedicated render
+container. One ccstate watch calls standalone lit-html `render` synchronously;
+`view-lifecycle.ts` then synchronizes stable element refs. Canvas controllers mount
+once per element, update after each render and dispose when their element leaves
+the view. Keep the editor template at a stable location so unrelated state updates
+preserve its Canvas, pointer capture and focused controls. State commands can
+measure or focus the resulting DOM immediately after returning.
+
+Native dialogs call `showModal` only after render inserts them; ref callbacks alone
+do not guarantee insertion. The lifecycle owner closes removed/replaced dialogs
+and paints image previews only when their element or immutable grid changes.
+Image sessions use `keyed(session.id, ...)` to reset form defaults on replacement.
+Palette and mapping rows use `repeat` with stable color keys. Controlled input
+strings use `live`; blank/image options use `defaultValue` and `defaultChecked`
+so unrelated renders preserve unfinished form edits. No LitElement, custom elements,
+Shadow DOM or second reactive state model is required.
 
 Async commands take their owning AbortSignal as the final argument. Pass it to
 cancellable APIs; after noncancellable awaits, check `signal.throwIfAborted()`
@@ -109,17 +123,21 @@ stay unchanged, such as picking the same color or filling an already matching re
 Counts come from computed core data. Imports use both an owned AbortSignal and
 revision/token checks, so newer work cannot be overwritten by a late file read.
 
-The root watch patches one retained vnode; the keyed Canvas insert/destroy hooks
-own pointer listeners, ResizeObserver and animation frames. Mount destruction aborts
-the watch and file work, removes listeners and revokes pending download URLs.
+The Canvas controller owns pointer listeners, ResizeObserver and animation frames.
+Mount destruction aborts the watch and file work, disposes view resources, disconnects
+the Lit root part, clears rendering and removes only its owned container. It also
+removes application listeners and revokes pending download URLs.
 CI covers real bootstrap/teardown, state isolation, Chromium/WebKit editing and
 decoded downloads, alongside the existing core and CLI regression suites.
 
 ## Editor workspace layout
 
-Interface icons use static named imports from `@lucide/icons`. `icon.ts` turns
-the icon data into fresh Snabbdom SVG vnodes, including nested nodes and their
-keys; views never cache mutable vnodes or replace DOM with an icon scanner.
+Interface icons use static named imports from `@lucide/icons`. `icon.ts` renders
+an ordinary SVG template with recursive static SVG shapes. Its private attribute
+directive copies package attributes without leaking Lucide's internal keys. Dynamic
+tag names use `unsafeStatic` only for trusted icon data; never pass document/user
+data into this adapter. Ordinary text uses escaped template expressions. Each icon
+owns independent DOM nodes, and no document-wide icon scanner is used.
 Icons inherit `currentColor` and are decorative (`aria-hidden`, non-focusable).
 Keep translated visible text or accessible names on their surrounding controls.
 Choose icons by action: PaintBucket for fill, Pipette for picking a color, Hand
@@ -203,7 +221,7 @@ decoding, storage, reloads and exported contents. No screenshot baseline is requ
 ## Interface languages
 
 The web app follows vm0's i18next, JSON resource and typed-selector approach,
-adapted to Snabbdom. English (`en-US`) and Simplified Chinese (`zh-CN`) are bundled
+adapted to standalone templates. English (`en-US`) and Simplified Chinese (`zh-CN`) are bundled
 statically and initialized before mounting. The English brand is My Beads; the
 Chinese brand is 我来拼豆. No React binding, translation backend or runtime fetch
 is needed. `locale.ts` owns a private language atom, readonly locale/translator
@@ -226,7 +244,7 @@ Core `BeadError` codes and interpolation values preserve English CLI messages
 without depending on the web app. Browser errors and draft statuses also keep
 their identity until presentation, allowing existing alerts to change language.
 Unknown browser/IO diagnostics retain their original detail inside a translated
-message. Snabbdom renders translations and interpolated user values as text.
+message. lit-html renders translations and interpolated user values as text.
 
 `pnpm lint` validates catalog keys, nonempty values, interpolation placeholders and
 locale-specific plural forms. TypeScript checks selector keys. Package-local tests
@@ -234,16 +252,24 @@ cover language resolution/persistence, independent stores, preserved editing and
 form state, retranslated errors and unchanged draft recovery. Chromium/WebKit
 tests cover Chinese image import, English exports, reloads and responsive layouts.
 
-The web-only ESLint rule `ccstate/no-hardcoded-ui-text` checks Snabbdom child text,
-visible attributes (including accessible names, placeholders and tooltips), local
-rendering-helper arguments, DOM text assignments and browser error messages. It
-follows local constants, aliases, destructuring, conditional/template expressions,
-return values and common array/object mappings, including local object and array
-spreads. It resolves imported `h` bindings, so aliases work and unrelated or
-shadowed functions are not treated as Snabbdom.
+The web-only ESLint rule `ccstate/no-hardcoded-ui-text` parses lit-html templates
+with parse5. It checks static visible text, HTML entities, text expressions and
+textual attributes/properties (including accessible names, placeholders and tooltips),
+while excluding structural attributes, comments and script/style content. It also
+checks local rendering-helper arguments, DOM text assignments and browser errors.
+It follows constants, aliases, destructuring, conditionals, helper return values,
+array/object mappings and keyed `repeat` callbacks. Imported `html`/`svg` bindings
+are resolved through aliases and namespaces; unrelated or shadowed tags are ignored.
+Legacy `h` analysis remains in the lint package's regression coverage without
+retaining that renderer as an application dependency.
 There is no exemption for a function merely named `t`.
 
-Use `h("button", t($ => $.export.download))` instead of `h("button", "Download")`.
+Use a translated label:
+
+```ts
+html`<button>${t($ => $.export.download)}</button>`
+```
+
 For an imported helper, list its module, export name and text-argument indexes in
 `textFunctions` in the ESLint config; `imagePicker` is registered this way. Keep
 literal exceptions exact and explained: palette codes come from the actual MARD
@@ -257,6 +283,14 @@ traced across modules. Review new UI data sources and helper boundaries. The rul
 does not inspect catalog JSON, CLI/chart output or test fixtures. RuleTester cases
 and a test against the repository's actual ESLint config verify both enforcement
 and exclusions; these run in the existing CI package-test job.
+
+`eslint-plugin-lit` runs recommended template syntax/binding checks plus controlled
+input value and dynamic constraint ordering rules in `pnpm lint`. Use the canonical
+`html` tag name in views: the plugin's syntax checks recognize that spelling, while
+the copy rule additionally resolves aliases. Fixtures verify malformed HTML, invalid
+binding positions, duplicate bindings, legacy boolean/event syntax and input value
+attributes. These checks complement typed translation selectors; they do not provide
+complete DOM-property or event-parameter type checking inside template strings.
 
 ## Static deployment
 
