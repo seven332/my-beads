@@ -96,7 +96,9 @@ export function view(
             ${brand}<span class="topbar-note">${t(($) => $.app.tagline)}</span>${language}
           </header>
           ${status}${createView(model, flow, actions, t)}
-          <footer class="app-footer">
+          <footer
+            class="mt-auto flex justify-between gap-4 px-8 py-6 text-[10px] text-footer narrow:px-4 narrow:py-5"
+          >
             <span>${t(($) => $.app.footer)}</span><span>${t(($) => $.app.localFiles)}</span>
           </footer>
         `

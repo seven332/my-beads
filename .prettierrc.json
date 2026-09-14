@@ -1,1 +1,13 @@
-{ "printWidth": 100, "objectWrap": "collapse" }
+{
+  "printWidth": 100,
+  "objectWrap": "collapse",
+  "overrides": [
+    {
+      "files": ["apps/web/src/**/*.ts", "apps/web/src/**/*.css"],
+      "options": {
+        "plugins": ["prettier-plugin-tailwindcss"],
+        "tailwindStylesheet": "./apps/web/src/style.css"
+      }
+    }
+  ]
+}

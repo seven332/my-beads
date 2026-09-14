@@ -69,7 +69,7 @@ The built-in palette is based on the [Pixel Beads MARD color chart](https://www.
 
 ## Development
 
-The project is a pnpm workspace written in TypeScript. The web editor uses **ccstate**, **lit-html**, and **Canvas**.
+The project is a pnpm workspace written in TypeScript. The web editor uses **ccstate**, **lit-html**, **Canvas**, and **Tailwind CSS 4** with shared UI theme tokens.
 
 | Directory                                          | Purpose                                                      |
 | -------------------------------------------------- | ------------------------------------------------------------ |

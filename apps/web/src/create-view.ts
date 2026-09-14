@@ -23,38 +23,68 @@ export function createView(
       : nothing;
   }
   function dimension(name: "columns" | "rows") {
-    return html`<label class="field"
+    return html`<label class="mb-[13px] grid gap-1.5 text-ui text-label"
       ><span>${t(($) => $.newPattern[name])}</span>
-      <input type="number" name=${name} min="1" max="256" required .defaultValue=${"50"} />
+      <input
+        class="w-full text-ui"
+        type="number"
+        name=${name}
+        min="1"
+        max="256"
+        required
+        .defaultValue=${"50"}
+      />
     </label>`;
   }
-  return html`<main class="create-page" aria-labelledby="create-heading">
-    <div class="create-intro">
+  return html`<main
+    class="create-page mx-auto mt-16 mb-8 w-[min(1120px,calc(100%_-_64px))] tablet:mt-10 tablet:w-[calc(100%_-_40px)] mobile:mt-8 mobile:w-[calc(100%_-_32px)]"
+    aria-labelledby="create-heading"
+  >
+    <div class="mb-9 max-w-[660px] stack:mb-7">
       <span class="eyebrow">${t(($) => $.app.studio)}</span>
-      <h1 id="create-heading" tabindex="-1">${t(($) => $.create.heading)}</h1>
-      <p>${t(($) => $.create.intro)}</p>
+      <h1
+        class="mt-3 mb-4 text-[clamp(30px,4vw,44px)] leading-[1.2] font-bold tracking-[-1.4px]"
+        id="create-heading"
+        tabindex="-1"
+      >
+        ${t(($) => $.create.heading)}
+      </h1>
+      <p class="m-0 text-[15px] leading-[1.8] text-secondary">${t(($) => $.create.intro)}</p>
     </div>
     ${flow.hasDocument
-      ? html`<div class="resume-pattern">
+      ? html`<div
+          class="resume-pattern mb-6 flex items-center justify-between gap-6 rounded-xl border border-solid border-import-border bg-subtle px-6 py-5 mobile:flex-col mobile:items-stretch mobile:gap-4"
+        >
           <div>
             <span class="eyebrow">${t(($) => $.create.current)}</span
-            ><strong>${model.title}</strong>
-            <p data-testid="counts">
+            ><strong class="block text-[16px] [overflow-wrap:anywhere]">${model.title}</strong>
+            <p class="mt-2 mb-0 text-ui leading-[1.6] text-secondary" data-testid="counts">
               ${t(($) => $.beads, { count: model.beads })} ·
               ${t(($) => $.colors, { count: model.document.counts.size })}
             </p>
-            <p>${t(($) => $.create.keepCurrent)}</p>
+            <p class="mt-2 mb-0 text-ui leading-[1.6] text-secondary">
+              ${t(($) => $.create.keepCurrent)}
+            </p>
           </div>
-          <button type="button" @click=${actions.resume}>${t(($) => $.create.resume)}</button>
+          <button class="shrink-0" type="button" @click=${actions.resume}>
+            ${t(($) => $.create.resume)}
+          </button>
         </div>`
       : nothing}
-    <div class="creation-options">
-      <section class="creation-card blank-card" aria-labelledby="blank-heading">
+    <div class="creation-options grid grid-cols-3 gap-5 tablet:gap-3 stack:grid-cols-1 stack:gap-4">
+      <section
+        class="creation-card blank-card flex min-w-0 flex-col rounded-2xl border border-solid border-featured-border bg-surface p-7 tablet:p-[22px] stack:p-6"
+        aria-labelledby="blank-heading"
+      >
         <div class="creation-icon">${icon(Grid3x3)}</div>
-        <h2 id="blank-heading">${t(($) => $.create.blank)}</h2>
-        <p class="card-description">${t(($) => $.create.blankDescription)}</p>
+        <h2 class="text-[20px] tracking-[-0.4px]" id="blank-heading">
+          ${t(($) => $.create.blank)}
+        </h2>
+        <p class="mt-3.5 mb-6 text-body leading-[1.8] text-secondary">
+          ${t(($) => $.create.blankDescription)}
+        </p>
         <form
-          class="blank-form"
+          class="blank-form mt-auto"
           novalidate
           @submit=${(event: Event) => {
             event.preventDefault();
@@ -62,19 +92,28 @@ export function createView(
             actions.create(Number(data.get("columns")), Number(data.get("rows")));
           }}
         >
-          <div class="field-row">${dimension("columns")}${dimension("rows")}</div>
-          <p class="muted">${t(($) => $.create.sizeHelp)}</p>
+          <div class="grid grid-cols-2 gap-3">${dimension("columns")}${dimension("rows")}</div>
+          <p class="muted mt-0 mb-[18px]">${t(($) => $.create.sizeHelp)}</p>
           ${error("blank")}
           <button class="primary" type="submit">${t(($) => $.newPattern.create)}</button>
         </form>
       </section>
-      <section class="creation-card" aria-labelledby="csv-heading">
+      <section
+        class="creation-card flex min-w-0 flex-col rounded-2xl border border-solid border-border bg-surface p-7 tablet:p-[22px] stack:p-6"
+        aria-labelledby="csv-heading"
+      >
         <div class="creation-icon">${icon(FileSpreadsheet)}</div>
-        <h2 id="csv-heading">${t(($) => $.create.csv)}</h2>
-        <p class="card-description">${t(($) => $.create.csvDescription)}</p>
-        <p class="card-detail">${t(($) => $.create.csvDetail)}</p>
+        <h2 class="text-[20px] tracking-[-0.4px]" id="csv-heading">${t(($) => $.create.csv)}</h2>
+        <p class="mt-3.5 mb-6 text-body leading-[1.8] text-secondary">
+          ${t(($) => $.create.csvDescription)}
+        </p>
+        <p class="mt-auto mb-6 text-ui leading-[1.8] text-detail stack:mt-0 stack:mb-5">
+          ${t(($) => $.create.csvDetail)}
+        </p>
         ${error("csv")}${flow.csvLoading
-          ? html`<p class="import-progress" role="status">${t(($) => $.create.readingCsv)}</p>`
+          ? html`<p class="text-body text-accent" role="status">
+              ${t(($) => $.create.readingCsv)}
+            </p>`
           : nothing}
         <label class="import-button"
           ><span>${t(($) => $.app.openCsv)}</span>
@@ -92,11 +131,20 @@ export function createView(
           />
         </label>
       </section>
-      <section class="creation-card" aria-labelledby="picture-heading">
+      <section
+        class="creation-card flex min-w-0 flex-col rounded-2xl border border-solid border-border bg-surface p-7 tablet:p-[22px] stack:p-6"
+        aria-labelledby="picture-heading"
+      >
         <div class="creation-icon">${icon(ImagePlus)}</div>
-        <h2 id="picture-heading">${t(($) => $.create.image)}</h2>
-        <p class="card-description">${t(($) => $.create.imageDescription)}</p>
-        <p class="card-detail">${t(($) => $.create.imageDetail)}</p>
+        <h2 class="text-[20px] tracking-[-0.4px]" id="picture-heading">
+          ${t(($) => $.create.image)}
+        </h2>
+        <p class="mt-3.5 mb-6 text-body leading-[1.8] text-secondary">
+          ${t(($) => $.create.imageDescription)}
+        </p>
+        <p class="mt-auto mb-6 text-ui leading-[1.8] text-detail stack:mt-0 stack:mb-5">
+          ${t(($) => $.create.imageDetail)}
+        </p>
         ${imagePicker(
           t(($) => $.app.openImage),
           t(($) => $.app.openImage),
@@ -105,6 +153,6 @@ export function createView(
       </section>
     </div>
     ${error(null)}
-    <p class="creation-note">${t(($) => $.create.local)}</p>
+    <p class="mt-7 text-center text-ui leading-[1.8] text-detail">${t(($) => $.create.local)}</p>
   </main>`;
 }
