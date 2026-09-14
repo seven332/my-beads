@@ -48,8 +48,10 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
   }
   function palette(open: boolean) {
     store.set(state.showPalette$, open);
-    // Reopening a scrolled short-window panel must reveal its search field.
-    host.querySelector<HTMLElement>(open ? ".palette-search" : ".palette-toggle")?.focus({ preventScroll: !open });
+    // Browser focus scrolling can reveal only part of the field in a short panel.
+    const panel = host.querySelector(".palette-panel");
+    if (open && panel) panel.scrollTop = 0;
+    host.querySelector<HTMLElement>(open ? ".palette-search" : ".palette-toggle")?.focus({ preventScroll: true });
   }
   function focusPage(selector: string) {
     host.scrollIntoView({ block: "start", behavior: "instant" });
