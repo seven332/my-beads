@@ -25,9 +25,12 @@ The format, lint, typecheck, unit-test, CI-helper-test, and build jobs still run
 
 ## Parallel execution and diagnostics
 
-Two E2E shards each use two workers. Playwright distributes the complete Chromium and WebKit suite
-at the test level because `fullyParallel` is enabled. A separate production smoke job builds the web
-app and verifies its deployed base path in both browsers. A failed shard does not cancel its sibling.
+Two E2E shards each use two workers and run half of the Chromium tests followed by half of the WebKit
+tests. Sharding separately within each project shares WebKit's heavier work across both runners;
+global sharding would put the two complete browser projects on different runners. Playwright splits
+tests within each project because `fullyParallel` is enabled. A separate production smoke job builds
+the web app and verifies its deployed base path in both browsers. A failed shard does not cancel its
+sibling, and a Chromium test failure does not skip the corresponding WebKit tests.
 
 CI records a trace on the first retry; local tests keep `retain-on-failure`. Each shard uploads an
 HTML report with per-test durations and its test results, even when a retry succeeds. Artifacts are
@@ -42,12 +45,12 @@ retained for seven days:
 After downloading and extracting an artifact, open its HTML report from the repository root:
 
 ```sh
-pnpm --filter @my-beads/web exec playwright show-report /path/to/extracted/playwright-report/e2e
+pnpm --filter @my-beads/web exec playwright show-report /path/to/extracted/playwright-report/e2e/chromium
 ```
 
-Use `playwright-report/production` for production artifacts. E2E and production use separate report
-and result directories, so one invocation cannot erase the other's diagnostics. Cancelled runs do
-not guarantee an artifact upload.
+Use `playwright-report/e2e/webkit` for WebKit and `playwright-report/production` for production
+artifacts. Both browsers and production use separate report and result directories, so one invocation
+cannot erase the other's diagnostics. Cancelled runs do not guarantee an artifact upload.
 
 The aggregate check passes only when detection succeeds and all browser jobs succeed, or when
 documentation-only detection intentionally skips all browser jobs. Missing results, unexpected
@@ -63,14 +66,15 @@ Use Node.js 24+ and the repository's pnpm version:
 ```sh
 pnpm test:ci
 pnpm --filter @my-beads/web exec playwright install --with-deps --only-shell chromium webkit
-CI=1 pnpm test:e2e --shard=1/2
-CI=1 pnpm test:e2e --shard=2/2
+CI=1 PLAYWRIGHT_HTML_OUTPUT_DIR=playwright-report/e2e/chromium pnpm test:e2e --project=chromium --shard=1/2 --output=test-results/e2e/chromium
+CI=1 PLAYWRIGHT_HTML_OUTPUT_DIR=playwright-report/e2e/webkit pnpm test:e2e --project=webkit --shard=1/2 --output=test-results/e2e/webkit
 CI=1 pnpm test:production
 ```
 
-Run shards sequentially on one machine because they share the dev-server port. CI runs each shard on
-a separate runner. CI-mode local runs generate the same report layout; separate invocations of the
-same suite replace its previous report/results.
+Repeat the browser commands with `--shard=2/2` for the other half. Run shards sequentially on one
+machine because they share the dev-server port. CI runs each shard on a separate runner. CI-mode local
+runs generate the same report layout; another invocation of the same browser replaces its previous
+report/results. Plain `pnpm test:e2e` still runs the full suite locally.
 
 The measured pre-change browser job took 285 seconds, including 229 seconds of E2E and 40 seconds of
 browser/system installation. Sharding trades additional runner usage for faster elapsed time.
