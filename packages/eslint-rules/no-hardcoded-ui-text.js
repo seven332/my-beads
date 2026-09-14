@@ -105,14 +105,19 @@ export default {
     }
     function project(node, path, seen) {
       if (!path.length) return [node];
+      node = unwrap(node);
+      if (!node || seen.has(node)) return [];
+      // Object spreads can point back to earlier assignments of the same binding.
+      // Track projection steps as well as value resolution to stop those cycles.
+      const next = new Set(seen).add(node);
       return values(node, seen).flatMap(value => {
         if (value.type === "ArrayExpression") {
           const child = value.elements[Number(path[0])];
-          return child ? project(child, path.slice(1), seen) : [];
+          return child ? project(child, path.slice(1), next) : [];
         }
         if (value.type === "ObjectExpression") {
-          return value.properties.flatMap(property => property.type === "SpreadElement" ? project(property.argument, path, seen)
-            : key(property) === path[0] ? project(property.value, path.slice(1), seen) : []);
+          return value.properties.flatMap(property => property.type === "SpreadElement" ? project(property.argument, path, next)
+            : key(property) === path[0] ? project(property.value, path.slice(1), next) : []);
         }
         return [];
       });
