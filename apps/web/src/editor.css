@@ -21,7 +21,9 @@
 .editor-tools { --canvas-edge: left; grid-area: 2 / 1; align-self: start; padding: 6px; }
 .tools { display: flex; flex-direction: column; gap: 4px; }
 .tools .tool { display: grid; justify-items: center; align-content: center; gap: 3px; width: 52px; min-height: 54px; padding: 5px 3px; border: 0; border-radius: 9px; background: transparent; }
-.tool-icon { font-size: 22px; line-height: 1; }
+.tool-icon { display: flex; font-size: 22px; line-height: 1; }
+.tool-icon .icon { width: 1em; height: 1em; }
+.history-controls .icon { width: 18px; height: 18px; }
 .tool-label { font-size: 9px; }
 .tools .tool[aria-pressed="true"] { color: #fff; background: #344f3e; }
 .history-controls { display: flex; gap: 2px; padding-top: 6px; margin-top: 6px; border-top: 1px solid #dde2d9; }
@@ -45,6 +47,7 @@
 .display-controls button[aria-pressed="true"] { background: #e8eddf; }
 .zoom-controls { padding-left: 8px; border-left: 1px solid #dde2d9; }
 .zoom-controls button { padding: 7px 9px; }
+.zoom-controls .icon { width: 14px; height: 14px; }
 .zoom-controls output { min-width: 42px; text-align: center; font-size: 11px; }
 .editor-error { --canvas-edge: top; position: absolute; z-index: 2; top: 90px; left: 100px; right: 328px; max-height: 25%; margin: 0; overflow: auto; overscroll-behavior: contain; }
 

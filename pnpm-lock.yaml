@@ -48,6 +48,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@lucide/icons':
+        specifier: 1.45.0
+        version: 1.45.0
       '@my-beads/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -384,6 +387,9 @@ packages:
 
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
+
+  '@lucide/icons@1.45.0':
+    resolution: {integrity: sha512-YiCragzJXRsUNbrk9S/fsz1XQoOJsJdnF2XEmNpNHp/u3+rJVOeGTW8rmDLpbCpm8BW0GDRADRNiCu9qnfIJeg==}
 
   '@oxc-project/types@0.149.0':
     resolution: {integrity: sha512-Efcc+iF0j3Bf67YjEqIqWXbX5XddXoK/Mw4K1/JuXwRCZ8N16VR7iT23nlCc9XrveFVh/E5Rqs2StT0V8v9LdA==}
@@ -1522,6 +1528,8 @@ snapshots:
       keyv: 5.6.0
 
   '@keyv/serialize@1.1.1': {}
+
+  '@lucide/icons@1.45.0': {}
 
   '@oxc-project/types@0.149.0': {}
 

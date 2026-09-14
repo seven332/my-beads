@@ -11,7 +11,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, canvas:focus-vi
 input, select { color: inherit; border: 1px solid #dce0d8; background: #fff; border-radius: 6px; padding: 9px 10px; min-width: 0; }
 .topbar { min-height: 72px; display: flex; align-items: center; gap: 24px; padding: 14px 32px; border-bottom: 1px solid #dfe1d9; background: #fbfbf8; }
 .brand { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 750; letter-spacing: -.8px; color: inherit; text-decoration: none; white-space: nowrap; }
-.brand-mark { color: #72845b; font-size: 35px; }
+.icon { display: inline-block; width: 20px; height: 20px; flex-shrink: 0; vertical-align: middle; }
+.with-icon { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.brand-mark { display: flex; color: #72845b; font-size: 35px; }
+.brand-mark .icon, .creation-icon .icon { width: 1em; height: 1em; }
 .topbar-note { font-size: 12px; color: #829080; }
 .language-picker { display: flex; align-items: center; gap: 8px; margin-left: auto; white-space: nowrap; font-size: 12px; }
 .language-picker select { width: auto; padding: 8px; }
@@ -86,7 +89,7 @@ details[open] summary { margin-bottom: 16px; }
 .export-dialog::backdrop { background: #14281eb3; }
 .export-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .export-heading h2 { font-size: 23px; }
-.icon-button { font-size: 24px; line-height: 1; border: 0; background: transparent; }
+.icon-button { font-size: 24px; line-height: 1; border: 0; background: transparent; min-width: 32px; min-height: 32px; }
 .export-document { border-bottom: 1px solid #dce0d7; margin: 24px 0; padding-bottom: 20px; overflow-wrap: anywhere; }
 .export-document p { font-size: 12px; color: #697762; line-height: 1.8; margin-bottom: 0; }
 .export-form fieldset { padding: 0; margin: 0; border: 0; min-width: 0; }

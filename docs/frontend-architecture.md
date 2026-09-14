@@ -97,6 +97,16 @@ decoded downloads, alongside the existing core and CLI regression suites.
 
 ## Editor workspace layout
 
+Interface icons use static named imports from `@lucide/icons`. `icon.ts` turns
+the icon data into fresh Snabbdom SVG vnodes, including nested nodes and their
+keys; views never cache mutable vnodes or replace DOM with an icon scanner.
+Icons inherit `currentColor` and are decorative (`aria-hidden`, non-focusable).
+Keep translated visible text or accessible names on their surrounding controls.
+Choose icons by action: PaintBucket for fill, Pipette for picking a color, Hand
+for panning, and distinct grid/file/image symbols for creation. Grid, Codes, Fit,
+and the current swatch/code retain their existing text or color information.
+The deployed `lucide-LICENSE.txt` preserves the package's license notices.
+
 `editor-view.ts` owns the editing surface separately from the scrollable creation
 page. The edit workspace is fixed to the dynamic viewport; an absolute Canvas fills
 it behind a CSS Grid of stationary floating controls. Grid rows account for actual

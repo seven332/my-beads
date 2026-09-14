@@ -3,6 +3,8 @@ import type { EditorModel } from "./state.js";
 import type { ExportFormat, ExportOptions } from "./exports.js";
 import type { ExportSettings } from "./export-state.js";
 import type { Translate } from "./i18n/index.js";
+import { Download, X } from "@lucide/icons";
+import { icon } from "./icon.js";
 
 export interface ExportActions {
   openExport(): void; closeExport(): void;
@@ -23,7 +25,7 @@ export function exportView(model: EditorModel, settings: ExportSettings, actions
     hook: { insert: node => (node.elm as HTMLDialogElement).showModal(), destroy: node => (node.elm as HTMLDialogElement).close() },
   }, [
     h("div.export-heading", [h("h2", { attrs: { id: "export-heading" } }, t($ => $.export.heading)),
-      h("button.icon-button", { attrs: { type: "button", "aria-label": t($ => $.export.close) }, on: { click: actions.closeExport } }, "×")]),
+      h("button.icon-button", { attrs: { type: "button", "aria-label": t($ => $.export.close) }, on: { click: actions.closeExport } }, [icon(X)])]),
     h("div.export-document", [h("strong", model.title), h("p", `${t($ => $.app.dimensions, { columns: model.document.grid[0].length, rows: model.document.grid.length })} · ${t($ => $.beads, { count: model.beads })} · ${t($ => $.colors, { count: model.document.counts.size })}`)]),
     h("form.export-form", { attrs: { novalidate: true }, on: { submit: (event: Event) => {
       event.preventDefault(); actions.export({ format: settings.format, scale: Number(settings.scale), width: Number(settings.width) });
@@ -37,7 +39,7 @@ export function exportView(model: EditorModel, settings: ExportSettings, actions
         settings.format === "pixel" ? size("scale") : chart ? size("width") : h("span", { key: "no-size" }),
         chart ? h("p.muted", t($ => $.export.english)) : h("span"),
         model.error ? h("p.error", { attrs: { role: "alert" } }, model.error) : h("span"),
-        h("button.primary", { attrs: { type: "submit" } }, settings.pending ? t($ => $.export.preparing) : `↓  ${t($ => $.export.download)}`),
+        h("button.primary.with-icon", { attrs: { type: "submit" } }, settings.pending ? t($ => $.export.preparing) : [icon(Download), h("span", t($ => $.export.download))]),
       ]),
     ]),
   ]);
