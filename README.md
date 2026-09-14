@@ -1,240 +1,87 @@
 # My Beads
 
-My personal collection of perler bead patterns. Source images are prepared with AI, refined in an online editor, and converted into printable charts or pixel-art PNGs with TypeScript tools.
+A browser-based editor for creating, editing, and exporting perler bead patterns.
 
-All patterns use the **MARD 221** color palette.
+My Beads uses the **MARD 221** palette and supports **English and Simplified Chinese**. Start with a blank canvas, a CSV pattern, or a pixel image, then turn it into a chart you can follow while placing beads.
 
-## Workflow
+**[Open the editor](https://seven332.github.io/my-beads/)**
 
-1. Process the source image with AI to create a design suitable for perler beads.
-2. Import the result into [Perler Beads Generator](https://perlerbeads.zippland.com/), make the final edits, and export the pattern as CSV.
-3. Use the tools in this repository to generate the final images.
+## Create → Edit → Export
 
-## Patterns
+1. **Create a pattern.** Choose the size of a blank canvas, import a CSV with its original grid and colors, or convert a PNG/WebP image with adjustable sampling and color mapping.
+2. **Edit on the canvas.** Draw with the pencil, erase, fill regions, and pick colors. Zoom and pan, undo and redo, and toggle grid lines or color codes. See how many beads each color uses and highlight their locations.
+3. **Export your work.** Download CSV for later editing, a transparent pixel-art PNG at your chosen scale, or a printable PNG/SVG chart with coordinates, color codes, and a bead-count legend.
 
-Pattern files are stored under [`templates/`](templates/) and grouped by theme.
+Search the palette by MARD code or hex color. When a hex color has no exact match, compare recommendations based on color difference and preserving chroma.
 
-## Color Palette
+Files are processed locally in your browser. The editor keeps a local draft between visits; export a CSV to keep a separate copy or move your work to another device. Printable chart labels stay in English in either interface language.
 
-The built-in palette is based on the [Pixel Beads MARD color chart](https://www.pixel-beads.com/zh/mard-bead-color-chart). It contains the 221 standard colors from series A–H and M.
+## Run Locally
 
-Palette data is stored in [`packages/core/src/data/mard-221-colors.json`](packages/core/src/data/mard-221-colors.json). Both generators also accept a custom palette with `--palette`.
-
-## Find the Closest Color
-
-Find the MARD 221 color closest to a hex color:
+Requires **Node.js 24+** and **pnpm 10.28.1**.
 
 ```bash
-pnpm match:color "#4c4c40"
-```
-
-The command compares colors with CIEDE2000, which measures perceptual color difference. For a visibly tinted input, it searches tinted palette colors so that a dark green or brown is not flattened to a neutral gray. It accepts three-digit and six-digit hex colors, with or without `#`:
-
-```text
-Input: #4C4C40
-Closest: B23 (#303921)
-Delta E: 10.21 (CIEDE2000)
-Mode: preserve chroma
-```
-
-Use `--include-neutral` to search every palette color using only CIEDE2000; for the example above, that mode returns H5. Use `--palette <path>` to search a custom palette.
-
-Pass several colors with `--unique` to minimize total color difference without reusing a MARD color, while prioritizing the chroma preference. If there are too few tinted candidates, the output identifies a neutral fallback. Use `--series B` when the source colors should remain in MARD's green series:
-
-```bash
-pnpm match:color 4D4D3D 35352A --unique --series B
-```
-
-## Setup
-
-Install Node.js 24 or newer and pnpm 10.28.1 (pinned in `packageManager`), then install dependencies from the repository root:
-
-```bash
+git clone https://github.com/seven332/my-beads.git
+cd my-beads
 pnpm install --frozen-lockfile
-```
-
-## Printable Chart
-
-Generate a print-friendly PNG or SVG:
-
-```bash
-pnpm generate templates/<collection>/<pattern>.csv \
-  --output codex-work/pattern-chart.png \
-  --title "Pattern Title"
-```
-
-The chart includes:
-
-- a title and pattern statistics
-- coordinates on all four sides
-- the MARD code inside every filled cell
-- guide lines at five-cell and ten-cell intervals
-- a legend with each color code, hex value, and bead count
-- a `MARD 221` footer
-
-Use `--width` to set the output width in pixels. The default is `2400`. Charts reserve at least 20 pixels per cell, increasing to 24 pixels for three-digit column coordinates, plus 250 pixels for margins (minimum page width: 800). An undersized page reports the required width. Legend cards wrap into additional rows when needed. Long titles use a smaller font to fit the page while preserving letter proportions. Chart text is in English and uses the platform system font, including SF on macOS.
-
-Run the following command to see every option:
-
-```bash
-pnpm generate --help
-```
-
-## Pixel Art
-
-Generate a PNG directly from the CSV grid:
-
-```bash
-pnpm generate:pixel templates/<collection>/<pattern>.csv \
-  --output codex-work/pattern-pixel-art.png \
-  --scale 20
-```
-
-Each CSV cell becomes a square block of pixels. Empty cells remain transparent, and the output contains no labels, guides, or legend. The default scale is `16`; for example, a 50 × 50 pattern at `--scale 20` produces a 1000 × 1000 PNG.
-
-Run the following command to see every option:
-
-```bash
-pnpm generate:pixel --help
-```
-
-## CSV Format
-
-The input must be a nonempty rectangular CSV grid. CSV supports quoted fields, a UTF-8 BOM, and LF or CRLF line endings. Filled cells may contain either a MARD color code such as `H7` or a hex value found in the selected palette. Blank cells and the values `TRANSPARENT` and `ERASE` are treated as transparent.
-
-The core represents a grid as color codes or `null`. Its CSV writer emits codes and quoted empty cells, preserving fully blank documents, including 1 × 1. The command-line generators require at least one bead. Custom palettes use a JSON `colors` object mapping codes or names to hex colors. Codes are trimmed and uppercased; they must be unique after normalization and cannot be empty, start with `#`, or use the reserved names `TRANSPARENT` and `ERASE`.
-
-When `--output` is omitted, the printable chart uses the suffix `-chart.png` and the pixel-art image uses `-pixel-art.png`.
-
-## Web Editor
-
-The editor is deployed to [GitHub Pages](https://seven332.github.io/my-beads/) after qualifying changes reach `main`. See [Deployment](#deployment) for setup and trigger rules.
-
-Start the local editor from the repository root:
-
-```bash
 pnpm dev
 ```
 
-Open the localhost URL printed by Vite. The creation page offers three starting points:
+Open the local URL printed by Vite.
 
-- **Blank canvas:** choose columns and rows, then create the empty grid.
-- **From CSV:** import the original dimensions, MARD colors and empty cells. Blank-canvas settings do not affect CSV imports; colors must match the palette exactly.
-- **From an image:** preview and adjust the existing PNG/WebP sampling and color mapping before applying.
+## Command-Line Tools
 
-Creating a pattern opens the editor. **New pattern** in the editor returns to the creation page; **Continue editing** takes you back with the same title, grid, history and viewport. A new pattern replaces the current work only after successful creation or import. Invalid files and canceled previews leave it intact. Export a copy before replacing a pattern you want to keep. All file processing happens in your browser.
+The repository also includes tools for generating images and matching colors. After installing dependencies, run these from the repository root, replacing `pattern.csv` with your file:
 
-A valid saved draft opens directly in the editor. Visiting the creation page alone does not create or overwrite a draft.
+```bash
+# Generate a printable chart; use a .svg output path for SVG.
+pnpm generate pattern.csv --output codex-work/chart.png --title "My Pattern"
 
-The editor fills the window with a Canvas behind stationary floating controls. The page stays still while you pan the pattern. Narrow or short windows combine drawing and navigation in one bottom panel, with pattern statistics below the header. Use the current-color button to open the palette; close it with × or Escape. Colors and search recommendations scroll within the panel. The creation page remains scrollable.
+# Generate pixel art. Use --scale 1 for one pixel per cell.
+pnpm generate:pixel pattern.csv --output codex-work/pixel-art.png --scale 20
 
-The interface supports **English** and **简体中文**, with the Chinese name **我来拼豆**. Use **Language / 界面语言** in the header to switch without losing your work. Your saved choice takes priority over browser languages; unsupported languages fall back to English. Chinese browser variants use Simplified Chinese. The preference is stored separately from the draft on this device; switching still works when storage is unavailable, but the choice cannot be remembered.
+# Find a matching MARD color.
+pnpm match:color "#4C4C40"
+```
 
-Printable chart labels remain in English in either interface language. Pattern titles, filenames, MARD codes, CSV contents and pixel colors are not translated.
+Add `--help` to any command for all options.
 
-- **Pencil / Eraser:** click or drag. Fast drags interpolate cells; one drag is one undo step. Escape, loss of window focus, or an interrupted pointer gesture cancels the current stroke.
-- **Fill:** recolor a four-connected region. **Pick:** select the color of an existing bead.
-- **Palette:** search MARD codes or hex values, choose a color, and see per-color counts.
-- **Used colors:** see every color in the current pattern, with its live bead count in natural code order. Nonempty imports and recovered drafts start here; blank grids start in **All colors**, which keeps the full palette and color search. Switch views at any time. Clicking a swatch or code selects the drawing color.
-- **Locate a color:** use the locator beside a used color to highlight its beads without changing the brush. Other cells fade, and matching regions get contrasting outlines at readable zoom levels. The status area shows the highlighted code/count, **Show all locations** to fit every occurrence, and **Clear highlight**. Locating keeps the current view; on mobile it closes the palette so the canvas is visible. Counts and outlines update while editing and through undo/redo. A color erased to zero remains clearable and reappears when undone. Creating/importing another pattern clears highlighting; it is not stored in drafts or included in exports.
-- **Navigate:** use +/− to zoom around the unobscured workspace, or pinch around the pointer; scroll, use Pan, or middle-drag to move the canvas. Fit centers the entire grid clear of the floating controls and closes the narrow-screen palette first. Opening or closing the palette otherwise preserves your view. Grid and Codes toggle overlays; codes appear when zoomed in enough to read.
-- **Keyboard:** focus the canvas, move with arrow keys and draw with Enter or Space. Shift + arrows pans. Cmd/Ctrl + Z undoes; add Shift to redo.
-- **Export:** the editor's header opens a dialog for CSV, transparent pixel PNG, printable SVG, or printable PNG. Only settings for the selected format appear. Pixel scale is an integer from 1 to 512, including 1×; chart width defaults to 2400. Format and size choices survive closing and reopening the dialog. Escape returns to editing. Printable legends keep hex values and bead counts on separate lines and retain the MARD 221 footer.
+CSV files use a rectangular grid of MARD codes or exact palette hex values, with empty cells for transparency. Pattern files live in [`templates/`](templates/).
 
-The editor accepts grids up to 256 × 256, CSV files up to 2 MB and 100 undo steps. PNG exports are limited to 8192 pixels per side and 32 million pixels; SVG avoids the raster limit. Download a copy before replacing a document you want to keep.
-
-### Search for a Color
-
-Search ignores letter case and surrounding spaces. Exact MARD codes take priority: `B23` finds that bead color, while `#B23` means the hex color `#BB2233`. Three- and six-digit hex values work with or without `#`; complete hex colors take priority over partial text matches. Partial queries such as `H` still filter the palette.
-
-When a complete hex color has no exact MARD match, compare its swatch with two recommendations:
-
-- **Closest color:** the smallest CIEDE2000 color difference across all 221 colors, including grays.
-- **Preserve chroma:** favors tinted colors over neutral grays when the input has a tint. This uses the same rule as the color-matching tool and does not guarantee the closest hue.
-
-For example, `#4C4C40` suggests **H5 · #474747** for Closest color and **B23 · #303921** for Preserve chroma. When both rules suggest the same code, one card shows both explanations. Exact hex matches appear directly. Click a color, or focus its button and press Enter or Space, to select it; searching alone leaves the current drawing color and pattern unchanged.
-
-### Import a Pixel Image
-
-Choose **From an image → Open image** on the creation page for PNG or WebP. From the editor, use **New pattern** to reach it. Set the intended **Target columns** and **Target rows**: a 1000 × 1000 image can become a 50 × 50 bead grid. The target defaults to the current grid dimensions, or 50 × 50 before your first creation. Each cell samples the source pixel at its center with nearest-neighbor sampling, without smoothing or background blending.
-
-**Alpha threshold** defaults to 128 (0–255). Fully transparent pixels always remain empty; other pixels become beads when their alpha is at least the threshold. The preview shows the sampled source and its MARD version before the current document changes.
-
-- **Preserve chroma** favors tinted palette colors for tinted source colors; it is enabled initially.
-- **MARD series** restricts candidates, for example `B` or `B, H`; leave it empty for all colors.
-- **Distinct assignments** gives each source color a different code; it is off initially. If there are too few candidates, the preview reports an error.
-- In **Color mapping**, enter or choose a MARD code to override a source color; clear it for automatic matching. Invalid codes and conflicting distinct assignments must be corrected or cleared before Apply. Distinct mode reserves manual choices before assigning other colors.
-
-Click **Update preview** after changing sampling or matching settings; this resets manual overrides. **Apply image** replaces the document and clears history, like opening CSV. Editor undo/redo shortcuts pause while this dialog is open; text fields retain their normal editing behavior. Cancel, Escape, invalid files, canceled reads and results made stale by newer work preserve the current document.
-
-Imports are limited to 10 MB, 8192 pixels per side, 16 million decoded pixels and 256 sampled opaque colors. Color-rich images report an error; use pixel art or a smaller target grid. All image processing stays in the browser.
-
-### Local Drafts
-
-The editor automatically saves one versioned draft on this device and restores it after reload. The draft contains the title and grid, including empty cells. It saves completed edits, imports, new grids and undo/redo; unfinished strokes and image previews are excluded. Original images, undo history and viewport settings are not saved.
-
-Corrupt or unsupported drafts remain stored, and automatic saving pauses until you choose **Replace saved draft**. If storage is unavailable or full, the editor keeps your active document, displays an error and provides **Retry saving draft**. Download your work when saving fails. Drafts belong to the current browser origin; different localhost ports have separate drafts, and multiple tabs share the same saved slot. Use downloads for permanent copies or multiple patterns.
+The built-in palette is based on the [Pixel Beads MARD color chart](https://www.pixel-beads.com/zh/mard-bead-color-chart). Its [color data](packages/core/src/data/mard-221-colors.json) is shared by the editor and CLI tools.
 
 ## Development
 
-This is a pnpm workspace:
+The project is a pnpm workspace written in TypeScript. The web editor uses **ccstate**, **lit-html**, and **Canvas**.
 
-- `packages/core`: browser-compatible TypeScript for palettes, code/null grids, CSV, color matching and SVG rendering, with unit tests in `packages/core/tests`.
-- `apps/cli`: Node file access, platform fonts and native PNG generation, with real CLI integration tests in `apps/cli/tests`.
-- `apps/web`: ccstate commands, standalone lit-html templates, Canvas interaction and browser file adapters; unit/DOM tests in `apps/web/tests` and browser tests in `apps/web/e2e`.
-- `packages/eslint-rules`: ccstate conventions and checks for hardcoded UI copy, with valid/invalid rule tests.
+| Directory                                          | Purpose                                                      |
+| -------------------------------------------------- | ------------------------------------------------------------ |
+| [`apps/web/`](apps/web/)                           | Browser editor                                               |
+| [`apps/cli/`](apps/cli/)                           | Command-line tools                                           |
+| [`packages/core/`](packages/core/)                 | Shared pattern, palette, color-matching, and rendering logic |
+| [`packages/eslint-rules/`](packages/eslint-rules/) | Project lint rules                                           |
 
-Format code, configuration, and documentation from the repository root:
+Format and validate from the repository root:
 
 ```bash
 pnpm format
-```
-
-The workspace uses Prettier with a 100-column print width, two-space indentation, semicolons, and double quotes. It formats lit-html templates with native embedded-language support. `.prettierignore` excludes local work, generated output, the pnpm lockfile, pattern assets, and third-party content. ESLint separately checks code correctness and project conventions.
-
-Prettier is pinned to `3.8.5` because `3.9.6` produces unstable formatting in this project's nested lit-html templates ([upstream issue](https://github.com/prettier/prettier/issues/19518)). `objectWrap: "collapse"` keeps object literals compact when they fit and avoids second-pass changes in the current E2E fixtures. When upgrading Prettier, verify that a single formatting pass is immediately followed by a passing format check.
-
-Run the checks from the repository root. `format:check` reports formatting differences without changing files:
-
-```bash
 pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
-pnpm --filter @my-beads/web exec playwright install chromium webkit
-pnpm test:e2e
-pnpm test:production
 pnpm build
 ```
 
-`pnpm test` runs each package's test script. To test one package, use `pnpm --filter @my-beads/core test` or `pnpm --filter @my-beads/cli test`.
+Run browser tests with Chromium and WebKit:
 
-Web translations live in `apps/web/src/i18n/locales/`. i18next selector keys are checked by TypeScript; `pnpm lint` also checks matching translation keys, interpolation placeholders and locale-specific plural forms. Add UI copy to both language files, including accessible labels and validation messages.
+```bash
+pnpm --filter @my-beads/web exec playwright install chromium webkit
+pnpm test:e2e
+pnpm test:production
+```
 
-ESLint checks lit-html template syntax and bindings, and rejects hardcoded web copy in static markup, text expressions, UI attributes, local rendering helpers, DOM text and error messages. The copy rule parses HTML (including entities) and follows imported template aliases, local constants and common array/object mappings. Exact palette codes, hex colors, format names, icons and numbers are allowed. When adding an imported rendering helper, declare its text arguments in the rule's `textFunctions` configuration. Runtime user data and unknown imported values require review; the rule does not perform whole-program data-flow analysis. CLI and printable-chart text remain outside this web-only rule.
+Tests live alongside their packages. See the [frontend architecture guide](docs/frontend-architecture.md) for state, rendering, translation, and testing conventions.
 
-The core has a separate typecheck without Node or DOM globals. Its build emits a browser ESM bundle and type declarations under `packages/core/dist/`; the private workspace package exports TypeScript source for tsx and Vite. The web production build is in `apps/web/dist/`. TypeScript 6.0.3 is pinned within the supported range of the ESLint TypeScript parser.
+GitHub Actions checks pull requests and deploys the editor to GitHub Pages when changes affecting the web build reach `main`. See the [deployment workflow](.github/workflows/pages.yml) for its triggers.
 
-CI runs format checks, lint, types, tests and production builds on Linux/macOS, plus Chromium/WebKit workflows on Linux. Tests cover CSV round trips, color matching, image sampling/alpha/overrides, grouped editing history, state isolation, stale import cancellation, real application bootstrap/teardown, draft corruption/storage failures and decoded export colors/alpha. Browser workflows import PNG/WebP through the real preview, apply mappings, edit/export, reload drafts and verify that unfinished strokes are not recovered. CLI pixel regression checks 1× and 20×; browser checks 1× and 3×. Printable exports are checked in both browsers using their system fonts: correct title/counts/legend contents, text inside the page and legend cards, separate legend lines, and complete non-overlapping coordinates. Prefer behavior, file-content and layout assertions over screenshot baselines. Screenshots under `codex-work/screenshots/` are for manual visual review.
-
-The complete web editor is tracked in [#6](https://github.com/seven332/my-beads/issues/6). See [frontend architecture](docs/frontend-architecture.md) for state, lifecycle and testing conventions.
-
-## Deployment
-
-GitHub Actions builds and publishes `apps/web/dist` to **https://seven332.github.io/my-beads/**. In repository **Settings → Pages → Build and deployment**, select **GitHub Actions** as the source. The first publication runs after the deployment workflow is merged into `main`.
-
-The **Deploy Pages** workflow runs on `main` pushes that change these inputs:
-
-- Web source, public assets, HTML entry point, Vite/TypeScript configuration, environment files or package manifest.
-- Shared core source (including the MARD palette), TypeScript configuration or package manifest.
-- Root package/workspace/lock files, TypeScript configuration, `.npmrc`, or the deployment workflow itself.
-
-Documentation, templates, CLI source and test-only changes do not independently deploy. Shared dependency files trigger conservatively; the workflow checks paths rather than comparing output bytes. Keep the path list in `.github/workflows/pages.yml` current when adding build inputs. For a deliberate redeployment, open **Actions → Deploy Pages → Run workflow** and select **main**. Both jobs reject other branches, including manual runs.
-
-Before upload, the workflow runs lint, type checks, core/web tests and a production browser smoke test. Only the deploy job receives Pages/OIDC write permissions, and deployments are serialized. Existing PR checks remain enabled; PRs do not publish the site.
-
-`pnpm test:production` builds the web app and tests it with Chromium/WebKit under `/my-beads/` using a separate Vite preview server on port 4174. It checks built JS/CSS paths, CSV import/edit/export and draft recovery. The production build uses relative asset URLs, so local development and repository subpaths both work. Install the Playwright browsers using the Development command before running it locally.
-
-Only the static web artifact is uploaded. Imported files and saved drafts stay in the browser; local-development drafts do not automatically move to the GitHub Pages origin.
-
-Commit messages follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
