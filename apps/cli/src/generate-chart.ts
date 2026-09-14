@@ -10,13 +10,7 @@ import { Resvg } from "@resvg/resvg-js";
 import { renderChart } from "@my-beads/core";
 import { defaultPalettePath, loadPattern } from "./pattern.js";
 
-type Options = {
-  input: string;
-  output: string;
-  palette: string;
-  title: string;
-  width: number;
-};
+type Options = { input: string; output: string; palette: string; title: string; width: number };
 
 const runFile = promisify(execFile);
 
@@ -128,7 +122,14 @@ async function main(): Promise<void> {
     const temporarySvg = join(temporaryDirectory, "chart.svg");
     try {
       await writeFile(temporarySvg, svg, "utf8");
-      await runFile("/usr/bin/sips", ["-s", "format", "png", temporarySvg, "--out", options.output]);
+      await runFile("/usr/bin/sips", [
+        "-s",
+        "format",
+        "png",
+        temporarySvg,
+        "--out",
+        options.output,
+      ]);
     } finally {
       await rm(temporaryDirectory, { recursive: true, force: true });
     }

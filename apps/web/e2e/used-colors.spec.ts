@@ -10,21 +10,42 @@ async function scene(page: Page, csv: string) {
   await page.locator(".language-picker select").selectOption("en-US");
   if (await page.getByRole("button", { name: "New pattern", exact: true }).isVisible())
     await page.getByRole("button", { name: "New pattern", exact: true }).click();
-  await page.getByLabel("Open CSV").setInputFiles({ name: "Colors.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+  await page
+    .getByLabel("Open CSV")
+    .setInputFiles({ name: "Colors.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
   await expect(page.getByLabel("Pattern title")).toHaveValue("Colors");
-  const grid = parsePatternCsv(csv), { cell, zoom, box } = await fitCoordinates(page, grid[0].length, grid.length);
+  const grid = parsePatternCsv(csv),
+    { cell, zoom, box } = await fitCoordinates(page, grid[0].length, grid.length);
   const canvas = page.locator(".pattern-canvas");
-  const pixel = (x: number, y: number, dx = 0, dy = 0) => canvas.evaluate((node, point) => {
-    const element = node as HTMLCanvasElement, rect = element.getBoundingClientRect();
-    return [...element.getContext("2d")!.getImageData(Math.floor(point.x * element.width / rect.width),
-      Math.floor(point.y * element.height / rect.height), 1, 1).data];
-  }, { x: cell(x, y).x - box.x + dx, y: cell(x, y).y - box.y + dy });
+  const pixel = (x: number, y: number, dx = 0, dy = 0) =>
+    canvas.evaluate(
+      (node, point) => {
+        const element = node as HTMLCanvasElement,
+          rect = element.getBoundingClientRect();
+        return [
+          ...element
+            .getContext("2d")!
+            .getImageData(
+              Math.floor((point.x * element.width) / rect.width),
+              Math.floor((point.y * element.height) / rect.height),
+              1,
+              1,
+            ).data,
+        ];
+      },
+      { x: cell(x, y).x - box.x + dx, y: cell(x, y).y - box.y + dy },
+    );
   return { canvas, cell, zoom, pixel, grid };
 }
 
-test("used counts, independent highlighting, zero-count undo and exports stay in sync", async ({ page }) => {
+test("used counts, independent highlighting, zero-count undo and exports stay in sync", async ({
+  page,
+}) => {
   const { canvas, cell, pixel, grid } = await scene(page, "H7,H2,H10");
-  await expect(page.getByRole("button", { name: "Used colors", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Used colors", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(page.locator(".used-color-pick strong")).toHaveText(["H2", "H7", "H10"]);
   const element = await canvas.elementHandle();
   await page.getByRole("button", { name: "H2 #FFFFFF", exact: true }).click();
@@ -44,8 +65,14 @@ test("used counts, independent highlighting, zero-count undo and exports stay in
     await page.getByRole("button", { name: "Download", exact: true }).click();
     const bytes = await readFile((await (await pending).path())!);
     if (format === "csv") expect(parsePatternCsv(bytes.toString())).toEqual(grid);
-    if (format === "pixel") expect([...PNG.sync.read(bytes).data.subarray(0, 8)]).toEqual([0, 0, 0, 255, 255, 255, 255, 255]);
-    if (format === "svg") { expect(bytes.toString()).toContain("3 colors · 3 beads"); expect(bytes.toString()).not.toContain("Highlighting"); }
+    if (format === "pixel")
+      expect([...PNG.sync.read(bytes).data.subarray(0, 8)]).toEqual([
+        0, 0, 0, 255, 255, 255, 255, 255,
+      ]);
+    if (format === "svg") {
+      expect(bytes.toString()).toContain("3 colors · 3 beads");
+      expect(bytes.toString()).not.toContain("Highlighting");
+    }
     await page.getByRole("button", { name: "Back to editing", exact: true }).click();
   }
   await page.getByRole("button", { name: "Eraser", exact: true }).click();
@@ -70,8 +97,13 @@ test("used counts, independent highlighting, zero-count undo and exports stay in
 });
 
 for (const code of ["H7", "H2"]) {
-  test(`${code} outlines disconnected regions and holes without internal cell edges`, async ({ page }) => {
-    const { pixel, zoom } = await scene(page, `${code},${code},${code},,B23\n${code},B23,${code},,B23\n${code},${code},${code},,${code}`);
+  test(`${code} outlines disconnected regions and holes without internal cell edges`, async ({
+    page,
+  }) => {
+    const { pixel, zoom } = await scene(
+      page,
+      `${code},${code},${code},,B23\n${code},B23,${code},,B23\n${code},${code},${code},,${code}`,
+    );
     await page.getByRole("button", { name: "Grid", exact: true }).click();
     const original = code === "H7" ? [0, 0, 0, 255] : [255, 255, 255, 255];
     await expect.poll(() => pixel(0, 0)).toEqual(original);
@@ -92,8 +124,14 @@ for (const code of ["H7", "H2"]) {
   });
 }
 
-test("location controls fit the target and remain usable in bilingual narrow and short windows", async ({ page }) => {
-  for (const [width, height] of [[390, 844], [320, 390], [844, 390]]) {
+test("location controls fit the target and remain usable in bilingual narrow and short windows", async ({
+  page,
+}) => {
+  for (const [width, height] of [
+    [390, 844],
+    [320, 390],
+    [844, 390],
+  ]) {
     await page.setViewportSize({ width, height });
     const { canvas } = await scene(page, "H7,H2,H7");
     for (const locale of ["en-US", "zh-CN"]) {
@@ -101,38 +139,84 @@ test("location controls fit the target and remain usable in bilingual narrow and
       const chinese = locale === "zh-CN";
       await page.locator(".palette-toggle").click();
       await expect(page.locator('.palette-view button[aria-pressed="true"]')).toBeFocused();
-      await page.getByRole("button", { name: chinese ? "在画布中定位 H7" : "Locate H7 on canvas" }).click();
+      await page
+        .getByRole("button", { name: chinese ? "在画布中定位 H7" : "Locate H7 on canvas" })
+        .click();
       await expect(page.locator(".palette-panel")).not.toBeVisible();
       const clear = page.getByRole("button", { name: chinese ? "取消高亮" : "Clear highlight" });
       await expect(clear).toBeFocused();
-      await expect(page.locator(".highlight-summary")).toContainText(chinese ? "正在高亮 H7 · 2 颗" : "Highlighting H7 · 2 beads");
+      await expect(page.locator(".highlight-summary")).toContainText(
+        chinese ? "正在高亮 H7 · 2 颗" : "Highlighting H7 · 2 beads",
+      );
       // A live highlight must not squeeze the reopened panel's locator controls out of reach.
       await page.locator(".palette-toggle").click();
-      await page.getByRole("button", { name: chinese ? "在画布中定位 H2" : "Locate H2 on canvas" }).click();
-      await expect(page.locator(".highlight-summary")).toContainText(chinese ? "正在高亮 H2 · 1 颗" : "Highlighting H2 · 1 bead");
+      await page
+        .getByRole("button", { name: chinese ? "在画布中定位 H2" : "Locate H2 on canvas" })
+        .click();
+      await expect(page.locator(".highlight-summary")).toContainText(
+        chinese ? "正在高亮 H2 · 1 颗" : "Highlighting H2 · 1 bead",
+      );
       await page.locator(".palette-toggle").click();
-      await page.getByRole("button", { name: chinese ? "在画布中定位 H7" : "Locate H7 on canvas" }).click();
+      await page
+        .getByRole("button", { name: chinese ? "在画布中定位 H7" : "Locate H7 on canvas" })
+        .click();
       await canvas.press("Shift+ArrowRight");
-      await page.getByRole("button", { name: chinese ? "查看全部位置" : "Show all locations" }).click();
-      const area = await page.locator(".highlight-status").evaluate(node => {
+      await page
+        .getByRole("button", { name: chinese ? "查看全部位置" : "Show all locations" })
+        .click();
+      const area = await page.locator(".highlight-status").evaluate((node) => {
         const r = node.getBoundingClientRect();
-        return { inside: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight, scroll: [scrollX, scrollY] };
+        return {
+          inside: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight,
+          scroll: [scrollX, scrollY],
+        };
       });
       expect(area).toEqual({ inside: true, scroll: [0, 0] });
       const box = (await canvas.boundingBox())!;
-      const panels = await page.locator("[data-canvas-panel]").evaluateAll(nodes => nodes.map(node => {
-        const { x, y, width, height } = node.getBoundingClientRect();
-        return { x, y, width, height, edge: getComputedStyle(node).getPropertyValue("--canvas-edge").trim() };
-      }));
-      const visible = unobscuredArea(box, panels.map(panel => ({ ...panel, edge: panel.edge as CanvasEdge })));
+      const panels = await page.locator("[data-canvas-panel]").evaluateAll((nodes) =>
+        nodes.map((node) => {
+          const { x, y, width, height } = node.getBoundingClientRect();
+          return {
+            x,
+            y,
+            width,
+            height,
+            edge: getComputedStyle(node).getPropertyValue("--canvas-edge").trim(),
+          };
+        }),
+      );
+      const visible = unobscuredArea(
+        box,
+        panels.map((panel) => ({ ...panel, edge: panel.edge as CanvasEdge })),
+      );
       const zoom = Math.max(0.25, Math.min(32, (visible.width - 64) / 3, visible.height - 64));
       // Both disconnected endpoints must be centered in the available area after the explicit fit.
-      await expect.poll(() => canvas.evaluate((node, area) => {
-        const canvas = node as HTMLCanvasElement, rect = canvas.getBoundingClientRect();
-        return [-1, 1].map(offset => [...canvas.getContext("2d")!.getImageData(
-          Math.floor((area.x + area.width / 2 + offset * area.zoom) * canvas.width / rect.width),
-          Math.floor((area.y + area.height / 2) * canvas.height / rect.height), 1, 1).data]);
-      }, { ...visible, zoom })).toEqual([[0, 0, 0, 255], [0, 0, 0, 255]]);
+      await expect
+        .poll(() =>
+          canvas.evaluate(
+            (node, area) => {
+              const canvas = node as HTMLCanvasElement,
+                rect = canvas.getBoundingClientRect();
+              return [-1, 1].map((offset) => [
+                ...canvas
+                  .getContext("2d")!
+                  .getImageData(
+                    Math.floor(
+                      ((area.x + area.width / 2 + offset * area.zoom) * canvas.width) / rect.width,
+                    ),
+                    Math.floor(((area.y + area.height / 2) * canvas.height) / rect.height),
+                    1,
+                    1,
+                  ).data,
+              ]);
+            },
+            { ...visible, zoom },
+          ),
+        )
+        .toEqual([
+          [0, 0, 0, 255],
+          [0, 0, 0, 255],
+        ]);
       await clear.click();
       await expect(page.locator(".highlight-status")).toHaveCount(0);
       await expect(canvas).toBeFocused();
@@ -140,14 +224,18 @@ test("location controls fit the target and remain usable in bilingual narrow and
   }
 });
 
-test("blank used view and a maximum-size low-zoom grid keep location controls responsive", async ({ page }) => {
+test("blank used view and a maximum-size low-zoom grid keep location controls responsive", async ({
+  page,
+}) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Create blank grid" }).click();
   await page.getByRole("button", { name: "Used colors", exact: true }).click();
   await expect(page.locator(".used-colors")).toContainText("No beads yet");
   await page.getByRole("button", { name: "All colors", exact: true }).click();
   await expect(page.getByLabel("Search colors")).toBeFocused();
-  const csv = Array.from({ length: 256 }, (_, y) => Array.from({ length: 256 }, (_, x) => (x + y) % 2 ? "H7" : "H2").join(",")).join("\n");
+  const csv = Array.from({ length: 256 }, (_, y) =>
+    Array.from({ length: 256 }, (_, x) => ((x + y) % 2 ? "H7" : "H2")).join(","),
+  ).join("\n");
   await page.setViewportSize({ width: 1280, height: 720 });
   const { canvas } = await scene(page, csv);
   await expect(page.locator(".used-count")).toHaveText(["32,768 beads", "32,768 beads"]);

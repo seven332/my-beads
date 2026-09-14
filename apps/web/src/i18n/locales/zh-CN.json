@@ -58,7 +58,10 @@
     "group": "MARD 颜色",
     "empty": "没有匹配的颜色。",
     "closest": { "label": "色差最小", "description": "在完整色板中选择色差最小的颜色，包含灰色。" },
-    "chroma": { "label": "保留色彩倾向", "description": "输入颜色带有色彩倾向时，优先选择彩色，而非中性灰色。" }
+    "chroma": {
+      "label": "保留色彩倾向",
+      "description": "输入颜色带有色彩倾向时，优先选择彩色，而非中性灰色。"
+    }
   },
   "create": {
     "heading": "创建作品",
@@ -101,11 +104,7 @@
     "width": "图纸宽度",
     "download": "下载"
   },
-  "newPattern": {
-    "columns": "列数",
-    "rows": "行数",
-    "create": "创建空白网格"
-  },
+  "newPattern": { "columns": "列数", "rows": "行数", "create": "创建空白网格" },
   "draft": {
     "status": "草稿状态",
     "replace": "替换已存草稿",

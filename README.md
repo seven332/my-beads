@@ -184,9 +184,20 @@ This is a pnpm workspace:
 - `apps/web`: ccstate commands, standalone lit-html templates, Canvas interaction and browser file adapters; unit/DOM tests in `apps/web/tests` and browser tests in `apps/web/e2e`.
 - `packages/eslint-rules`: ccstate conventions and checks for hardcoded UI copy, with valid/invalid rule tests.
 
-Run the checks from the repository root:
+Format code, configuration, and documentation from the repository root:
 
 ```bash
+pnpm format
+```
+
+The workspace uses Prettier with a 100-column print width, two-space indentation, semicolons, and double quotes. It formats lit-html templates with native embedded-language support. `.prettierignore` excludes local work, generated output, the pnpm lockfile, pattern assets, and third-party content. ESLint separately checks code correctness and project conventions.
+
+Prettier is pinned to `3.8.5` because `3.9.6` produces unstable formatting in this project's nested lit-html templates ([upstream issue](https://github.com/prettier/prettier/issues/19518)). `objectWrap: "collapse"` keeps object literals compact when they fit and avoids second-pass changes in the current E2E fixtures. When upgrading Prettier, verify that a single formatting pass is immediately followed by a passing format check.
+
+Run the checks from the repository root. `format:check` reports formatting differences without changing files:
+
+```bash
+pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
@@ -204,7 +215,7 @@ ESLint checks lit-html template syntax and bindings, and rejects hardcoded web c
 
 The core has a separate typecheck without Node or DOM globals. Its build emits a browser ESM bundle and type declarations under `packages/core/dist/`; the private workspace package exports TypeScript source for tsx and Vite. The web production build is in `apps/web/dist/`. TypeScript 6.0.3 is pinned within the supported range of the ESLint TypeScript parser.
 
-CI runs lint, types, tests and production builds on Linux/macOS, plus Chromium/WebKit workflows on Linux. Tests cover CSV round trips, color matching, image sampling/alpha/overrides, grouped editing history, state isolation, stale import cancellation, real application bootstrap/teardown, draft corruption/storage failures and decoded export colors/alpha. Browser workflows import PNG/WebP through the real preview, apply mappings, edit/export, reload drafts and verify that unfinished strokes are not recovered. CLI pixel regression checks 1× and 20×; browser checks 1× and 3×. Printable exports are checked in both browsers using their system fonts: correct title/counts/legend contents, text inside the page and legend cards, separate legend lines, and complete non-overlapping coordinates. Prefer behavior, file-content and layout assertions over screenshot baselines. Screenshots under `codex-work/screenshots/` are for manual visual review.
+CI runs format checks, lint, types, tests and production builds on Linux/macOS, plus Chromium/WebKit workflows on Linux. Tests cover CSV round trips, color matching, image sampling/alpha/overrides, grouped editing history, state isolation, stale import cancellation, real application bootstrap/teardown, draft corruption/storage failures and decoded export colors/alpha. Browser workflows import PNG/WebP through the real preview, apply mappings, edit/export, reload drafts and verify that unfinished strokes are not recovered. CLI pixel regression checks 1× and 20×; browser checks 1× and 3×. Printable exports are checked in both browsers using their system fonts: correct title/counts/legend contents, text inside the page and legend cards, separate legend lines, and complete non-overlapping coordinates. Prefer behavior, file-content and layout assertions over screenshot baselines. Screenshots under `codex-work/screenshots/` are for manual visual review.
 
 The complete web editor is tracked in [#6](https://github.com/seven332/my-beads/issues/6). See [frontend architecture](docs/frontend-architecture.md) for state, lifecycle and testing conventions.
 

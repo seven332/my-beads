@@ -61,8 +61,14 @@
     "exact": "Exact match",
     "group": "MARD colors",
     "empty": "No matching colors.",
-    "closest": { "label": "Closest color", "description": "Smallest color difference across the full palette, including grays." },
-    "chroma": { "label": "Preserve chroma", "description": "Favors tinted colors over neutral grays when the input has a tint." }
+    "closest": {
+      "label": "Closest color",
+      "description": "Smallest color difference across the full palette, including grays."
+    },
+    "chroma": {
+      "label": "Preserve chroma",
+      "description": "Favors tinted colors over neutral grays when the input has a tint."
+    }
   },
   "create": {
     "heading": "Create a pattern",
@@ -105,11 +111,7 @@
     "width": "Chart width",
     "download": "Download"
   },
-  "newPattern": {
-    "columns": "Columns",
-    "rows": "Rows",
-    "create": "Create blank grid"
-  },
+  "newPattern": { "columns": "Columns", "rows": "Rows", "create": "Create blank grid" },
   "draft": {
     "status": "Draft status",
     "replace": "Replace saved draft",

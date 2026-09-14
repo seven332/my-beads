@@ -274,7 +274,7 @@ There is no exemption for a function merely named `t`.
 Use a translated label:
 
 ```ts
-html`<button>${t($ => $.export.download)}</button>`
+html`<button>${t(($) => $.export.download)}</button>`;
 ```
 
 For an imported helper, list its module, export name and text-argument indexes in

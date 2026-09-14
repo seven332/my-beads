@@ -1,6 +1,9 @@
 import type { PatternCell } from "./pattern.js";
 
-export function renderPixelArtSvg(pattern: readonly (readonly PatternCell[])[], scale: number): string {
+export function renderPixelArtSvg(
+  pattern: readonly (readonly PatternCell[])[],
+  scale: number,
+): string {
   if (!Number.isInteger(scale) || scale < 1 || scale > 512) {
     throw new Error("Scale must be an integer between 1 and 512");
   }

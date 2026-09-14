@@ -30,7 +30,9 @@ describe("CIEDE2000", () => {
 
 describe("palette matching", () => {
   it("finds exact matches and keeps neutral inputs neutral", () => {
-    for (const match of matchColors(Object.values(defaultPalette.colors), defaultPalette, { includeNeutral: true })) {
+    for (const match of matchColors(Object.values(defaultPalette.colors), defaultPalette, {
+      includeNeutral: true,
+    })) {
       expect(match.deltaE).toBe(0);
       expect(match.hex).toBe(match.input);
     }
@@ -40,15 +42,21 @@ describe("palette matching", () => {
 
   it("preserves the existing tinted and all-color matching policies", () => {
     expect(matchColors(["4c4c40"])[0]).toMatchObject({ code: "B23", preserveChroma: true });
-    expect(matchColors(["4c4c40"], defaultPalette, { includeNeutral: true })[0]).toMatchObject({ code: "H5" });
+    expect(matchColors(["4c4c40"], defaultPalette, { includeNeutral: true })[0]).toMatchObject({
+      code: "H5",
+    });
   });
 
   it("assigns the green pair globally regardless of input order", () => {
     const options = { unique: true, series: ["b"] };
-    expect(matchColors(["4D4D3D", "35352A"], defaultPalette, options).map((m) => m.code))
-      .toEqual(["B15", "B23"]);
-    expect(matchColors(["35352A", "4D4D3D"], defaultPalette, options).map((m) => m.code))
-      .toEqual(["B23", "B15"]);
+    expect(matchColors(["4D4D3D", "35352A"], defaultPalette, options).map((m) => m.code)).toEqual([
+      "B15",
+      "B23",
+    ]);
+    expect(matchColors(["35352A", "4D4D3D"], defaultPalette, options).map((m) => m.code)).toEqual([
+      "B23",
+      "B15",
+    ]);
   });
 
   it("finds a minimum total assignment, including when greedy reuse would win locally", () => {
@@ -56,9 +64,15 @@ describe("palette matching", () => {
     const inputs = ["#303030", "#404040"];
     const matches = matchColors(inputs, palette, { unique: true, includeNeutral: true });
     const colors = Object.values(palette.colors);
-    const totals = colors.flatMap((first, i) => colors.filter((_, j) => i !== j).map((second) =>
-      deltaE2000(hexToLab(inputs[0]), hexToLab(first)) +
-      deltaE2000(hexToLab(inputs[1]), hexToLab(second))));
+    const totals = colors.flatMap((first, i) =>
+      colors
+        .filter((_, j) => i !== j)
+        .map(
+          (second) =>
+            deltaE2000(hexToLab(inputs[0]), hexToLab(first)) +
+            deltaE2000(hexToLab(inputs[1]), hexToLab(second)),
+        ),
+    );
     expect(new Set(matches.map((m) => m.code)).size).toBe(2);
     expect(matches.reduce((sum, m) => sum + m.deltaE, 0)).toBeCloseTo(Math.min(...totals), 10);
   });
@@ -71,8 +85,14 @@ describe("palette matching", () => {
   });
 
   it("rejects impossible or invalid restrictions", () => {
-    expect(() => matchColors(["000", "fff"], { colors: { X1: "#000000" } }, { unique: true })).toThrow("at least one palette color");
-    expect(() => matchColors(["000"], defaultPalette, { series: ["Z"] })).toThrow("No palette colors");
-    expect(() => matchColors(["000"], defaultPalette, { series: ["B7"] })).toThrow("letter prefixes");
+    expect(() =>
+      matchColors(["000", "fff"], { colors: { X1: "#000000" } }, { unique: true }),
+    ).toThrow("at least one palette color");
+    expect(() => matchColors(["000"], defaultPalette, { series: ["Z"] })).toThrow(
+      "No palette colors",
+    );
+    expect(() => matchColors(["000"], defaultPalette, { series: ["B7"] })).toThrow(
+      "letter prefixes",
+    );
   });
 });
