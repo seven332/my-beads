@@ -126,7 +126,7 @@ Creating a pattern opens the editor. **New pattern** in the editor returns to th
 
 A valid saved draft opens directly in the editor. Visiting the creation page alone does not create or overwrite a draft.
 
-The editor fills the window with a Canvas behind stationary floating controls. The page stays still while you pan the pattern. On narrow or short windows, use the current-color button to open the palette; close it with × or Escape. Colors and search recommendations scroll within the panel. The creation page remains scrollable.
+The editor fills the window with a Canvas behind stationary floating controls. The page stays still while you pan the pattern. Narrow or short windows combine drawing and navigation in one bottom panel, with pattern statistics below the header. Use the current-color button to open the palette; close it with × or Escape. Colors and search recommendations scroll within the panel. The creation page remains scrollable.
 
 The interface supports **English** and **简体中文**, with the Chinese name **我来拼豆**. Use **Language / 界面语言** in the header to switch without losing your work. Your saved choice takes priority over browser languages; unsupported languages fall back to English. Chinese browser variants use Simplified Chinese. The preference is stored separately from the draft on this device; switching still works when storage is unavailable, but the choice cannot be remembered.
 

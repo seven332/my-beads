@@ -41,6 +41,19 @@ for (const [width, height] of [[1440, 900], [1280, 720], [390, 844], [844, 390],
       const { cell, zoom } = await fitCoordinates(page, 50, 50);
       await fixedWorkspace(page);
       await controlsReachable(page);
+      if (await page.locator(".palette-toggle").isVisible()) {
+        const dock = (await page.locator(".editor-dock").boundingBox())!;
+        const status = (await page.locator(".editor-status").boundingBox())!;
+        expect(dock.height).toBeLessThanOrEqual(112);
+        expect(status.y + status.height).toBeLessThan(dock.y);
+        for (const selector of [".editor-tools", ".editor-navigation"]) {
+          const row = (await page.locator(selector).boundingBox())!;
+          expect(row.x).toBeGreaterThanOrEqual(dock.x);
+          expect(row.y).toBeGreaterThanOrEqual(dock.y);
+          expect(row.x + row.width).toBeLessThanOrEqual(dock.x + dock.width);
+          expect(row.y + row.height).toBeLessThanOrEqual(dock.y + dock.height);
+        }
+      }
       const corners = [cell(0, 0), cell(49, 0), cell(0, 49), cell(49, 49)];
       for (const point of corners) {
         expect(await page.evaluate(p => document.elementFromPoint(p.x, p.y)?.matches(".pattern-canvas"), point)).toBe(true);
