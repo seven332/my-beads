@@ -25,7 +25,9 @@ async function scene(page: Page, csv: string) {
   }, point(column, u, v));
   const move = (column: number, dy = 0) => page.mouse.move(box.x + point(column).x, box.y + point(column).y + dy);
   const click = (column: number) => page.mouse.click(box.x + point(column).x, box.y + point(column).y);
-  const cursorPixels = () => canvas.evaluate(node => {
+  const cursorPixels = () => canvas.evaluate(async node => {
+    // A negative assertion must inspect the queued redraw, not an earlier cleared frame.
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
     const element = node as HTMLCanvasElement, context = element.getContext("2d")!;
     const pixels = context.getImageData(0, 0, element.width, element.height).data;
     let count = 0;
