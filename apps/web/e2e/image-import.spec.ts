@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
 import { parsePatternCsv, defaultPalette, type PatternGrid } from "@my-beads/core";
+import { startNew, openExport, closeExport } from "./helpers.js";
 
 function enlargedImage() {
   const png = new PNG({ width: 1000, height: 1000 });
@@ -19,11 +20,14 @@ async function csv(page: Page, content: string, name = "Before.csv") {
   await expect(page.getByLabel("Pattern title")).toHaveValue(name.replace(/\.csv$/, ""));
 }
 async function download(page: Page, format: string) {
+  await openExport(page);
   await page.getByLabel("Export format").selectOption(format);
   if (format === "pixel") await page.getByLabel("Pixel scale").fill("1");
   const pending = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download" }).click();
-  return readFile((await (await pending).path())!);
+  const result = await readFile((await (await pending).path())!);
+  await closeExport(page);
+  return result;
 }
 function pixelsMatch(bytes: Buffer, grid: PatternGrid) {
   const png = PNG.sync.read(bytes);
@@ -42,6 +46,7 @@ function pixelsMatch(bytes: Buffer, grid: PatternGrid) {
 
 test("imports enlarged PNG with explicit sampling, override, edit, exports and draft recovery", async ({ page }) => {
   await page.goto("/"); await csv(page, "H5");
+  await startNew(page);
   await page.getByLabel("Open image", { exact: true }).setInputFiles({ name: "Pixel design.png", mimeType: "image/png", buffer: enlargedImage() });
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
@@ -74,15 +79,18 @@ test("imports enlarged PNG with explicit sampling, override, edit, exports and d
 test("cancel and invalid PNG preserve the active document; WebP applies through the same dialog", async ({ page }) => {
   await page.goto("/"); await csv(page, 'H5,""\n"",H7');
   const before = [["H5", null], [null, "H7"]];
+  await startNew(page);
   await page.getByLabel("Open image", { exact: true }).setInputFiles({ name: "preview.png", mimeType: "image/png", buffer: enlargedImage() });
   await expect(page.getByRole("img", { name: "MARD preview" })).toBeVisible();
   await page.getByRole("dialog").press("Escape");
   expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual(before);
+  await startNew(page);
   await page.getByLabel("Open image", { exact: true }).setInputFiles({ name: "invalid.png", mimeType: "image/png", buffer: Buffer.from("not an image") });
   await expect(page.getByRole("dialog").getByRole("alert")).toContainText("could not be decoded");
   await expect(page.getByRole("button", { name: "Apply image" })).toBeDisabled();
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual(before);
+  await startNew(page);
   await page.getByLabel("Open image", { exact: true }).setInputFiles(fileURLToPath(new URL("../../../templates/hollow-knight/king-zote-vengefly.webp", import.meta.url)));
   await expect(page.getByRole("dialog").getByText("Sampled source · 198 × 300 pixels", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Apply image" }).click();
@@ -94,6 +102,7 @@ test("cancel and invalid PNG preserve the active document; WebP applies through 
 
 test("invalid settings preserve work and mappings honor series and distinct choices", async ({ page }) => {
   await page.goto("/"); await csv(page, "H7");
+  await startNew(page);
   await page.getByLabel("Open image", { exact: true }).setInputFiles({ name: "colors.png", mimeType: "image/png", buffer: enlargedImage() });
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
@@ -116,6 +125,7 @@ test("invalid settings preserve work and mappings honor series and distinct choi
 
 test("invalid mappings block Apply across edits to other rows until corrected", async ({ page }) => {
   await page.goto("/"); await csv(page, "H7,H2");
+  await startNew(page);
   await page.getByLabel("Open image", { exact: true }).setInputFiles({ name: "colors.png", mimeType: "image/png", buffer: enlargedImage() });
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
@@ -151,6 +161,7 @@ test("image dialog isolates undo and redo from the pattern and saved draft", asy
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("my-beads.draft")!).grid)).toEqual(before);
   const saved = await page.evaluate(() => localStorage.getItem("my-beads.draft"));
   const file = { name: "Preview.png", mimeType: "image/png", buffer: enlargedImage() };
+  await startNew(page);
   await page.getByLabel("Open image", { exact: true }).setInputFiles(file);
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
@@ -165,6 +176,7 @@ test("image dialog isolates undo and redo from the pattern and saved draft", asy
   await expect(page.getByTestId("counts")).toHaveText("1 bead · 1 color");
   await canvas.press("Control+Shift+z");
   await expect(page.getByTestId("counts")).toHaveText("2 beads · 2 colors");
+  await startNew(page);
   await page.getByLabel("Open image", { exact: true }).setInputFiles(file);
   await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
   await dialog.getByRole("button", { name: "Update preview" }).press("Control+z");

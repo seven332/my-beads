@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { defaultPalette, parsePatternCsv, serializePatternCsv } from "@my-beads/core";
+import { openExport } from "./helpers.js";
 
 async function checkChart(page: Page, csv: string, width: number, title: string) {
   const grid = parsePatternCsv(csv);
@@ -10,6 +11,7 @@ async function checkChart(page: Page, csv: string, width: number, title: string)
   await page.goto("/");
   await page.getByLabel("Open CSV").setInputFiles({ name: `${title}.csv`, mimeType: "text/csv", buffer: Buffer.from(csv) });
   await expect(page.getByLabel("Pattern title")).toHaveValue(title);
+  await openExport(page);
   await page.getByLabel("Export format").selectOption("svg");
   await page.getByLabel("Chart width").fill(String(width));
   const pending = page.waitForEvent("download");

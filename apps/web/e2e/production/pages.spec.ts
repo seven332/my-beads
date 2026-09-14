@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { parsePatternCsv } from "@my-beads/core";
+import { openExport } from "../helpers.js";
 
 test("built editor loads at a repository path and preserves editing, exports and drafts", async ({ page }) => {
   const errors: string[] = [];
@@ -12,7 +13,7 @@ test("built editor loads at a repository path and preserves editing, exports and
     nodes.map(node => new URL(node.getAttribute("src") ?? node.getAttribute("href")!, document.baseURI).pathname));
   expect(assets.length).toBeGreaterThanOrEqual(2);
   for (const path of assets) expect(path).toMatch(/^\/my-beads\/assets\//);
-  await expect(page.getByRole("img", { name: "Pattern canvas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create a pattern" })).toBeVisible();
   await page.getByLabel("Open CSV").setInputFiles({ name: "Pages.csv", mimeType: "text/csv", buffer: Buffer.from('H7,""') });
   await expect(page.getByLabel("Pattern title")).toHaveValue("Pages");
   await expect(page.getByTestId("counts")).toHaveText("1 bead · 1 color");
@@ -22,6 +23,7 @@ test("built editor loads at a repository path and preserves editing, exports and
   await canvas.press("ArrowRight");
   await canvas.press("Enter");
   await expect(page.getByTestId("counts")).toHaveText("2 beads · 2 colors");
+  await openExport(page);
   const pending = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download" }).click();
   const download = await pending;

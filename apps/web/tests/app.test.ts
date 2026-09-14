@@ -7,13 +7,15 @@ let host: HTMLElement;
 const disconnect = vi.fn();
 let storage: Pick<Storage, "getItem" | "setItem">;
 beforeEach(() => {
+  Element.prototype.scrollIntoView = vi.fn();
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
   vi.stubGlobal("ResizeObserver", class { observe() {} disconnect = disconnect; });
   const values = new Map<string, string>();
   storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => { values.set(key, value); } };
   host = document.createElement("div"); document.body.append(host); app = mountApp(host, { storage: () => storage });
+  host.querySelector<HTMLButtonElement>(".blank-form button")!.click();
 });
-afterEach(() => { app.destroy(); host.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => { app.destroy(); host.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); Reflect.deleteProperty(Element.prototype, "scrollIntoView"); });
 
 it("boots the real app, updates controls and preserves its Canvas node", async () => {
   await vi.waitFor(() => expect(host.querySelector("canvas")).not.toBeNull());
@@ -72,6 +74,7 @@ it("disconnects Canvas and watcher on destroy and allows independent mounts", as
   await vi.waitFor(() => expect(host.querySelector("canvas")).not.toBeNull());
   const otherHost = document.createElement("div"); document.body.append(otherHost);
   const other = mountApp(otherHost, { storage: () => storage });
+  if (otherHost.querySelector(".blank-form")) otherHost.querySelector<HTMLButtonElement>(".blank-form button")!.click();
   try {
     app.store.set(chooseColor$, "H2");
     await vi.waitFor(() => expect(host.querySelector(".selected-color strong")?.textContent).toBe("H2"));

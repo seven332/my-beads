@@ -8,7 +8,9 @@ test.use({ locale: "zh-CN" });
 async function download(page: Page, label: string): Promise<Buffer> {
   const pending = page.waitForEvent("download");
   await page.getByRole("button", { name: label }).click();
-  return readFile((await (await pending).path())!);
+  const result = await readFile((await (await pending).path())!);
+  await page.getByRole("button", { name: label === "下载" ? "返回编辑" : "Back to editing", exact: true }).click();
+  return result;
 }
 
 test("uses the Chinese brand, persists language and keeps exports in English", async ({ page }) => {
@@ -21,6 +23,7 @@ test("uses the Chinese brand, persists language and keeps exports in English", a
   await page.getByLabel("搜索颜色").fill("#4C4C40");
   await expect(page.getByText("色差最小", { exact: true })).toBeVisible();
   await expect(page.getByText("保留色彩倾向", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "导出", exact: true }).click();
   await page.getByLabel("导出格式").selectOption("svg");
   await page.getByLabel("图纸宽度").fill("800");
   const chineseSvg = await download(page, "下载");
@@ -29,8 +32,10 @@ test("uses the Chinese brand, persists language and keeps exports in English", a
   expect(chineseSvg.toString()).not.toMatch(/[\u4e00-\u9fff]/);
   await page.getByLabel("界面语言").selectOption("en-US");
   await expect(page.locator("html")).toHaveAttribute("lang", "en-US");
+  await page.getByRole("button", { name: "Export", exact: true }).click();
   await expect(page.getByLabel("Export format")).toHaveValue("svg");
   expect(await download(page, "Download")).toEqual(chineseSvg);
+  await page.getByRole("button", { name: "Export", exact: true }).click();
   await page.getByLabel("Export format").selectOption("csv");
   expect(parsePatternCsv((await download(page, "Download")).toString())).toEqual([["H7", null, "H5"], ["H2", "H7", null]]);
   await page.reload();
@@ -58,6 +63,7 @@ test("imports images with Chinese controls and validation, then exports the mapp
   await expect(dialog.getByText("2 种原图颜色", { exact: true })).toBeVisible();
   await dialog.getByRole("button", { name: "应用图片" }).click();
   await expect(page.getByTestId("counts")).toHaveText("2 颗 · 2 色");
+  await page.getByRole("button", { name: "导出", exact: true }).click();
   await page.getByLabel("导出格式").selectOption("pixel");
   await page.getByLabel("像素放大倍率").fill("3");
   const pixel = PNG.sync.read(await download(page, "下载"));
@@ -68,6 +74,7 @@ test("imports images with Chinese controls and validation, then exports the mapp
 
 test("keeps language controls and color recommendations within narrow viewports in both languages", async ({ page }) => {
   await page.goto("/");
+  await page.getByRole("button", { name: "创建空白网格", exact: true }).click();
   await page.getByLabel("搜索颜色").fill("#4C4C40");
   for (const locale of ["zh-CN", "en-US"]) {
     await page.locator(".language-picker select").selectOption(locale);

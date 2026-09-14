@@ -7,6 +7,7 @@ import { locale$, selectLocale$ } from "../src/locale.js";
 import { beginStroke$, editor$, finishStroke$, importCsv$, newDocument$, rename$, undo$, zoom$ } from "../src/state.js";
 import { loadImage$, imageSession$, updateImage$ } from "../src/image-state.js";
 import { DRAFT_KEY, type DraftStorage } from "../src/drafts.js";
+import { openExport$, selectExportFormat$, changeExportSize$, exportSettings$ } from "../src/export-state.js";
 
 const mounts: { app: ReturnType<typeof mountApp>; host: HTMLElement }[] = [];
 function mount(storage: () => DraftStorage) {
@@ -21,6 +22,7 @@ async function switchLanguage(host: HTMLElement, locale: Locale) {
   await vi.waitFor(() => expect(host.querySelector(".brand")?.textContent).toContain(locale === "zh-CN" ? "我来拼豆" : "My Beads"));
 }
 beforeEach(() => {
+  Element.prototype.scrollIntoView = vi.fn();
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
   vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
   vi.spyOn(navigator, "languages", "get").mockReturnValue(["en-US"]);
@@ -33,6 +35,7 @@ afterEach(() => {
   Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
   Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
   vi.restoreAllMocks(); vi.unstubAllGlobals();
+  Reflect.deleteProperty(Element.prototype, "scrollIntoView");
   document.documentElement.lang = "en";
 });
 
@@ -77,8 +80,8 @@ it("switches the mounted UI and remembers the choice without changing the draft,
   app.store.set(beginStroke$, { x: 0, y: 0 }); app.store.set(finishStroke$); app.store.set(zoom$, 2);
   await vi.waitFor(() => expect(host.querySelector(".counts")?.textContent).toBe("1 bead · 1 color"));
   const before = app.store.get(editor$), saved = values.get(DRAFT_KEY), canvas = host.querySelector("canvas");
-  host.querySelector<HTMLInputElement>('[name="scale"]')!.value = "7";
-  host.querySelector<HTMLSelectElement>('[name="format"]')!.value = "svg";
+  app.store.set(openExport$); app.store.set(selectExportFormat$, "pixel");
+  app.store.set(changeExportSize$, "scale", "7");
   await switchLanguage(host, "zh-CN");
   expect(document.documentElement.lang).toBe("zh-CN"); expect(document.title).toBe("我来拼豆 — 拼豆图纸编辑器");
   expect(host.querySelector('[aria-label="橡皮擦"]')).not.toBeNull();
@@ -86,7 +89,8 @@ it("switches the mounted UI and remembers the choice without changing the draft,
   expect(host.querySelector("canvas")).toBe(canvas);
   expect(app.store.get(editor$)).toEqual(before);
   expect(host.querySelector<HTMLInputElement>('[name="scale"]')!.value).toBe("7");
-  expect(host.querySelector<HTMLSelectElement>('[name="format"]')!.value).toBe("svg");
+  expect(host.querySelector<HTMLSelectElement>('[name="format"]')!.value).toBe("pixel");
+  expect(app.store.get(exportSettings$).scale).toBe("7");
   expect(values.get(DRAFT_KEY)).toBe(saved); expect(values.get(LOCALE_KEY)).toBe("zh-CN");
   app.store.set(undo$); expect(app.store.get(editor$).beads).toBe(0);
   const reloaded = mount(storage);
@@ -102,6 +106,7 @@ it("uses the browser language and keeps editing usable when preference storage i
   expect(app.store.get(locale$)).toBe("zh-CN");
   expect(host.querySelector<HTMLSelectElement>(".language-picker select")!.value).toBe("zh-CN");
   await switchLanguage(host, "en-US");
+  host.querySelector<HTMLButtonElement>(".blank-form button")!.click();
   app.store.set(beginStroke$, { x: 0, y: 0 }); app.store.set(finishStroke$);
   expect(app.store.get(editor$).beads).toBe(1);
   expect(host.querySelector(".draft-status")?.textContent).toContain("Denied");
