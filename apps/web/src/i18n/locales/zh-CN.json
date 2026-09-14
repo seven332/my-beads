@@ -21,9 +21,25 @@
     "zoomLevel": "缩放比例",
     "fit": "适应",
     "fitWindow": "适应窗口",
-    "canvasHelp": "滚动平移 · 双指缩放 · 鼠标中键拖动平移 · 方向键 + 回车绘制 · Shift + 方向键平移",
+    "canvasHelp": "按住空格拖动平移 · 双指缩放 · 方向键 + 回车编辑 · Shift + 方向键平移 · ? 查看快捷键",
     "footer": "享受亲手制作的乐趣。",
     "localFiles": "本地文件 · MARD 221"
+  },
+  "keyboard": {
+    "heading": "键盘快捷键",
+    "close": "关闭快捷键帮助",
+    "tooltip": "{{action}}（{{shortcut}}）",
+    "scope": "快捷键在编辑页面生效。输入框、输入法组词和弹窗保留原有按键功能。方向键和 Enter 需要画布获得焦点。",
+    "view": "视图",
+    "canvas": "画布导航",
+    "general": "历史与帮助",
+    "panHold": "临时平移：按住并拖动",
+    "moveCell": "移动选中格",
+    "panKeys": "平移视图",
+    "apply": "执行当前工具",
+    "cancel": "取消手势 / 关闭面板",
+    "fitHighlight": "适应高亮颜色范围",
+    "highlightNote": "Shift + 2 显示高亮颜色的所有位置，请先点击颜色定位按钮。空格用于平移，Enter 执行当前工具。"
   },
   "tools": {
     "pencil": "铅笔",

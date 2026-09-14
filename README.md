@@ -16,6 +16,23 @@ Search the palette by MARD code or hex color. When a hex color has no exact matc
 
 Files are processed locally in your browser. The editor keeps a local draft between visits; export a CSV to keep a separate copy or move your work to another device. Printable chart labels stay in English in either interface language.
 
+## Keyboard Shortcuts
+
+Open **Keyboard shortcuts** in the editor or press **?** for the full list in your interface language.
+
+| Keys                                  | Action                                          |
+| ------------------------------------- | ----------------------------------------------- |
+| P / E / B / I / H                     | Pencil / Eraser / Fill / Eyedropper / Pan       |
+| Hold Space + drag                     | Temporarily pan; release to return to your tool |
+| + / −                                 | Zoom in / out                                   |
+| Shift + 1 / Shift + 2                 | Fit the pattern / highlighted color             |
+| G / C                                 | Toggle grid / color codes                       |
+| Ctrl or ⌘ + Z / Ctrl or ⌘ + Shift + Z | Undo / redo                                     |
+| Arrow keys / Shift + arrow keys       | Move the selected cell / pan                    |
+| Enter                                 | Apply the selected tool to the selected cell    |
+
+Focus the canvas for arrow keys and Enter. Space only pans. Shortcuts leave text inputs, input composition and dialogs to their normal keyboard behavior. Fitting a highlighted color requires a nonempty color highlight from the Used colors panel.
+
 ## Run Locally
 
 Requires **Node.js 24+** and **pnpm 10.28.1**.

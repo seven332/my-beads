@@ -41,6 +41,17 @@ test("built editor loads at a repository path and preserves editing, exports and
   await canvas.press("ArrowRight");
   await canvas.press("Enter");
   await expect(page.getByTestId("counts")).toHaveText("2 beads · 2 colors");
+  await canvas.press("?");
+  await expect(page.getByRole("dialog", { name: "Keyboard shortcuts", exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(canvas).toBeFocused();
+  await canvas.press("e");
+  await expect(page.getByRole("button", { name: "Eraser", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await canvas.press("Space");
+  await expect(page.getByTestId("counts")).toHaveText("2 beads · 2 colors");
   await openExport(page);
   const pending = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download" }).click();

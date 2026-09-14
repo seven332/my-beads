@@ -151,31 +151,35 @@ for (const tool of ["Eyedropper", "Paint bucket", "Pencil", "Eraser"] as const) 
   });
 }
 
-test("middle-button panning and wheel navigation keep the cursor attached to its original cell", async ({
-  page,
-}) => {
-  const { click, move, border, pixel, cursorPixels, zoom } = await scene(page, "H7,H7,H7,H7");
-  await page.getByRole("button", { name: "Eyedropper", exact: true }).click();
-  await click(1);
-  await expect.poll(() => border(1)).toEqual(orange);
-  await move(-1);
-  await page.mouse.down({ button: "middle" });
-  await move(-2);
-  await page.mouse.up({ button: "middle" });
-  await expect.poll(() => border(0)).toEqual(orange);
-  await page.mouse.wheel(32, 0);
-  await expect.poll(() => border(-1)).toEqual(orange);
-  // Zoom around the selected cell's center; its left edge scales with that cell.
-  await move(-1);
-  await page.keyboard.down("Control");
-  await page.mouse.wheel(0, -40);
-  await page.keyboard.up("Control");
-  const nextZoom = zoom * Math.exp(0.2);
-  await expect.poll(() => pixel(-1, 0.5 - (nextZoom / 2 - 1) / zoom)).toEqual(orange);
-  await expect.poll(cursorPixels).toBeGreaterThan(0);
-  await expect(page.locator(".selected-color strong")).toHaveText("H7");
-  await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
-});
+for (const panKey of ["middle", "Space"] as const) {
+  test(`${panKey} panning and wheel navigation keep the cursor attached to its original cell`, async ({
+    page,
+  }) => {
+    const { click, move, border, pixel, cursorPixels, zoom } = await scene(page, "H7,H7,H7,H7");
+    await page.getByRole("button", { name: "Eyedropper", exact: true }).click();
+    await click(1);
+    await expect.poll(() => border(1)).toEqual(orange);
+    await move(-1);
+    if (panKey === "Space") await page.keyboard.down("Space");
+    await page.mouse.down({ button: panKey === "middle" ? "middle" : "left" });
+    await move(-2);
+    await page.mouse.up({ button: panKey === "middle" ? "middle" : "left" });
+    if (panKey === "Space") await page.keyboard.up("Space");
+    await expect.poll(() => border(0)).toEqual(orange);
+    await page.mouse.wheel(32, 0);
+    await expect.poll(() => border(-1)).toEqual(orange);
+    // Zoom around the selected cell's center; its left edge scales with that cell.
+    await move(-1);
+    await page.keyboard.down("Control");
+    await page.mouse.wheel(0, -40);
+    await page.keyboard.up("Control");
+    const nextZoom = zoom * Math.exp(0.2);
+    await expect.poll(() => pixel(-1, 0.5 - (nextZoom / 2 - 1) / zoom)).toEqual(orange);
+    await expect.poll(cursorPixels).toBeGreaterThan(0);
+    await expect(page.locator(".selected-color strong")).toHaveText("H7");
+    await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
+  });
+}
 
 test("a stroke crossing the grid boundary clips its paint, hides the cursor and supports reentry", async ({
   page,

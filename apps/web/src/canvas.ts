@@ -1,5 +1,6 @@
 import { defaultPalette, type Point } from "@my-beads/core";
 import { canvasCursor } from "./canvas-cursor.js";
+import { composing } from "./shortcuts.js";
 import type { EditorModel } from "./state.js";
 
 export interface CanvasActions {
@@ -17,9 +18,11 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
   let cursor: Point | null = null;
   let focused = false;
   let destroyed = false;
+  let panHeld = false;
   function updateMouseCursor() {
     if (!model || destroyed) return;
-    const value = canvasCursor(model.tool, pointer?.pan ?? false);
+    const tool = !pointer && panHeld ? "pan" : model.tool;
+    const value = canvasCursor(tool, pointer?.pan ?? false);
     if (canvas.style.cursor !== value) canvas.style.cursor = value;
   }
   function paint() {
@@ -148,7 +151,8 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
   function down(event: PointerEvent) {
     if (!model || pointer || (event.button !== 0 && event.button !== 1)) return;
     const p = position(event),
-      pan = model.tool === "pan" || event.button === 1;
+      pan =
+        model.tool === "pan" || event.button === 1 || (panHeld && event.pointerType !== "touch");
     // Pointer focus must not create a keyboard cursor while panning or clicking outside the grid.
     const target = pan ? cursor : cell(p);
     event.preventDefault();
@@ -181,12 +185,17 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
     const canceled =
       event.type === "pointercancel" ||
       (event.type === "lostpointercapture" && event.buttons !== 0);
+    if (canceled) {
+      panHeld = false;
+      updateMouseCursor();
+    }
     if (!active.pan) actions.finish(canceled);
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   }
   function cancel() {
     const active = pointer;
     pointer = undefined;
+    panHeld = false;
     updateMouseCursor();
     actions.finish(true);
     if (active && canvas.hasPointerCapture(active.id)) canvas.releasePointerCapture(active.id);
@@ -198,7 +207,16 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
     else actions.pan(-event.deltaX, -event.deltaY);
   }
   function key(event: KeyboardEvent) {
-    if (!model) return;
+    if (
+      !model ||
+      event.defaultPrevented ||
+      composing(event) ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      (pointer && event.key !== "Escape")
+    )
+      return;
     const delta = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[
       event.key
     ];
@@ -215,7 +233,7 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
             : { x: 0, y: 0 },
         );
       }
-    } else if (event.key === " " || event.key === "Enter") {
+    } else if (event.key === "Enter" && !panHeld) {
       event.preventDefault();
       if (cursor) {
         actions.begin(cursor);
@@ -232,6 +250,9 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
     cancel();
     schedule();
   }
+  function visibility() {
+    if (document.hidden) cancel();
+  }
   const observer = new ResizeObserver(schedule);
   observer.observe(canvas);
   canvas.addEventListener("pointerdown", down);
@@ -244,7 +265,15 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
   canvas.addEventListener("focus", focus);
   canvas.addEventListener("blur", blur);
   window.addEventListener("blur", cancel);
+  document.addEventListener("visibilitychange", visibility);
   return {
+    interacting() {
+      return !!pointer;
+    },
+    holdPan(held: boolean) {
+      panHeld = held;
+      updateMouseCursor();
+    },
     update(next: EditorModel) {
       model = next;
       updateMouseCursor();
@@ -266,6 +295,7 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
       canvas.removeEventListener("focus", focus);
       canvas.removeEventListener("blur", blur);
       window.removeEventListener("blur", cancel);
+      document.removeEventListener("visibilitychange", visibility);
     },
   };
 }

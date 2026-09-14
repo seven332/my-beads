@@ -49,6 +49,85 @@
   touch-action: none;
   cursor: crosshair;
 }
+.keyboard-dialog {
+  width: min(720px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  padding: 24px;
+  border: 1px solid #dce0d7;
+  border-radius: 16px;
+  color: inherit;
+  background: #fcfcf9;
+  overscroll-behavior: contain;
+}
+.keyboard-dialog::backdrop {
+  background: #14281eb3;
+}
+.keyboard-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.keyboard-heading h2 {
+  margin: 0;
+  font-size: 22px;
+}
+.keyboard-note {
+  color: #53674b;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.keyboard-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 28px;
+}
+.keyboard-groups h3 {
+  margin: 12px 0;
+  font-size: 14px;
+}
+.keyboard-groups dl {
+  margin: 0;
+}
+.keyboard-groups dl > div {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #e8eddf;
+  font-size: 12px;
+}
+.keyboard-groups dd {
+  margin: 0;
+  text-align: right;
+  flex-shrink: 0;
+}
+.keyboard-groups kbd {
+  font:
+    11px -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  padding: 3px 5px;
+  border: 1px solid #dce0d7;
+  border-radius: 4px;
+  background: #f2f5ef;
+  white-space: nowrap;
+}
+.keyboard-help-button {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+}
+@media (max-width: 600px) {
+  .keyboard-dialog {
+    padding: 16px;
+  }
+  .keyboard-groups {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .floating-panel {
   pointer-events: auto;
   background: #fcfcf9f7;

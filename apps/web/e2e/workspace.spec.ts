@@ -30,7 +30,7 @@ async function fixedWorkspace(page: Page) {
 async function controlsReachable(page: Page) {
   const controls = await page
     .locator(
-      ".editor-topbar input, .editor-topbar select, .document-actions button, .tools button, .history-controls button, .editor-navigation button",
+      ".editor-topbar input, .editor-topbar select, .editor-topbar button, .tools button, .history-controls button, .editor-navigation button",
     )
     .evaluateAll((nodes) =>
       nodes.map((node) => {

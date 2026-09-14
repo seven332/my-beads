@@ -12,6 +12,7 @@ export function createViewLifecycle(actions: CanvasActions) {
     canvas: createRef<HTMLCanvasElement>(),
     imageDialog: createRef<HTMLDialogElement>(),
     exportDialog: createRef<HTMLDialogElement>(),
+    keyboardDialog: createRef<HTMLDialogElement>(),
     sourcePreview: createRef<HTMLCanvasElement>(),
     mappedPreview: createRef<HTMLCanvasElement>(),
   };
@@ -47,6 +48,12 @@ export function createViewLifecycle(actions: CanvasActions) {
   }
   return {
     refs,
+    interacting() {
+      return canvas?.controller.interacting() ?? false;
+    },
+    holdPan(held: boolean) {
+      canvas?.controller.holdPan(held);
+    },
     sync(model: EditorModel, image: ImageSession | null) {
       if (canvas?.element !== refs.canvas.value) {
         releaseCanvas();
@@ -58,7 +65,7 @@ export function createViewLifecycle(actions: CanvasActions) {
       }
       canvas?.controller.update(model);
       const previous = dialogs;
-      dialogs = [refs.imageDialog.value, refs.exportDialog.value].filter(
+      dialogs = [refs.imageDialog.value, refs.exportDialog.value, refs.keyboardDialog.value].filter(
         (dialog): dialog is HTMLDialogElement => !!dialog,
       );
       for (const dialog of previous) if (!dialogs.includes(dialog)) dialog.close();

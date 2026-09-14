@@ -21,9 +21,25 @@
     "zoomLevel": "Zoom level",
     "fit": "Fit",
     "fitWindow": "Fit to window",
-    "canvasHelp": "Scroll to pan · Pinch to zoom · Middle-drag to pan · Arrow keys + Enter to draw · Shift + arrows to pan",
+    "canvasHelp": "Hold Space and drag to pan · Pinch to zoom · Arrow keys + Enter to edit · Shift + arrows to pan · ? for shortcuts",
     "footer": "Made for the joy of making.",
     "localFiles": "Local files · MARD 221"
+  },
+  "keyboard": {
+    "heading": "Keyboard shortcuts",
+    "close": "Close keyboard shortcuts",
+    "tooltip": "{{action}} ({{shortcut}})",
+    "scope": "Shortcuts work in the editor. Text fields, input composition and dialogs keep their normal keys. Focus the canvas for arrow keys and Enter.",
+    "view": "View",
+    "canvas": "Canvas navigation",
+    "general": "History and help",
+    "panHold": "Temporary pan — hold and drag",
+    "moveCell": "Move selected cell",
+    "panKeys": "Pan the view",
+    "apply": "Apply the current tool",
+    "cancel": "Cancel gesture / close panel",
+    "fitHighlight": "Fit highlighted color",
+    "highlightNote": "Shift + 2 fits all locations of the highlighted color. Choose a color locator first. Space pans; Enter applies the current tool."
   },
   "tools": {
     "pencil": "Pencil",

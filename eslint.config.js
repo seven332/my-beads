@@ -44,6 +44,7 @@ export default [
             "SVG",
             "WebP",
             "Enter",
+            "Esc",
             "Space",
             "Shift",
             "Ctrl",

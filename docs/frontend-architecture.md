@@ -125,7 +125,7 @@ surrounding workspace with an editing tool clears it and does not start a stroke
 panning and zooming preserve that selection state without snapping it to an edge.
 Strokes started inside the grid still pass raw endpoints to the core for boundary
 clipping, while their cursor disappears outside and reappears on reentry. Keyboard
-focus initializes a cell; arrow keys can restore a cleared cursor, and Enter/Space
+focus initializes a cell; arrow keys can restore a cleared cursor, and Enter
 only edit when a cell is selected.
 
 The native mouse cursor is independent of the orange selected-cell outline.
@@ -138,6 +138,30 @@ The Canvas controller updates this style immediately on tool and gesture changes
 resets it on release/cancellation/capture or focus loss, and removes it on teardown.
 Cursor images do not scale with zoom, require no deployment path, and add no
 hover selection state, pointer overlay or rendering loop. Touch interaction is unchanged.
+
+`shortcuts.ts` supplies the typed editor command catalog, translated toolbar hints,
+help rows and modifier matching. The mount-owned `keyboard.ts` adapter routes
+commands through existing actions only in the active editor. Inputs, contenteditable,
+IME composition and all dialogs keep their normal keys. Pointer/focus ownership
+allows Safari's body-targeted events without sharing shortcuts across app mounts.
+Discrete commands ignore repeats; zoom and history allow them. Browser-modified
+letters are not consumed. Native buttons retain Space and Enter activation.
+
+Held Space is a transient Canvas override, independent of the selected tool and
+document state. The controller latches pan versus drawing on pointerdown; releasing
+Space during a pan cannot turn that gesture into a stroke. Pressing Space during a
+stroke only arms the next gesture. Tool/view/history shortcuts and cell navigation
+are ignored during a pointer gesture. Keyup, focus/composition changes, cancellation,
+visibility loss and teardown clear the held override; active gestures cancel on
+abnormal capture loss, blur, Escape or visibility loss. Normal mouse release can
+leave Space held for another pan. Enter edits the selected cell; Space never edits.
+Panning preserves the orange selection and creates no history entry.
+
+Keyboard help uses transient ccstate visibility and the existing native-dialog
+lifecycle. Closing restores the invoking element's focus, with the help button as
+a fallback. Its bilingual, scrollable layout is tested in narrow windows. Shift+2
+checks for a nonempty highlighted color before fitting, so an absent or empty
+highlight cannot change the viewport or close the palette.
 
 Counts come from computed core data. Imports use both an owned AbortSignal and
 revision/token checks, so newer work cannot be overwritten by a late file read.
@@ -201,7 +225,7 @@ current document. CSV settings never depend on the blank-canvas form or image ma
 Export is an editor action, not a separate page. `export-state.ts` retains dialog
 format/size choices and pending status; `export-view.ts` shows only the selected
 format's settings. Native dialog focus and Escape return to the editor. History
-shortcuts are suspended outside the editor or inside either dialog. The mount owns
+shortcuts are suspended outside the editor or inside any dialog. The mount owns
 each export AbortController so closing the dialog or unmounting prevents a late
 download. Workflow navigation is not persisted; the existing document-only draft
 schema remains unchanged.

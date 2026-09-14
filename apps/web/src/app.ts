@@ -12,6 +12,8 @@ import * as images from "./image-state.js";
 import * as exports from "./export-state.js";
 import { readImage } from "./image-file.js";
 import { createDrafts, type DraftStorage } from "./drafts.js";
+import { mountKeyboard } from "./keyboard.js";
+import { composing } from "./shortcuts.js";
 
 /** One mount owns the store, watcher, imports, Canvas resources and download URLs. */
 export function mountApp(
@@ -36,6 +38,7 @@ export function mountApp(
   const lifetime = new AbortController();
   let importController: AbortController | undefined;
   let exportController: AbortController | undefined;
+  let helpInvoker: HTMLElement | null = null;
   const downloads = new Map<string, ReturnType<typeof setTimeout>>();
   const root = document.createElement("div");
   host.append(root);
@@ -113,6 +116,21 @@ export function mountApp(
       if (paletteIsOverlay(host)) store.set(state.showPalette$, false);
       const area = editingArea(host);
       if (area) store.set(state.fitHighlightedColor$, area);
+    },
+    openKeyboardHelp: (invoker) => {
+      if (store.get(state.workflow$).page !== "edit") return;
+      helpInvoker =
+        invoker ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+      store.set(state.showKeyboardHelp$, true);
+    },
+    closeKeyboardHelp: () => {
+      store.set(state.showKeyboardHelp$, false);
+      const target =
+        helpInvoker?.isConnected && root.contains(helpInvoker)
+          ? helpInvoker
+          : root.querySelector<HTMLElement>(".keyboard-help-button");
+      helpInvoker = null;
+      target?.focus({ preventScroll: true });
     },
     startNew: () => {
       cancelImport();
@@ -237,6 +255,35 @@ export function mountApp(
     pan: (dx, dy) => store.set(state.moveViewport$, dx, dy),
     zoom: (factor, anchor) => store.set(state.zoom$, factor, anchor),
   });
+  const keyboard = mountKeyboard(root, {
+    enabled: () =>
+      store.get(state.workflow$).page === "edit" &&
+      !store.get(exports.exportSettings$).open &&
+      !store.get(images.imageSession$) &&
+      !store.get(state.editor$).keyboardHelpOpen,
+    interacting: lifecycle.interacting,
+    pan: lifecycle.holdPan,
+    run: {
+      pencil: () => actions.tool("pencil"),
+      eraser: () => actions.tool("eraser"),
+      bucket: () => actions.tool("bucket"),
+      eyedropper: () => actions.tool("eyedropper"),
+      pan: () => actions.tool("pan"),
+      grid: actions.grid,
+      codes: actions.codes,
+      zoomIn: () => actions.zoom(1.25),
+      zoomOut: () => actions.zoom(1 / 1.25),
+      fit: actions.fit,
+      fitHighlight: () => {
+        const model = store.get(state.editor$);
+        if (model.highlightedColor && model.document.counts.has(model.highlightedColor))
+          actions.fitHighlight();
+      },
+      help: actions.openKeyboardHelp,
+      undo: actions.undo,
+      redo: actions.redo,
+    },
+  });
   store.watch(
     (get) => {
       const model = get(state.editor$);
@@ -260,6 +307,7 @@ export function mountApp(
         root,
       );
       lifecycle.sync(model, image);
+      keyboard.sync();
       drafts.observe(get(state.committedDocument$));
     },
     { signal: lifetime.signal },
@@ -267,6 +315,7 @@ export function mountApp(
   // watch runs immediately; fitting is outside the read-only watch callback.
   fit();
   function shortcut(event: KeyboardEvent) {
+    if (event.defaultPrevented || composing(event)) return;
     const target = event.target as HTMLElement;
     // Safari can leave focus on body after a palette button is clicked.
     const paletteEscape =
@@ -275,6 +324,7 @@ export function mountApp(
     if (
       store.get(state.workflow$).page !== "edit" ||
       store.get(exports.exportSettings$).open ||
+      store.get(state.editor$).keyboardHelpOpen ||
       store.get(images.imageSession$)
     )
       return;
@@ -282,12 +332,6 @@ export function mountApp(
       event.preventDefault();
       palette(false);
       return;
-    }
-    if (target.matches("input, textarea, select") || target.isContentEditable) return;
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
-      event.preventDefault();
-      if (event.shiftKey) actions.redo();
-      else actions.undo();
     }
   }
   window.addEventListener("keydown", shortcut);
@@ -308,6 +352,8 @@ export function mountApp(
         URL.revokeObjectURL(url);
       }
       downloads.clear();
+      keyboard.destroy();
+      helpInvoker = null;
       lifecycle.destroy();
       part?.setConnected(false);
       render(nothing, root);
