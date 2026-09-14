@@ -126,6 +126,8 @@ Creating a pattern opens the editor. **New pattern** in the editor returns to th
 
 A valid saved draft opens directly in the editor. Visiting the creation page alone does not create or overwrite a draft.
 
+The editor fills the window with a Canvas behind stationary floating controls. The page stays still while you pan the pattern. On narrow or short windows, use the current-color button to open the palette; close it with × or Escape. Colors and search recommendations scroll within the panel. The creation page remains scrollable.
+
 The interface supports **English** and **简体中文**, with the Chinese name **我来拼豆**. Use **Language / 界面语言** in the header to switch without losing your work. Your saved choice takes priority over browser languages; unsupported languages fall back to English. Chinese browser variants use Simplified Chinese. The preference is stored separately from the draft on this device; switching still works when storage is unavailable, but the choice cannot be remembered.
 
 Printable chart labels remain in English in either interface language. Pattern titles, filenames, MARD codes, CSV contents and pixel colors are not translated.
@@ -133,7 +135,7 @@ Printable chart labels remain in English in either interface language. Pattern t
 - **Pencil / Eraser:** click or drag. Fast drags interpolate cells; one drag is one undo step. Escape, loss of window focus, or an interrupted pointer gesture cancels the current stroke.
 - **Fill:** recolor a four-connected region. **Pick:** select the color of an existing bead.
 - **Palette:** search MARD codes or hex values, choose a color, and see per-color counts.
-- **Navigate:** use +/− or pinch to zoom around the viewport/pointer; scroll, use Pan, or middle-drag to move the canvas. Fit centers the entire grid. Grid and Codes toggle overlays; codes appear when zoomed in enough to read.
+- **Navigate:** use +/− to zoom around the unobscured workspace, or pinch around the pointer; scroll, use Pan, or middle-drag to move the canvas. Fit centers the entire grid clear of the floating controls and closes the narrow-screen palette first. Opening or closing the palette otherwise preserves your view. Grid and Codes toggle overlays; codes appear when zoomed in enough to read.
 - **Keyboard:** focus the canvas, move with arrow keys and draw with Enter or Space. Shift + arrows pans. Cmd/Ctrl + Z undoes; add Shift to redo.
 - **Export:** the editor's header opens a dialog for CSV, transparent pixel PNG, printable SVG, or printable PNG. Only settings for the selected format appear. Pixel scale is an integer from 1 to 512, including 1×; chart width defaults to 2400. Format and size choices survive closing and reopening the dialog. Escape returns to editing. Printable legends keep hex values and bead counts on separate lines and retain the MARD 221 footer.
 

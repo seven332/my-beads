@@ -38,6 +38,8 @@
   "colors_other": "{{count, number}} 色",
   "cells_other": "{{count, number}} 格",
   "palette": {
+    "open": "打开调色板",
+    "close": "关闭调色板",
     "heading": "调色板",
     "searchPlaceholder": "搜索色号或十六进制颜色…",
     "search": "搜索颜色",

@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
 import { createPattern, defaultPalette, parsePatternCsv, type PatternGrid } from "@my-beads/core";
-import { openExport, closeExport, startNew } from "./helpers.js";
+import { openExport, closeExport, startNew, fitCoordinates, openPalette } from "./helpers.js";
 
 const shermaPath = fileURLToPath(new URL("../../../templates/hollow-knight/sherma-singing-50x50.csv", import.meta.url));
 async function bytes(download: Download) { return readFile((await download.path())!); }
@@ -16,12 +16,6 @@ async function download(page: Page, format: string, scale = 1) {
   const result = await bytes(await pending);
   await closeExport(page);
   return result;
-}
-async function fitCoordinates(page: Page, columns: number, rows: number) {
-  await page.getByRole("button", { name: "Fit to window" }).click();
-  const box = (await page.getByRole("img", { name: "Pattern canvas" }).boundingBox())!;
-  const zoom = Math.max(0.25, Math.min(32, (box.width - 64) / columns, (box.height - 64) / rows));
-  return { box, zoom, cell: (x: number, y: number) => ({ x: box.x + (box.width - columns * zoom) / 2 + (x + .5) * zoom, y: box.y + (box.height - rows * zoom) / 2 + (y + .5) * zoom }) };
 }
 function verifyPixels(buffer: Buffer, grid: PatternGrid, scale: number) {
   const png = PNG.sync.read(buffer);
@@ -45,6 +39,7 @@ for (const width of [1440, 390]) {
     await page.goto("/");
     await page.getByLabel("Open CSV").setInputFiles({ name: "blank.csv", mimeType: "text/csv", buffer: Buffer.from('\"\",\"\"') });
     await expect(page.getByLabel("Pattern title")).toHaveValue("blank");
+    await openPalette(page);
     const search = page.getByLabel("Search colors");
     await search.fill(" #4c4c40 ");
     await expect(page.locator(".search-source")).toContainText("#4C4C40");
@@ -149,10 +144,9 @@ test("zoom and pan preserve cell targeting; invalid imports and exports preserve
   await page.goto("/");
   await page.getByLabel("Columns", { exact: true }).fill("4"); await page.getByLabel("Rows", { exact: true }).fill("4");
   await page.getByRole("button", { name: "Create blank grid" }).click();
-  const { box, zoom } = await fitCoordinates(page, 4, 4);
+  const { center, zoom } = await fitCoordinates(page, 4, 4);
   await page.getByRole("button", { name: "Zoom in" }).click();
   await page.getByRole("button", { name: "Pan", exact: true }).click();
-  const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
   await page.mouse.move(center.x, center.y); await page.mouse.down(); await page.mouse.move(center.x + 60, center.y + 20); await page.mouse.up();
   await page.getByRole("button", { name: "Pencil", exact: true }).click();
   await page.mouse.click(center.x + 60 + zoom * 1.25 * .5, center.y + 20 + zoom * 1.25 * .5);
@@ -306,20 +300,17 @@ test("window blur cancels the active stroke and allows the next gesture", async 
   await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
 });
 
-test("drawing on a partially visible canvas preserves page scroll and cell targeting", async ({ page }) => {
+test("drawing on a full-window canvas preserves the fixed page and cell targeting", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await page.getByRole("button", { name: "Create blank grid" }).click();
-  const { zoom } = await fitCoordinates(page, 50, 50);
+  const { cell } = await fitCoordinates(page, 50, 50);
   const canvas = page.getByRole("img", { name: "Pattern canvas" });
   await canvas.evaluate(element => window.scrollTo(0, window.scrollY + element.getBoundingClientRect().top + 180));
-  const box = (await canvas.boundingBox())!;
-  expect(box.y).toBeLessThan(0);
-  const scrollY = await page.evaluate(() => window.scrollY);
-  await page.mouse.click(box.x + (box.width - 50 * zoom) / 2 + 10.5 * zoom,
-    box.y + (box.height - 50 * zoom) / 2 + 35.5 * zoom);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  await page.mouse.click(cell(10, 35).x, cell(10, 35).y);
   await expect(canvas).toBeFocused();
-  expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
   const grid = parsePatternCsv((await download(page, "csv")).toString());
   expect(grid[35][10]).toBe("H7");
   expect(grid.flat().filter(Boolean)).toHaveLength(1);

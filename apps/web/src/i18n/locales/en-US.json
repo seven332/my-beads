@@ -41,6 +41,8 @@
   "cells_one": "{{count, number}} cell",
   "cells_other": "{{count, number}} cells",
   "palette": {
+    "open": "Open palette",
+    "close": "Close palette",
     "heading": "Your palette",
     "searchPlaceholder": "Search code or hex…",
     "search": "Search colors",

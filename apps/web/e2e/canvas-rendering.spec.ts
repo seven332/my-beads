@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { parsePatternCsv } from "@my-beads/core";
-import { openExport } from "./helpers.js";
+import { openExport, fitCoordinates } from "./helpers.js";
 
 const black = [0, 0, 0, 255], white = [255, 255, 255, 255], orange = [239, 117, 64, 255];
 const emptyLight = [245, 246, 242, 255], emptyDark = [228, 230, 227, 255];
@@ -10,13 +10,12 @@ async function scene(page: Page, csv: string) {
   await page.goto("/");
   await page.getByLabel("Open CSV").setInputFiles({ name: "rendering.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
   await expect(page.getByLabel("Pattern title")).toHaveValue("rendering");
-  await page.getByRole("button", { name: "Fit to window" }).click();
   const canvas = page.getByRole("img", { name: "Pattern canvas" });
-  const box = (await canvas.boundingBox())!, columns = parsePatternCsv(csv)[0].length;
-  const zoom = Math.min(32, (box.width - 64) / columns, box.height - 64);
+  const columns = parsePatternCsv(csv)[0].length;
+  const { box, zoom, cell } = await fitCoordinates(page, columns, 1);
   const point = (column: number, u = 0.5, v = 0.5) => ({
-    x: (box.width - columns * zoom) / 2 + (column + u) * zoom,
-    y: (box.height - zoom) / 2 + v * zoom,
+    x: cell(column, 0).x - box.x + (u - 0.5) * zoom,
+    y: cell(column, 0).y - box.y + (v - 0.5) * zoom,
   });
   // Inspect actual rendered pixels rather than saved screenshot baselines or store state.
   const pixel = (column: number, u = 0.5, v = 0.5) => canvas.evaluate((node, point) => {

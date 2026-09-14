@@ -95,6 +95,28 @@ the watch and file work, removes listeners and revokes pending download URLs.
 CI covers real bootstrap/teardown, state isolation, Chromium/WebKit editing and
 decoded downloads, alongside the existing core and CLI regression suites.
 
+## Editor workspace layout
+
+`editor-view.ts` owns the editing surface separately from the scrollable creation
+page. The edit workspace is fixed to the dynamic viewport; an absolute Canvas fills
+it behind a CSS Grid of stationary floating controls. Grid rows account for actual
+header and status heights, including draft warnings. Transparent space between
+panels passes pointer events through to the Canvas. Palette content uses contained
+scrolling, including its recommendations and the whole panel in short windows.
+
+`canvas-viewport.ts` measures visible panels and their CSS `--canvas-edge` values to
+derive a central unobscured rectangle in Canvas coordinates. Fit receives this area
+and its origin; button zoom uses its center, while wheel zoom retains its pointer
+anchor. Narrow-screen Fit closes the palette first. Palette visibility is transient
+ccstate UI state; normal toggles and viewport resizing do not refit or change history.
+The Canvas keeps its existing pointer capture and continuous-stroke behavior when
+an active gesture crosses a panel. Panels have no dragging or saved positions.
+
+Browser tests check the full-window bounds, unobscured fitted grid, actual control
+hit targets, palette scrolling/selection and focus, short-window recovery warnings,
+and Canvas pixels. Geometry tests cover offset canvases and obscured/empty areas;
+existing creation, capture, editing and export workflows remain regression coverage.
+
 ## Image imports and drafts
 
 `state.ts` owns the create/edit page and whether a document has been explicitly

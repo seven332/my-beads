@@ -37,6 +37,7 @@ const importState$ = state(0);
 const viewportState$ = state<Viewport>({ zoom: 12, x: 32, y: 32 });
 const gridVisibleState$ = state(true);
 const codesVisibleState$ = state(false);
+const paletteOpenState$ = state(false);
 const draftStatusState$ = state<DraftStatus>({ kind: null, action: null, error: false });
 const pageState$ = state<"create" | "edit">("create");
 const hasDocumentState$ = state(false);
@@ -63,7 +64,7 @@ export const editor$ = computed(get => {
   return {
     document, title: get(titleState$), tool: get(toolState$), color: get(colorState$),
     search, error: errorText(get(errorState$), get(translation$)), viewport: get(viewportState$),
-    gridVisible: get(gridVisibleState$), codesVisible: get(codesVisibleState$),
+    gridVisible: get(gridVisibleState$), codesVisible: get(codesVisibleState$), paletteOpen: get(paletteOpenState$),
     canUndo: history.past.length > 0 && !history.stroke,
     canRedo: history.future.length > 0 && !history.stroke,
     beads: [...document.counts.values()].reduce((sum, count) => sum + count, 0),
@@ -109,6 +110,7 @@ export const chooseColor$ = command(({ set }, code: string) => {
 export const searchPalette$ = command(({ set }, search: string) => { set(searchState$, search); });
 export const toggleGrid$ = command(({ get, set }) => { set(gridVisibleState$, !get(gridVisibleState$)); });
 export const toggleCodes$ = command(({ get, set }) => { set(codesVisibleState$, !get(codesVisibleState$)); });
+export const showPalette$ = command(({ set }, open: boolean) => { set(paletteOpenState$, open); });
 export const moveViewport$ = command(({ get, set }, dx: number, dy: number) => {
   if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
   const view = get(viewportState$);
@@ -122,10 +124,10 @@ export const zoom$ = command(({ get, set }, factor: number, anchor: Point = { x:
   set(viewportState$, { zoom, x: anchor.x - (anchor.x - view.x) * ratio,
     y: anchor.y - (anchor.y - view.y) * ratio });
 });
-export const fitViewport$ = command(({ get, set }, width: number, height: number) => {
+export const fitViewport$ = command(({ get, set }, width: number, height: number, origin: Point = { x: 0, y: 0 }) => {
   const grid = get(historyState$).grid;
   const zoom = Math.max(0.25, Math.min(32, (width - 64) / grid[0].length, (height - 64) / grid.length));
-  set(viewportState$, { zoom, x: (width - grid[0].length * zoom) / 2, y: (height - grid.length * zoom) / 2 });
+  set(viewportState$, { zoom, x: origin.x + (width - grid[0].length * zoom) / 2, y: origin.y + (height - grid.length * zoom) / 2 });
 });
 export const beginStroke$ = command(({ get, set }, point: Point) => {
   set(finishStroke$);
