@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { PNG } from "pngjs";
 import { parsePatternCsv } from "@my-beads/core";
+import { openPalette } from "./helpers.js";
 
 test.use({ locale: "zh-CN" });
 
@@ -80,9 +81,10 @@ test("keeps language controls and color recommendations within narrow viewports 
     await page.locator(".language-picker select").selectOption(locale);
     for (const width of [320, 390, 461, 480, 600, 740, 900]) {
       await page.setViewportSize({ width, height: 900 });
+      await openPalette(page);
       await expect(page.locator(".language-picker select")).toBeVisible();
       const layout = await page.evaluate(() => ({ width: document.documentElement.clientWidth, content: document.documentElement.scrollWidth,
-        controls: [...document.querySelectorAll(".topbar select, .import-button, .color-recommendation")].map(node => {
+        controls: [...document.querySelectorAll(".language-picker select, .import-button, .color-recommendation")].map(node => {
           const rect = node.getBoundingClientRect(); return { left: rect.left, right: rect.right };
         }) }));
       expect(layout.content, `${locale} at ${width}px`).toBeLessThanOrEqual(layout.width);

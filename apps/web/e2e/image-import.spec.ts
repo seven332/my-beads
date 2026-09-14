@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
 import { parsePatternCsv, defaultPalette, type PatternGrid } from "@my-beads/core";
-import { startNew, openExport, closeExport } from "./helpers.js";
+import { startNew, openExport, closeExport, fitCoordinates } from "./helpers.js";
 
 function enlargedImage() {
   const png = new PNG({ width: 1000, height: 1000 });
@@ -199,9 +199,8 @@ test("corrupt drafts survive edits until explicit replacement", async ({ page })
 test("reload during a captured stroke recovers only the previously committed grid", async ({ page }) => {
   await page.goto("/"); await csv(page, 'H5,""');
   await expect(page.getByLabel("Draft status")).toContainText("saved on this device");
-  await page.getByRole("button", { name: "Fit to window" }).click();
-  const box = (await page.getByRole("img", { name: "Pattern canvas" }).boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2 + 16, box.y + box.height / 2);
+  const { cell } = await fitCoordinates(page, 2, 1);
+  await page.mouse.move(cell(1, 0).x, cell(1, 0).y);
   await page.mouse.down();
   await expect(page.getByTestId("counts")).toHaveText("2 beads · 2 colors");
   await page.reload(); await page.mouse.up();

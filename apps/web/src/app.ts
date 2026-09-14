@@ -6,6 +6,7 @@ import { init, h, attributesModule, propsModule, eventListenersModule, type VNod
 import * as state from "./state.js";
 import { view, type Actions } from "./view.js";
 import { mountCanvas } from "./canvas.js";
+import { editingArea, paletteIsOverlay } from "./canvas-viewport.js";
 import { exportPattern } from "./exports.js";
 import * as images from "./image-state.js";
 import * as exports from "./export-state.js";
@@ -41,8 +42,16 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
   }
   function flushDraft() { drafts.observe(store.get(state.committedDocument$)); drafts.flush(); }
   function fit() {
-    const element = host.querySelector(".pattern-canvas");
-    if (element) { const rect = element.getBoundingClientRect(); store.set(state.fitViewport$, rect.width, rect.height); }
+    if (paletteIsOverlay(host)) store.set(state.showPalette$, false);
+    const area = editingArea(host);
+    if (area) store.set(state.fitViewport$, area.width, area.height, area);
+  }
+  function palette(open: boolean) {
+    store.set(state.showPalette$, open);
+    // Browser focus scrolling can reveal only part of the field in a short panel.
+    const panel = host.querySelector(".palette-panel");
+    if (open && panel) panel.scrollTop = 0;
+    host.querySelector<HTMLElement>(open ? ".palette-search" : ".palette-toggle")?.focus({ preventScroll: true });
   }
   function focusPage(selector: string) {
     host.scrollIntoView({ block: "start", behavior: "instant" });
@@ -50,6 +59,7 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
   }
   function created() { fit(); focusPage(".title-input"); }
   const actions: Actions = {
+    palette,
     startNew: () => { cancelImport(); closeExport(); store.set(state.showCreate$); focusPage("h1"); },
     resume: () => { cancelImport(); store.set(state.showEditor$); focusPage(".title-input"); },
     openExport: () => store.set(exports.openExport$), closeExport,
@@ -82,8 +92,8 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
     undo: () => store.set(state.undo$), redo: () => store.set(state.redo$),
     grid: () => store.set(state.toggleGrid$), codes: () => store.set(state.toggleCodes$),
     zoom: factor => {
-      const rect = host.querySelector("canvas")!.getBoundingClientRect();
-      store.set(state.zoom$, factor, { x: rect.width / 2, y: rect.height / 2 });
+      const area = editingArea(host);
+      if (area) store.set(state.zoom$, factor, { x: area.x + area.width / 2, y: area.y + area.height / 2 });
     }, fit,
     export: options => {
       if (store.get(exports.exportSettings$).pending) return;
@@ -127,19 +137,26 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
   fit();
   function shortcut(event: KeyboardEvent) {
     const target = event.target as HTMLElement;
-    if (store.get(state.workflow$).page !== "edit" || store.get(exports.exportSettings$).open || store.get(images.imageSession$) || target.matches("input, textarea, select") || target.isContentEditable) return;
+    // Safari can leave focus on body after a palette button is clicked.
+    const paletteEscape = event.key === "Escape" && store.get(state.editor$).paletteOpen && paletteIsOverlay(host);
+    if (!host.contains(target) && !(paletteEscape && target === document.body)) return;
+    if (store.get(state.workflow$).page !== "edit" || store.get(exports.exportSettings$).open || store.get(images.imageSession$)) return;
+    if (paletteEscape) {
+      event.preventDefault(); palette(false); return;
+    }
+    if (target.matches("input, textarea, select") || target.isContentEditable) return;
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
       event.preventDefault(); if (event.shiftKey) actions.redo(); else actions.undo();
     }
   }
-  host.addEventListener("keydown", shortcut);
+  window.addEventListener("keydown", shortcut);
   window.addEventListener("pagehide", flushDraft);
   return {
     store,
     destroy() {
       if (lifetime.signal.aborted) return;
       flushDraft(); drafts.dispose(); window.removeEventListener("pagehide", flushDraft);
-      lifetime.abort(); importController?.abort(); exportController?.abort(); host.removeEventListener("keydown", shortcut);
+      lifetime.abort(); importController?.abort(); exportController?.abort(); window.removeEventListener("keydown", shortcut);
       for (const [url, timer] of downloads) { clearTimeout(timer); URL.revokeObjectURL(url); }
       downloads.clear(); vnode = patch(vnode, h("div")); (vnode.elm as Element).remove();
     },
