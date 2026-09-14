@@ -75,6 +75,25 @@ async function scene(page: Page, csv: string) {
   };
 }
 
+test("hovering with different tool cursors preserves the selected cell", async ({ page }) => {
+  const { canvas, move, border, pixel } = await scene(page, "H2,H7,H2");
+  for (const tool of ["Pencil", "Eraser", "Paint bucket", "Eyedropper", "Pan"]) {
+    await page.getByRole("button", { name: tool, exact: true }).click();
+    await canvas.focus();
+    await expect.poll(() => border(0)).toEqual(orange);
+    await move(2);
+    // Verify the post-hover frame, rather than passing on the previous selection.
+    await canvas.evaluate(
+      () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+    );
+    await expect.poll(() => border(0)).toEqual(orange);
+    expect(await border(2)).not.toEqual(orange);
+    expect(await pixel(0)).toEqual(white);
+    expect(await pixel(1)).toEqual(black);
+  }
+  await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
+});
+
 for (const tool of ["Eyedropper", "Paint bucket", "Pencil", "Eraser"] as const) {
   test(`${tool} clears the cursor outside the grid and navigation never creates an edge selection`, async ({
     page,

@@ -1,4 +1,5 @@
 import { defaultPalette, type Point } from "@my-beads/core";
+import { canvasCursor } from "./canvas-cursor.js";
 import type { EditorModel } from "./state.js";
 
 export interface CanvasActions {
@@ -16,6 +17,11 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
   let cursor: Point | null = null;
   let focused = false;
   let destroyed = false;
+  function updateMouseCursor() {
+    if (!model || destroyed) return;
+    const value = canvasCursor(model.tool, pointer?.pan ?? false);
+    if (canvas.style.cursor !== value) canvas.style.cursor = value;
+  }
   function paint() {
     frame = 0;
     if (!model || !context || destroyed) return;
@@ -150,6 +156,7 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
     setCursor(target);
     if (!pan && !cursor) return;
     pointer = { id: event.pointerId, ...p, pan };
+    updateMouseCursor();
     canvas.setPointerCapture(event.pointerId);
     if (!pan && cursor) actions.begin(cursor);
   }
@@ -169,6 +176,7 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
     if (!pointer || pointer.id !== event.pointerId) return;
     const active = pointer;
     pointer = undefined;
+    updateMouseCursor();
     // Chrome can report capture loss with released buttons before pointerup.
     const canceled =
       event.type === "pointercancel" ||
@@ -179,6 +187,7 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
   function cancel() {
     const active = pointer;
     pointer = undefined;
+    updateMouseCursor();
     actions.finish(true);
     if (active && canvas.hasPointerCapture(active.id)) canvas.releasePointerCapture(active.id);
   }
@@ -238,11 +247,13 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
   return {
     update(next: EditorModel) {
       model = next;
+      updateMouseCursor();
       setCursor(cursor);
     },
     destroy() {
       destroyed = true;
       cancel();
+      canvas.style.removeProperty("cursor");
       cancelAnimationFrame(frame);
       observer.disconnect();
       canvas.removeEventListener("pointerdown", down);

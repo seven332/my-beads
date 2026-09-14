@@ -169,11 +169,14 @@ it("keeps controlled text and keyed color buttons synchronized without losing fo
 
 it("releases removed Canvas listeners and cancels an unfinished stroke on app teardown", () => {
   const first = host.querySelector<HTMLCanvasElement>(".pattern-canvas")!;
+  expect(first.style.cursor).toContain("data:image/svg+xml,");
   const disconnectedBefore = disconnect.mock.calls.length;
   app.store.set(showCreate$);
+  expect(first.style.cursor).toBe("");
   expect(disconnect.mock.calls.length).toBe(disconnectedBefore + 1);
   app.store.set(showEditor$);
   const second = host.querySelector<HTMLCanvasElement>(".pattern-canvas")!;
+  expect(second.style.cursor).toContain("data:image/svg+xml,");
   expect(second).not.toBe(first);
   first.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
   expect(app.store.get(editor$).beads).toBe(0);
@@ -186,6 +189,7 @@ it("releases removed Canvas listeners and cancels an unfinished stroke on app te
   host.append(sibling);
   app.destroy();
   app.destroy();
+  expect(second.style.cursor).toBe("");
   expect(app.store.get(editor$).beads).toBe(1);
   expect(disconnect.mock.calls.length).toBe(disconnectedBefore + 2);
   expect(host.children).toHaveLength(1);
