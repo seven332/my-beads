@@ -15,7 +15,7 @@ test("built editor loads at a repository path and preserves editing, exports and
   await expect(page.getByRole("img", { name: "Pattern canvas" })).toBeVisible();
   await page.getByLabel("Open CSV").setInputFiles({ name: "Pages.csv", mimeType: "text/csv", buffer: Buffer.from('H7,""') });
   await expect(page.getByLabel("Pattern title")).toHaveValue("Pages");
-  await expect(page.getByTestId("counts")).toHaveText("1 beads · 1 colors");
+  await expect(page.getByTestId("counts")).toHaveText("1 bead · 1 color");
   await page.getByLabel("Search colors").fill("H2");
   await page.getByRole("button", { name: "H2 #FFFFFF", exact: true }).click();
   const canvas = page.getByRole("img", { name: "Pattern canvas" });
@@ -32,5 +32,11 @@ test("built editor loads at a repository path and preserves editing, exports and
   await expect(page.getByLabel("Draft status")).toContainText("Recovered");
   await expect(page.getByTestId("counts")).toHaveText("2 beads · 2 colors");
   await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+  await page.getByLabel("Language").selectOption("zh-CN");
+  await expect(page.getByRole("link", { name: "我来拼豆" })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+  await page.reload();
+  await expect(page.getByLabel("界面语言")).toHaveValue("zh-CN");
+  await expect(page.getByTestId("counts")).toHaveText("2 颗 · 2 色");
   expect(errors).toEqual([]);
 });

@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
-import { createDrafts, decodeDraft, DRAFT_KEY, type DraftStatus, type DraftStorage } from "../src/drafts.js";
+import { createDrafts, decodeDraft, draftText, DRAFT_KEY, type DraftStatus, type DraftStorage } from "../src/drafts.js";
+import { translator } from "../src/i18n/index.js";
 
 const saved = JSON.stringify({ version: 1, title: "Saved", grid: [["H7", null]] });
 it("validates draft versions, grids and palette codes before recovery", () => {
@@ -51,7 +52,7 @@ it("preserves the old draft on quota failure and supports explicit retry", async
 it("handles unavailable storage and flushes pending work synchronously", () => {
   const statuses: DraftStatus[] = [];
   const unavailable = createDrafts(() => { throw new Error("Denied"); }, status => statuses.push(status));
-  expect(unavailable.load()).toBeNull(); expect(statuses.at(-1)?.message).toContain("Denied"); unavailable.dispose();
+  expect(unavailable.load()).toBeNull(); expect(draftText(statuses.at(-1)!, translator("en-US"))).toContain("Denied"); unavailable.dispose();
   let value: string | null = null;
   const adapter = createDrafts(() => ({ getItem: () => value, setItem: (_key, next) => { value = next; } }), () => {});
   adapter.load(); adapter.observe({ grid: [[null]], title: "Blank" });

@@ -69,7 +69,7 @@ for (const width of [1440, 390]) {
     await expect(page.locator(".selected-color strong")).toHaveText("B23");
     await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
     await page.getByRole("img", { name: "Pattern canvas" }).press("Enter");
-    await expect(page.getByTestId("counts")).toHaveText("1 beads · 1 colors");
+    await expect(page.getByTestId("counts")).toHaveText("1 bead · 1 color");
     expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual([["B23", null]]);
     await page.getByRole("button", { name: "Undo" }).click();
     await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
@@ -78,7 +78,7 @@ for (const width of [1440, 390]) {
     await expect(page.locator(".color-recommendation")).toHaveAccessibleDescription(/Closest color.*Preserve chroma/);
     await expect(page.locator(".selected-color strong")).toHaveText("B23");
     await page.getByRole("button", { name: "Redo" }).click();
-    await expect(page.getByTestId("counts")).toHaveText("1 beads · 1 colors");
+    await expect(page.getByTestId("counts")).toHaveText("1 bead · 1 color");
     expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual([["B23", null]]);
     await search.fill("#000");
     await expect(page.locator(".color-recommendation")).toHaveCount(0);
@@ -152,7 +152,7 @@ test("zoom and pan preserve cell targeting; invalid imports and exports preserve
   await page.mouse.move(center.x, center.y); await page.mouse.down(); await page.mouse.move(center.x + 60, center.y + 20); await page.mouse.up();
   await page.getByRole("button", { name: "Pencil", exact: true }).click();
   await page.mouse.click(center.x + 60 + zoom * 1.25 * .5, center.y + 20 + zoom * 1.25 * .5);
-  await expect(page.getByTestId("counts")).toHaveText("1 beads · 1 colors");
+  await expect(page.getByTestId("counts")).toHaveText("1 bead · 1 color");
   const grid = parsePatternCsv((await download(page, "csv")).toString());
   expect(grid[2][2]).toBe("H7"); expect(grid.flat().filter(Boolean)).toHaveLength(1);
   await page.getByLabel("Open CSV").setInputFiles({ name: "bad.csv", mimeType: "text/csv", buffer: Buffer.from("H7\nH7,H7") });
@@ -173,7 +173,7 @@ test("keyboard canvas editing and interrupted pointer strokes", async ({ page })
   await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
   await page.getByRole("img", { name: "Pattern canvas" }).press("ArrowRight");
   await page.getByRole("img", { name: "Pattern canvas" }).press("Enter");
-  await expect(page.getByTestId("counts")).toHaveText("1 beads · 1 colors");
+  await expect(page.getByTestId("counts")).toHaveText("1 bead · 1 color");
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
 });
@@ -186,7 +186,7 @@ test("fast drags paint to the boundary and remain one undo step", async ({ page 
   await page.getByRole("button", { name: "Pencil", exact: true }).click();
   await page.mouse.move(cell(0, 0).x, cell(0, 0).y); await page.mouse.down();
   await page.mouse.move(cell(8, 0).x, cell(8, 0).y); await page.mouse.up();
-  await expect(page.getByTestId("counts")).toHaveText("4 beads · 1 colors");
+  await expect(page.getByTestId("counts")).toHaveText("4 beads · 1 color");
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
 });
@@ -206,7 +206,7 @@ for (const tool of ["Pencil", "Eraser"] as const) {
     await page.getByRole("button", { name: tool, exact: true }).click();
     await page.mouse.move(cell(0, 0).x, cell(0, 0).y); await page.mouse.down();
     await page.mouse.move(cell(2, 0).x, cell(2, 0).y);
-    await expect(page.getByTestId("counts")).toHaveText(tool === "Pencil" ? "4 beads · 2 colors" : "1 beads · 1 colors");
+    await expect(page.getByTestId("counts")).toHaveText(tool === "Pencil" ? "4 beads · 2 colors" : "1 bead · 1 color");
     // Replay the event order observed in desktop Chrome: capture loss with no
     // pressed buttons precedes pointerup. Normal automated mouse.up skips it.
     await canvas.evaluate(element => element.dispatchEvent(new PointerEvent("lostpointercapture", {
@@ -237,7 +237,7 @@ for (const tool of ["Pencil", "Eraser"] as const) {
       await page.getByRole("button", { name: tool, exact: true }).click();
       await page.mouse.move(cell(0, 0).x, cell(0, 0).y); await page.mouse.down();
       await page.mouse.move(cell(2, 0).x, cell(2, 0).y);
-      await expect(page.getByTestId("counts")).toHaveText(tool === "Pencil" ? "4 beads · 2 colors" : "1 beads · 1 colors");
+      await expect(page.getByTestId("counts")).toHaveText(tool === "Pencil" ? "4 beads · 2 colors" : "1 bead · 1 color");
       // Capture loss while still pressed is an interruption. Explicit cancel
       // must roll back even when its event reports no buttons pressed.
       await canvas.evaluate((element, type) => element.dispatchEvent(new PointerEvent(type, {
@@ -269,7 +269,7 @@ test("export validates only the settings used by the selected format", async ({ 
   await page.getByLabel("Chart width").fill("0");
   await page.getByRole("button", { name: "Download" }).click();
   await expect(page.getByRole("alert")).toContainText("Chart width must be an integer");
-  await expect(page.getByTestId("counts")).toHaveText("1 beads · 1 colors");
+  await expect(page.getByTestId("counts")).toHaveText("1 bead · 1 color");
 });
 
 test("window blur cancels the active stroke and allows the next gesture", async ({ page }) => {
@@ -278,7 +278,7 @@ test("window blur cancels the active stroke and allows the next gesture", async 
   await page.mouse.move(cell(0, 0).x, cell(0, 0).y);
   await page.mouse.down();
   await page.mouse.move(cell(3, 0).x, cell(3, 0).y);
-  await expect(page.getByTestId("counts")).toHaveText("4 beads · 1 colors");
+  await expect(page.getByTestId("counts")).toHaveText("4 beads · 1 color");
   // Deliver the browser lifecycle event without relying on OS window focus in CI.
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
   await page.mouse.up();
@@ -286,7 +286,7 @@ test("window blur cancels the active stroke and allows the next gesture", async 
   await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
   await page.mouse.click(cell(2, 1).x, cell(2, 1).y);
   expect(parsePatternCsv((await download(page, "csv")).toString())[1][2]).toBe("H7");
-  await expect(page.getByTestId("counts")).toHaveText("1 beads · 1 colors");
+  await expect(page.getByTestId("counts")).toHaveText("1 bead · 1 color");
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
 });

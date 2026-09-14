@@ -45,11 +45,11 @@ test("imports enlarged PNG with explicit sampling, override, edit, exports and d
   await page.getByLabel("Open image", { exact: true }).setInputFiles({ name: "Pixel design.png", mimeType: "image/png", buffer: enlargedImage() });
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
-  await expect(page.getByTestId("counts")).toHaveText("1 beads · 1 colors");
+  await expect(page.getByTestId("counts")).toHaveText("1 bead · 1 color");
   await dialog.getByLabel("Target columns").fill("50"); await dialog.getByLabel("Target rows").fill("50");
   await expect(dialog.getByRole("button", { name: "Apply image" })).toBeDisabled();
   await dialog.getByRole("button", { name: "Update preview" }).click();
-  await expect(dialog.getByText("MARD 221 · 50 × 50 cells · 1750 beads", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("MARD 221 · 50 × 50 cells · 1,750 beads", { exact: true })).toBeVisible();
   const white = dialog.getByLabel("Map #FFFFFF", { exact: true });
   await white.fill("H5"); await white.press("Tab");
   await expect(white).toHaveValue("H5");
@@ -162,7 +162,7 @@ test("image dialog isolates undo and redo from the pattern and saved draft", asy
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual(before);
   await canvas.focus(); await canvas.press("Control+z");
-  await expect(page.getByTestId("counts")).toHaveText("1 beads · 1 colors");
+  await expect(page.getByTestId("counts")).toHaveText("1 bead · 1 color");
   await canvas.press("Control+Shift+z");
   await expect(page.getByTestId("counts")).toHaveText("2 beads · 2 colors");
   await page.getByLabel("Open image", { exact: true }).setInputFiles(file);

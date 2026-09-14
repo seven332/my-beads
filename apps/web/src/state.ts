@@ -1,7 +1,9 @@
+import { UiError, errorText, captureError } from "./errors.js";
 import { command, computed, state } from "ccstate";
 import { createPattern, defaultPalette, floodFill, paintLine, parsePatternCsv,
   type PatternGrid, type Point } from "@my-beads/core";
-import type { DraftStatus } from "./drafts.js";
+import { translation$ } from "./locale.js";
+import { draftText, type DraftStatus } from "./drafts.js";
 import { findPaletteColors } from "./palette-search.js";
 
 export const MAX_GRID = 256;
@@ -17,7 +19,7 @@ interface History {
 export interface Viewport { zoom: number; x: number; y: number }
 function blank(width: number, height: number): PatternGrid {
   if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 ||
-      width > MAX_GRID || height > MAX_GRID) throw new Error(`Grid dimensions must be integers from 1 to ${MAX_GRID}.`);
+      width > MAX_GRID || height > MAX_GRID) throw new UiError("gridDimensions", { max: MAX_GRID });
   return Array.from({ length: height }, () => Array<string | null>(width).fill(null));
 }
 function pastWith(past: readonly PatternGrid[], grid: PatternGrid): readonly PatternGrid[] {
@@ -29,13 +31,16 @@ const toolState$ = state<Tool>("pencil");
 const colorState$ = state("H7");
 const searchState$ = state("");
 const paletteSearch$ = computed(get => findPaletteColors(get(searchState$)));
-const errorState$ = state("");
+const errorState$ = state<Error | "">("");
 const importState$ = state(0);
 const viewportState$ = state<Viewport>({ zoom: 12, x: 32, y: 32 });
 const gridVisibleState$ = state(true);
 const codesVisibleState$ = state(false);
-const draftStatusState$ = state<DraftStatus>({ message: "", action: null, error: false });
-export const draftStatus$ = computed(get => get(draftStatusState$));
+const draftStatusState$ = state<DraftStatus>({ kind: null, action: null, error: false });
+export const draftStatus$ = computed(get => {
+  const status = get(draftStatusState$);
+  return { ...status, message: draftText(status, get(translation$)) };
+});
 export const reportDraft$ = command(({ set }, status: DraftStatus) => { set(draftStatusState$, status); });
 
 export const documentRevision$ = computed(get => get(historyState$).revision);
@@ -51,7 +56,7 @@ export const editor$ = computed(get => {
   const search = get(searchState$);
   return {
     document, title: get(titleState$), tool: get(toolState$), color: get(colorState$),
-    search, error: get(errorState$), viewport: get(viewportState$),
+    search, error: errorText(get(errorState$), get(translation$)), viewport: get(viewportState$),
     gridVisible: get(gridVisibleState$), codesVisible: get(codesVisibleState$),
     canUndo: history.past.length > 0 && !history.stroke,
     canRedo: history.future.length > 0 && !history.stroke,
@@ -61,7 +66,7 @@ export const editor$ = computed(get => {
 });
 export type EditorModel = ReturnType<typeof editor$.read>;
 
-export const reportError$ = command(({ set }, message: string) => { set(errorState$, message); });
+export const reportError$ = command(({ set }, error: Error | "") => { set(errorState$, error); });
 export const rename$ = command(({ get, set }, title: string) => {
   set(titleState$, title.slice(0, 100));
   set(historyState$, { ...get(historyState$), revision: get(historyState$).revision + 1 });
@@ -145,7 +150,7 @@ export const redo$ = command(({ get, set }) => {
     past: pastWith(history.past, history.grid), revision: history.revision + 1 });
 });
 const replaceDocument$ = command(({ get, set }, grid: PatternGrid, title: string) => {
-  if (grid.length > MAX_GRID || grid[0].length > MAX_GRID) throw new Error(`Editor grids support up to ${MAX_GRID} × ${MAX_GRID} cells.`);
+  if (grid.length > MAX_GRID || grid[0].length > MAX_GRID) throw new UiError("editorSize", { max: MAX_GRID });
   set(historyState$, { grid, past: [], future: [], stroke: null, revision: get(historyState$).revision + 1 });
   set(titleState$, title.slice(0, 100)); set(errorState$, "");
   set(viewportState$, { zoom: 12, x: 32, y: 32 });
@@ -160,7 +165,7 @@ export const replaceIfCurrent$ = command(({ get, set }, revision: number, grid: 
 });
 export const newDocument$ = command(({ set }, width: number, height: number) => {
   try { set(replaceDocument$, blank(width, height), "Untitled pattern"); }
-  catch (error) { set(errorState$, error instanceof Error ? error.message : "Unable to create grid."); }
+  catch (error) { set(errorState$, captureError(error)); }
 });
 
 export interface CsvFile { name: string; size: number; text(): Promise<string> }
@@ -170,12 +175,12 @@ export const importCsv$ = command(async ({ get, set }, file: CsvFile, signal: Ab
   const revision = get(historyState$).revision;
   set(importState$, token); set(errorState$, "");
   try {
-    if (file.size > 2_000_000) throw new Error("CSV files must be smaller than 2 MB.");
+    if (file.size > 2_000_000) throw new UiError("csvSize");
     const text = await file.text();
     signal.throwIfAborted();
     if (get(importState$) !== token) return false;
     if (get(historyState$).revision !== revision) {
-      set(errorState$, "Import cancelled because the pattern changed. Open the file again to replace it."); return false;
+      set(errorState$, new UiError("csvChanged")); return false;
     }
     const grid = parsePatternCsv(text);
     set(replaceDocument$, grid, file.name.replace(/\.csv$/i, ""));
@@ -183,7 +188,7 @@ export const importCsv$ = command(async ({ get, set }, file: CsvFile, signal: Ab
   } catch (error) {
     signal.throwIfAborted();
     if (get(importState$) === token && get(historyState$).revision === revision)
-      set(errorState$, error instanceof Error ? error.message : "Unable to read CSV.");
+      set(errorState$, captureError(error));
     return false;
   }
 });

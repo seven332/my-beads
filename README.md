@@ -118,6 +118,10 @@ pnpm dev
 
 Open the localhost URL printed by Vite. Use **Open CSV** to load a pattern, or **Start a new pattern** to create a blank grid. Imports are validated before replacing the document; invalid files leave your work intact. All file processing happens in your browser.
 
+The interface supports **English** and **简体中文**, with the Chinese name **我来拼豆**. Use **Language / 界面语言** in the header to switch without losing your work. Your saved choice takes priority over browser languages; unsupported languages fall back to English. Chinese browser variants use Simplified Chinese. The preference is stored separately from the draft on this device; switching still works when storage is unavailable, but the choice cannot be remembered.
+
+Printable chart labels remain in English in either interface language. Pattern titles, filenames, MARD codes, CSV contents and pixel colors are not translated.
+
 - **Pencil / Eraser:** click or drag. Fast drags interpolate cells; one drag is one undo step. Escape, loss of window focus, or an interrupted pointer gesture cancels the current stroke.
 - **Fill:** recolor a four-connected region. **Pick:** select the color of an existing bead.
 - **Palette:** search MARD codes or hex values, choose a color, and see per-color counts.
@@ -166,7 +170,7 @@ This is a pnpm workspace:
 - `packages/core`: browser-compatible TypeScript for palettes, code/null grids, CSV, color matching and SVG rendering, with unit tests in `packages/core/tests`.
 - `apps/cli`: Node file access, platform fonts and native PNG generation, with real CLI integration tests in `apps/cli/tests`.
 - `apps/web`: ccstate commands, Snabbdom controls, Canvas interaction and browser file adapters; unit/DOM tests in `apps/web/tests` and browser tests in `apps/web/e2e`.
-- `packages/eslint-rules`: focused ccstate lint conventions and valid/invalid rule tests.
+- `packages/eslint-rules`: ccstate conventions and checks for hardcoded UI copy, with valid/invalid rule tests.
 
 Run the checks from the repository root:
 
@@ -181,6 +185,10 @@ pnpm build
 ```
 
 `pnpm test` runs each package's test script. To test one package, use `pnpm --filter @my-beads/core test` or `pnpm --filter @my-beads/cli test`.
+
+Web translations live in `apps/web/src/i18n/locales/`. i18next selector keys are checked by TypeScript; `pnpm lint` also checks matching translation keys, interpolation placeholders and locale-specific plural forms. Add UI copy to both language files, including accessible labels and validation messages.
+
+ESLint rejects hardcoded web copy in Snabbdom children, UI attributes, local rendering helpers, DOM text and error messages. It follows local constants, aliases and common array/object mappings, so moving a label into a variable does not bypass the check. Exact palette codes, hex colors, format names, icons and numbers are allowed. When adding an imported rendering helper, declare its text arguments in the rule's `textFunctions` configuration. Runtime user data and unknown imported values require review; the rule does not perform whole-program data-flow analysis. CLI and printable-chart text remain outside this web-only rule.
 
 The core has a separate typecheck without Node or DOM globals. Its build emits a browser ESM bundle and type declarations under `packages/core/dist/`; the private workspace package exports TypeScript source for tsx and Vite. The web production build is in `apps/web/dist/`. TypeScript 6.0.3 is pinned within the supported range of the ESLint TypeScript parser.
 

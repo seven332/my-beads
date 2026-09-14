@@ -1,5 +1,6 @@
 import { h, type VNode } from "snabbdom";
 import { defaultPalette, type PatternGrid } from "@my-beads/core";
+import type { Translate } from "./i18n/index.js";
 import type { ImageSession, ImageOptions } from "./image-state.js";
 
 export interface ImageActions {
@@ -15,7 +16,7 @@ export function imagePicker(label: string, name: string, action: (file: File) =>
     } },
   })]);
 }
-function pixels(grid: PatternGrid, mapped: boolean): VNode {
+function pixels(grid: PatternGrid, mapped: boolean, t: Translate): VNode {
   function paint(node: VNode) {
     const canvas = node.elm as HTMLCanvasElement;
     canvas.width = grid[0].length; canvas.height = grid.length;
@@ -25,10 +26,10 @@ function pixels(grid: PatternGrid, mapped: boolean): VNode {
       if (color) { context.fillStyle = mapped ? defaultPalette.colors[color] : color; context.fillRect(x, y, 1, 1); }
     }));
   }
-  return h("canvas.image-preview", { attrs: { role: "img", "aria-label": mapped ? "MARD preview" : "Sampled source preview" },
+  return h("canvas.image-preview", { attrs: { role: "img", "aria-label": mapped ? t($ => $.image.mardPreview) : t($ => $.image.sourcePreview) },
     hook: { insert: paint, update: (_, node) => paint(node) } });
 }
-export function imageView(session: ImageSession | null, actions: ImageActions): VNode {
+export function imageView(session: ImageSession | null, actions: ImageActions, t: Translate): VNode {
   if (!session) return h("span", { key: "image-import" });
   const { options, mapped, sample } = session;
   const number = (label: string, name: string, value: number, max: number) => h("label.field", [h("span", label),
@@ -38,46 +39,46 @@ export function imageView(session: ImageSession | null, actions: ImageActions): 
     on: { cancel: (event: Event) => { event.preventDefault(); actions.cancelImage(); } },
     hook: { insert: node => (node.elm as HTMLDialogElement).showModal(), destroy: node => (node.elm as HTMLDialogElement).close() },
   }, [
-    h("div.image-heading", [h("div", [h("span.eyebrow", "IMPORT PIXEL ART"), h("h2", { attrs: { id: "image-heading" } }, session.name)]),
-      imagePicker("Choose another image", "Replace image", actions.importImage)]),
-    h("p.muted", "Choose the intended bead grid. Each cell samples one source pixel; transparent cells stay empty. Apply replaces the current pattern."),
+    h("div.image-heading", [h("div", [h("span.eyebrow", t($ => $.image.heading)), h("h2", { attrs: { id: "image-heading" } }, session.name)]),
+      imagePicker(t($ => $.image.chooseAnother), t($ => $.image.replace), actions.importImage)]),
+    h("p.muted", t($ => $.image.intro)),
     h("form.image-options", { attrs: { novalidate: true }, on: { input: actions.changeImageSettings, submit: (event: Event) => {
       event.preventDefault(); const data = new FormData(event.target as HTMLFormElement);
       actions.updateImage({ columns: Number(data.get("columns")), rows: Number(data.get("rows")), alpha: Number(data.get("alpha")),
         includeNeutral: !data.has("chroma"), unique: data.has("unique"), series: String(data.get("series") ?? "").split(/[\s,]+/).filter(Boolean) });
     } } }, [
-      h("div.image-dimensions", [number("Target columns", "columns", options.columns, 256), number("Target rows", "rows", options.rows, 256), number("Alpha threshold", "alpha", options.alpha, 255)]),
+      h("div.image-dimensions", [number(t($ => $.image.columns), "columns", options.columns, 256), number(t($ => $.image.rows), "rows", options.rows, 256), number(t($ => $.image.alpha), "alpha", options.alpha, 255)]),
       h("div.image-matching", [
-        h("label.check-field", [h("input", { attrs: { type: "checkbox", name: "chroma" }, props: { defaultChecked: !options.includeNeutral } }), "Preserve chroma"]),
-        h("label.check-field", [h("input", { attrs: { type: "checkbox", name: "unique" }, props: { defaultChecked: !!options.unique } }), "Distinct assignments"]),
-        h("label.field", [h("span", "MARD series"), h("input", { attrs: { name: "series", placeholder: "All (or B, H…)" }, props: { defaultValue: options.series?.join(", ") ?? "" } })]),
-        h("button", { attrs: { type: "submit", disabled: !session.pixels } }, "Update preview"),
+        h("label.check-field", [h("input", { attrs: { type: "checkbox", name: "chroma" }, props: { defaultChecked: !options.includeNeutral } }), t($ => $.image.chroma)]),
+        h("label.check-field", [h("input", { attrs: { type: "checkbox", name: "unique" }, props: { defaultChecked: !!options.unique } }), t($ => $.image.unique)]),
+        h("label.field", [h("span", t($ => $.image.series)), h("input", { attrs: { name: "series", placeholder: t($ => $.image.seriesPlaceholder) }, props: { defaultValue: options.series?.join(", ") ?? "" } })]),
+        h("button", { attrs: { type: "submit", disabled: !session.pixels } }, t($ => $.image.update)),
       ]),
-      h("p.muted", "Updating settings resets manual overrides. Alpha 0 is always empty; pixels at or above the threshold become beads."),
+      h("p.muted", t($ => $.image.settingsHelp)),
     ]),
-    session.loading ? h("p", { attrs: { role: "status" } }, "Reading image…") : h("span"),
+    session.loading ? h("p", { attrs: { role: "status" } }, t($ => $.image.reading)) : h("span"),
     session.error ? h("p.error", { attrs: { role: "alert" } }, session.error) : h("span"),
-    session.settingsDirty && !session.error ? h("p.muted", "Update the preview to apply your changed settings.") : h("span"),
+    session.settingsDirty && !session.error ? h("p.muted", t($ => $.image.dirty)) : h("span"),
     sample && mapped ? h("div", [
-      h("div.image-previews", [h("figure", [pixels(sample.grid, false), h("figcaption", `Sampled source · ${session.pixels!.width} × ${session.pixels!.height} pixels`)]),
-        h("figure", [pixels(mapped.grid, true), h("figcaption", `MARD 221 · ${options.columns} × ${options.rows} cells · ${sample.colors.reduce((sum, c) => sum + c.count, 0)} beads`)])]),
-      h("div.mapping-heading", [h("h3", "Color mapping"), h("span.muted", `${mapped.mappings.length} source colors`)]),
-      h("p.muted", "Choose a MARD code for each source color. Clear an override to use automatic matching."),
+      h("div.image-previews", [h("figure", [pixels(sample.grid, false, t), h("figcaption", t($ => $.image.sourceCaption, { width: session.pixels!.width, height: session.pixels!.height }))]),
+        h("figure", [pixels(mapped.grid, true, t), h("figcaption", `MARD 221 · ${t($ => $.app.dimensions, { columns: options.columns, rows: options.rows })} · ${t($ => $.beads, { count: sample.colors.reduce((sum, c) => sum + c.count, 0) })}`)])]),
+      h("div.mapping-heading", [h("h3", t($ => $.image.mapping)), h("span.muted", t($ => $.image.sourceColors, { count: mapped.mappings.length }))]),
+      h("p.muted", t($ => $.image.mappingHelp)),
       h("datalist", { attrs: { id: "image-mard-codes" } }, mapped.candidates.map(([code, hex]) => h("option", { attrs: { value: code } }, hex))),
-      h("div.mapping-list", { attrs: { "aria-label": "Source color mappings" } }, mapped.mappings.map(mapping =>
+      h("div.mapping-list", { attrs: { "aria-label": t($ => $.image.mappings) } }, mapped.mappings.map(mapping =>
         h("div.mapping-row", { key: mapping.source }, [
           h("span.mapping-swatch", { attrs: { style: `background:${mapping.source}` } }),
-          h("span", [h("strong", mapping.source), h("small", `${mapping.count} cells`)]),
+          h("span", [h("strong", mapping.source), h("small", t($ => $.cells, { count: mapping.count }))]),
           h("span", "→"), h("span.mapping-swatch", { attrs: { style: `background:${mapping.hex}` } }),
-          h("label", [h("span.sr-only", `Map ${mapping.source}`), h("input", {
-            attrs: { list: "image-mard-codes", placeholder: `Auto · ${mapping.code}`, autocomplete: "off" },
+          h("label", [h("span.sr-only", t($ => $.image.map, { source: mapping.source })), h("input", {
+            attrs: { list: "image-mard-codes", placeholder: t($ => $.image.auto, { code: mapping.code }), autocomplete: "off" },
             props: { value: session.overrides[mapping.source] ?? "" },
             on: { change: (event: Event) => actions.overrideImage(mapping.source, (event.target as HTMLInputElement).value.trim().toUpperCase()) },
           })]),
-          mapping.neutralFallback ? h("small", "Neutral fallback") : h("span"),
+          mapping.neutralFallback ? h("small", t($ => $.image.neutralFallback)) : h("span"),
         ]))),
     ]) : h("span"),
-    h("div.image-footer", [h("button", { attrs: { type: "button" }, on: { click: actions.cancelImage } }, "Cancel"),
-      h("button.primary", { attrs: { type: "button", disabled: !mapped || session.loading || session.settingsDirty || !!session.error }, on: { click: actions.applyImage } }, "Apply image")]),
+    h("div.image-footer", [h("button", { attrs: { type: "button" }, on: { click: actions.cancelImage } }, t($ => $.image.cancel)),
+      h("button.primary", { attrs: { type: "button", disabled: !mapped || session.loading || session.settingsDirty || !!session.error }, on: { click: actions.applyImage } }, t($ => $.image.apply))]),
   ]);
 }
