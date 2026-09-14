@@ -1,4 +1,5 @@
 import tseslint from "typescript-eslint";
+import lit from "eslint-plugin-lit";
 import ccstate from "./packages/eslint-rules/index.js";
 import mard from "./packages/core/src/data/mard-221-colors.json" with { type: "json" };
 export default [
@@ -6,7 +7,9 @@ export default [
   { files: ["**/*.ts"], languageOptions: { parser: tseslint.parser }, rules: {
     "no-debugger": "error", "no-constant-condition": "error", "no-duplicate-imports": "error",
   } },
+  { ...lit.configs["flat/recommended"], files: ["apps/web/src/**/*.ts"] },
   { files: ["apps/web/src/**/*.ts"], plugins: { ccstate }, rules: {
+    "lit/no-value-attribute": "error", "lit/value-after-constraints": "error",
     "ccstate/signal-boundaries": "error", "ccstate/accessor-scope": "error", "ccstate/async-ownership": "error",
     "ccstate/no-hardcoded-ui-text": ["error", {
       // Locale names, the palette name and file/key identifiers retain their spelling.

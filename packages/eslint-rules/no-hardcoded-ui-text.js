@@ -1,7 +1,10 @@
+import { parseFragment } from "parse5";
+
 const functionTypes = new Set(["ArrowFunctionExpression", "FunctionExpression", "FunctionDeclaration"]);
 const textProperties = new Set(["alt", "aria-label", "aria-description", "aria-placeholder", "aria-valuetext", "aria-roledescription", "placeholder",
   "title", "label", "description", "message", "heading", "caption", "tooltip", "defaultValue", "textContent", "innerText", "innerHTML"]);
 const wrappers = new Set(["TSAsExpression", "TSTypeAssertion", "TSNonNullExpression", "TSSatisfiesExpression", "ChainExpression"]);
+const templateTextProperties = new Set([...textProperties].map(name => name.toLowerCase()));
 
 function unwrap(node) { while (wrappers.has(node?.type)) node = node.expression; return node; }
 function key(node) {
@@ -39,7 +42,8 @@ export default {
   create(context) {
     const allowed = new Set(context.options[0]?.allowedLiterals ?? []);
     const importedHelpers = context.options[0]?.textFunctions ?? [];
-    const calls = [], properties = [], assignments = [], constructors = [];
+    const calls = [], properties = [], assignments = [], constructors = [], templates = [];
+    const inspectedTemplates = new WeakSet();
     const reported = new WeakSet(), callers = new Map(), mappedCallbacks = new Map(), returns = new Map();
 
     function variable(node) {
@@ -77,6 +81,63 @@ export default {
     function isH(node) {
       const spec = imported(node);
       return spec?.module === "snabbdom" && spec.name === "h";
+    }
+    function isTemplate(node) {
+      const spec = imported(node?.tag);
+      return node?.type === "TaggedTemplateExpression" && ["lit-html", "lit-html/static.js"].includes(spec?.module) && ["html", "svg"].includes(spec.name);
+    }
+    function litDirective(node, name) {
+      const spec = imported(node);
+      return spec?.module === `lit-html/directives/${name}.js` && spec.name === name;
+    }
+    function inspectTemplate(node) {
+      if (inspectedTemplates.has(node)) return;
+      inspectedTemplates.add(node);
+      const { quasis, expressions } = node.quasi;
+      // Placeholders survive HTML parsing, including entity decoding. Choose a
+      // prefix absent from the source so literal user copy cannot impersonate one.
+      let prefix = "litexpression";
+      while (quasis.some(part => (part.value.cooked ?? part.value.raw).includes(prefix))) prefix += "x";
+      const marker = index => `${prefix}${index}end`;
+      const offsets = [];
+      let source = "";
+      quasis.forEach((part, index) => {
+        offsets.push(source.length); source += part.value.cooked ?? part.value.raw;
+        if (index < expressions.length) source += marker(index);
+      });
+      function inspectText(text, offset = 0) {
+        const pattern = new RegExp(`${prefix}(\\d+)end`, "g");
+        let start = 0;
+        function literal(end) {
+          const index = offsets.findLastIndex(position => position <= offset + start);
+          report(quasis[Math.max(0, index)], text.slice(start, end));
+        }
+        for (const match of text.matchAll(pattern)) {
+          literal(match.index); inspect(expressions[Number(match[1])]);
+          start = match.index + match[0].length;
+        }
+        literal(text.length);
+      }
+      function walk(element) {
+        if (["script", "style"].includes(element.tagName)) return;
+        if (element.nodeName === "#text") inspectText(element.value, element.sourceCodeLocation?.startOffset);
+        const attrs = element.attrs ?? [];
+        const type = attrs.find(attr => ["type", ".type"].includes(attr.name))?.value;
+        const typeExpression = expressions.find((_, index) => type === marker(index));
+        const button = element.tagName === "input" && (["button", "submit", "reset"].includes(type) ||
+          values(typeExpression).some(value => value.type === "Literal" && ["button", "submit", "reset"].includes(value.value)));
+        for (const attr of attrs) {
+          // Events/boolean attributes and element directives are structural.
+          if (attr.name.startsWith("@") || attr.name.startsWith("?")) continue;
+          const name = attr.name.replace(/^\./, "");
+          if (templateTextProperties.has(name) || (button && name === "value")) {
+            inspectText(attr.value, element.sourceCodeLocation?.attrs?.[attr.name]?.startOffset);
+          }
+        }
+        element.childNodes?.forEach(walk);
+        if (element.content) walk(element.content);
+      }
+      walk(parseFragment(source, { sourceCodeLocationInfo: true }));
     }
     function globalIdentifier(node, name) {
       return node?.type === "Identifier" && node.name === name && !variable(node)?.defs.length;
@@ -165,7 +226,7 @@ export default {
       if (index < 0) return [];
       const path = patternPath(fn.params[index], name);
       const result = (callers.get(fn) ?? []).flatMap(call => call.arguments[index] ? project(call.arguments[index], path, seen) : []);
-      if (index === 0) for (const call of mappedCallbacks.get(fn) ?? []) result.push(...mapItems(call.callee.object, path, seen));
+      if (index === 0) for (const receiver of mappedCallbacks.get(fn) ?? []) result.push(...mapItems(receiver, path, seen));
       result.push(...defaults(fn.params[index], name, seen));
       return result;
     }
@@ -207,6 +268,7 @@ export default {
       if (!node || seen.has(node)) return;
       seen = new Set(seen).add(node);
       if (node.type === "Literal" && typeof node.value === "string") report(node, node.value);
+      else if (isTemplate(node)) inspectTemplate(node);
       else if (node.type === "TemplateLiteral") {
         for (const part of node.quasis) report(part, part.value.cooked ?? part.value.raw);
         node.expressions.forEach(value => inspect(value, seen));
@@ -217,6 +279,11 @@ export default {
       else if (node.type === "Identifier" || node.type === "MemberExpression") values(node).forEach(value => inspect(value, seen));
       else if (node.type === "CallExpression" && !isH(node.callee)) {
         for (const fn of values(node.callee).filter(value => functionTypes.has(value.type))) returnValues(fn).forEach(value => inspect(value, seen));
+        if (litDirective(node.callee, "live")) inspect(node.arguments[0], seen);
+        if (litDirective(node.callee, "keyed")) inspect(node.arguments[1], seen);
+        if (litDirective(node.callee, "repeat")) {
+          for (const fn of values(node.arguments.at(-1)).filter(value => functionTypes.has(value.type))) returnValues(fn).forEach(value => inspect(value, seen));
+        }
         if (globalIdentifier(node.callee, "String")) inspect(node.arguments[0], seen);
         if (node.callee.type === "MemberExpression") {
           const method = key(node.callee);
@@ -232,6 +299,7 @@ export default {
       }
     }
     return {
+      TaggedTemplateExpression: node => { if (isTemplate(node)) templates.push(node); },
       CallExpression: node => calls.push(node),
       Property: node => { if (textProperties.has(key(node))) properties.push(node.value); },
       AssignmentExpression: node => { if (textProperties.has(key(node.left))) assignments.push(node.right); },
@@ -245,11 +313,18 @@ export default {
           if (call.callee.type === "MemberExpression" && ["map", "flatMap", "forEach"].includes(key(call.callee))) {
             for (const fn of values(call.arguments[0], new Set(), false).filter(value => functionTypes.has(value.type))) {
               if (!mappedCallbacks.has(fn)) mappedCallbacks.set(fn, []);
-              mappedCallbacks.get(fn).push(call);
+              mappedCallbacks.get(fn).push(call.callee.object);
+            }
+          }
+          if (litDirective(call.callee, "repeat")) {
+            for (const fn of values(call.arguments.at(-1), new Set(), false).filter(value => functionTypes.has(value.type))) {
+              if (!mappedCallbacks.has(fn)) mappedCallbacks.set(fn, []);
+              mappedCallbacks.get(fn).push(call.arguments[0]);
             }
           }
         }
         [...properties, ...assignments, ...constructors].forEach(node => inspect(node));
+        templates.forEach(inspectTemplate);
         for (const call of calls) {
           if (isH(call.callee)) {
             const child = call.arguments[2] ?? call.arguments[1];

@@ -181,7 +181,7 @@ This is a pnpm workspace:
 
 - `packages/core`: browser-compatible TypeScript for palettes, code/null grids, CSV, color matching and SVG rendering, with unit tests in `packages/core/tests`.
 - `apps/cli`: Node file access, platform fonts and native PNG generation, with real CLI integration tests in `apps/cli/tests`.
-- `apps/web`: ccstate commands, Snabbdom controls, Canvas interaction and browser file adapters; unit/DOM tests in `apps/web/tests` and browser tests in `apps/web/e2e`.
+- `apps/web`: ccstate commands, standalone lit-html templates, Canvas interaction and browser file adapters; unit/DOM tests in `apps/web/tests` and browser tests in `apps/web/e2e`.
 - `packages/eslint-rules`: ccstate conventions and checks for hardcoded UI copy, with valid/invalid rule tests.
 
 Run the checks from the repository root:
@@ -200,7 +200,7 @@ pnpm build
 
 Web translations live in `apps/web/src/i18n/locales/`. i18next selector keys are checked by TypeScript; `pnpm lint` also checks matching translation keys, interpolation placeholders and locale-specific plural forms. Add UI copy to both language files, including accessible labels and validation messages.
 
-ESLint rejects hardcoded web copy in Snabbdom children, UI attributes, local rendering helpers, DOM text and error messages. It follows local constants, aliases and common array/object mappings, so moving a label into a variable does not bypass the check. Exact palette codes, hex colors, format names, icons and numbers are allowed. When adding an imported rendering helper, declare its text arguments in the rule's `textFunctions` configuration. Runtime user data and unknown imported values require review; the rule does not perform whole-program data-flow analysis. CLI and printable-chart text remain outside this web-only rule.
+ESLint checks lit-html template syntax and bindings, and rejects hardcoded web copy in static markup, text expressions, UI attributes, local rendering helpers, DOM text and error messages. The copy rule parses HTML (including entities) and follows imported template aliases, local constants and common array/object mappings. Exact palette codes, hex colors, format names, icons and numbers are allowed. When adding an imported rendering helper, declare its text arguments in the rule's `textFunctions` configuration. Runtime user data and unknown imported values require review; the rule does not perform whole-program data-flow analysis. CLI and printable-chart text remain outside this web-only rule.
 
 The core has a separate typecheck without Node or DOM globals. Its build emits a browser ESM bundle and type declarations under `packages/core/dist/`; the private workspace package exports TypeScript source for tsx and Vite. The web production build is in `apps/web/dist/`. TypeScript 6.0.3 is pinned within the supported range of the ESLint TypeScript parser.
 

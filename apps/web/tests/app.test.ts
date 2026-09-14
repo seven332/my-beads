@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { mountApp } from "../src/app.js";
-import { beginStroke$, chooseColor$, newDocument$, editor$ } from "../src/state.js";
+import { beginStroke$, chooseColor$, newDocument$, editor$, finishStroke$, rename$, selectPaletteView$, showCreate$, showEditor$, toggleGrid$ } from "../src/state.js";
 
 let app: ReturnType<typeof mountApp>;
 let host: HTMLElement;
@@ -90,4 +90,45 @@ it("disconnects Canvas and watcher on destroy and allows independent mounts", as
     window.dispatchEvent(new Event("blur"));
     expect(app.store.get(editor$).beads).toBe(1);
   } finally { other.destroy(); otherHost.remove(); }
+});
+
+it("keeps controlled text and keyed color buttons synchronized without losing focus", () => {
+  const title = host.querySelector<HTMLInputElement>(".title-input")!;
+  app.store.set(rename$, "A".repeat(100)); title.focus(); title.setSelectionRange(10, 10);
+  app.store.set(toggleGrid$);
+  expect(document.activeElement).toBe(title); expect(title.selectionStart).toBe(10);
+  title.value += "overflow"; title.dispatchEvent(new Event("input", { bubbles: true }));
+  expect(title.value).toBe("A".repeat(100));
+  app.store.set(chooseColor$, "H7"); app.store.set(beginStroke$, { x: 1, y: 0 }); app.store.set(finishStroke$);
+  app.store.set(selectPaletteView$, "used");
+  const black = host.querySelector<HTMLButtonElement>('.used-color-pick[aria-label="H7 #000000"]')!;
+  black.focus();
+  app.store.set(chooseColor$, "H2"); app.store.set(beginStroke$, { x: 0, y: 0 }); app.store.set(finishStroke$);
+  expect(host.querySelectorAll(".used-color-pick")[1]).toBe(black);
+  expect(document.activeElement).toBe(black);
+  expect(black.querySelector(".used-count")?.textContent).toBe("1 bead");
+});
+
+it("releases removed Canvas listeners and cancels an unfinished stroke on app teardown", () => {
+  const first = host.querySelector<HTMLCanvasElement>(".pattern-canvas")!;
+  const disconnectedBefore = disconnect.mock.calls.length;
+  app.store.set(showCreate$);
+  expect(disconnect.mock.calls.length).toBe(disconnectedBefore + 1);
+  app.store.set(showEditor$);
+  const second = host.querySelector<HTMLCanvasElement>(".pattern-canvas")!;
+  expect(second).not.toBe(first);
+  first.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+  expect(app.store.get(editor$).beads).toBe(0);
+  second.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+  expect(app.store.get(editor$).beads).toBe(1);
+  app.store.set(beginStroke$, { x: 1, y: 0 });
+  expect(app.store.get(editor$).beads).toBe(2);
+  const sibling = document.createElement("span"); host.append(sibling);
+  app.destroy(); app.destroy();
+  expect(app.store.get(editor$).beads).toBe(1);
+  expect(disconnect.mock.calls.length).toBe(disconnectedBefore + 2);
+  expect(host.children).toHaveLength(1); expect(host.firstElementChild).toBe(sibling);
+  second.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));
+  second.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+  expect(app.store.get(editor$).beads).toBe(1);
 });

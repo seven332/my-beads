@@ -3,6 +3,8 @@ import { mountApp } from "../src/app.js";
 import { beginStroke$, editor$, finishStroke$, newDocument$, rename$, workflow$, zoom$ } from "../src/state.js";
 import { DRAFT_KEY, decodeDraft } from "../src/drafts.js";
 import * as exporter from "../src/exports.js";
+import { loadImage$ } from "../src/image-state.js";
+import { selectLocale$ } from "../src/locale.js";
 
 let host: HTMLElement;
 let app: ReturnType<typeof mountApp>;
@@ -22,7 +24,7 @@ beforeEach(() => {
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
   vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
   Object.defineProperties(HTMLDialogElement.prototype, {
-    showModal: { configurable: true, value: function (this: HTMLDialogElement) { this.open = true; } },
+    showModal: { configurable: true, value: function (this: HTMLDialogElement) { expect(this.isConnected).toBe(true); this.open = true; } },
     close: { configurable: true, value: function (this: HTMLDialogElement) { this.open = false; } },
   });
   values = new Map(); host = document.createElement("div"); document.body.append(host);
@@ -150,4 +152,28 @@ it("cancels a closing export, ignores its late result and revokes only completed
   await vi.waitFor(() => expect(download).toHaveBeenCalledOnce());
   expect(create).toHaveBeenCalledOnce();
   app.destroy(); expect(revoke).toHaveBeenCalledExactlyOnceWith("blob:completed");
+});
+
+it("preserves image form drafts within a session and closes and replaces native dialogs between sessions", async () => {
+  const show = vi.spyOn(HTMLDialogElement.prototype, "showModal");
+  const close = vi.spyOn(HTMLDialogElement.prototype, "close");
+  const read = async () => ({ width: 1, height: 1, data: new Uint8ClampedArray([0, 0, 0, 255]) });
+  const signal = new AbortController().signal;
+  await app.store.set(loadImage$, { name: "first.png", read }, signal);
+  const first = host.querySelector<HTMLDialogElement>(".image-dialog")!;
+  input('dialog [name="columns"]', "7"); input('dialog [name="series"]', "H");
+  first.querySelector<HTMLInputElement>('[name="unique"]')!.click();
+  app.store.set(selectLocale$, "zh-CN");
+  expect(first.querySelector<HTMLInputElement>('[name="columns"]')!.value).toBe("7");
+  expect(first.querySelector<HTMLInputElement>('[name="series"]')!.value).toBe("H");
+  expect(first.querySelector<HTMLInputElement>('[name="unique"]')!.checked).toBe(true);
+  expect(show).toHaveBeenCalledOnce();
+  await app.store.set(loadImage$, { name: "second.png", read }, signal);
+  const second = host.querySelector<HTMLDialogElement>(".image-dialog")!;
+  expect(second).not.toBe(first); expect(first.open).toBe(false); expect(second.open).toBe(true);
+  expect(second.querySelector<HTMLInputElement>('[name="columns"]')!.value).toBe("50");
+  expect(second.querySelector<HTMLInputElement>('[name="series"]')!.value).toBe("");
+  expect(second.querySelector<HTMLInputElement>('[name="unique"]')!.checked).toBe(false);
+  expect(show).toHaveBeenCalledTimes(2); expect(close).toHaveBeenCalledOnce();
+  app.destroy(); expect(second.open).toBe(false); expect(close).toHaveBeenCalledTimes(2);
 });
