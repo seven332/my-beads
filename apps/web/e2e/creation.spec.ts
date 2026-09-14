@@ -61,6 +61,21 @@ test("CSV ignores blank-canvas settings and preserves empty borders through expo
   ]);
 });
 
+test("creation errors are visible beside the chosen method on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.getByLabel("Columns", { exact: true }).fill("0");
+  await page.getByRole("button", { name: "Create blank grid" }).click();
+  await expect(page.getByRole("alert")).toContainText("integers");
+  await expect(page.getByRole("alert")).toBeInViewport();
+  const csv = page.getByRole("region", { name: "From CSV", exact: true });
+  await csv.scrollIntoViewIfNeeded();
+  await page.getByLabel("Open CSV").setInputFiles({ name: "invalid.csv", mimeType: "text/csv", buffer: Buffer.from("#55514C") });
+  await expect(csv.getByRole("alert")).toContainText("Unknown MARD color");
+  await expect(csv.getByRole("alert")).toBeInViewport();
+  await expect(page.getByRole("alert")).toHaveCount(1);
+});
+
 test("creation, recreation and export remain usable in both languages on narrow screens", async ({ page }) => {
   await page.goto("/");
   for (const locale of ["en-US", "zh-CN"]) {

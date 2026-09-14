@@ -10,6 +10,9 @@ export interface CreateActions {
   resume(): void;
 }
 export function createView(model: EditorModel, flow: ReturnType<typeof workflow$.read>, actions: CreateActions, t: Translate): VNode {
+  function error(source: typeof flow.errorSource) {
+    return model.error && flow.errorSource === source ? h("p.error", { attrs: { role: "alert" } }, model.error) : h("span");
+  }
   function dimension(name: "columns" | "rows") {
     return h("label.field", [h("span", t($ => $.newPattern[name])), h("input", {
       attrs: { type: "number", name, min: 1, max: 256, required: true }, props: { defaultValue: "50" },
@@ -35,6 +38,7 @@ export function createView(model: EditorModel, flow: ReturnType<typeof workflow$
           actions.create(Number(data.get("columns")), Number(data.get("rows")));
         } } }, [h("div.field-row", [dimension("columns"), dimension("rows")]),
           h("p.muted", t($ => $.create.sizeHelp)),
+          error("blank"),
           h("button.primary", { attrs: { type: "submit" } }, t($ => $.newPattern.create))]),
       ]),
       h("section.creation-card", { attrs: { "aria-labelledby": "csv-heading" } }, [
@@ -42,6 +46,8 @@ export function createView(model: EditorModel, flow: ReturnType<typeof workflow$
         h("h2", { attrs: { id: "csv-heading" } }, t($ => $.create.csv)),
         h("p.card-description", t($ => $.create.csvDescription)),
         h("p.card-detail", t($ => $.create.csvDetail)),
+        error("csv"),
+        flow.csvLoading ? h("p.import-progress", { attrs: { role: "status" } }, t($ => $.create.readingCsv)) : h("span"),
         h("label.import-button", [h("span", t($ => $.app.openCsv)), h("input.file-input", {
           attrs: { type: "file", accept: ".csv,text/csv", "aria-label": t($ => $.app.openCsv) },
           on: { change: (event: Event) => {
@@ -58,8 +64,7 @@ export function createView(model: EditorModel, flow: ReturnType<typeof workflow$
         imagePicker(t($ => $.app.openImage), t($ => $.app.openImage), actions.importImage),
       ]),
     ]),
-    flow.csvLoading ? h("p.import-progress", { attrs: { role: "status" } }, t($ => $.create.readingCsv)) : h("span"),
-    model.error ? h("p.error", { attrs: { role: "alert" } }, model.error) : h("span"),
+    error(null),
     h("p.creation-note", t($ => $.create.local)),
   ]);
 }

@@ -32,6 +32,7 @@ const colorState$ = state("H7");
 const searchState$ = state("");
 const paletteSearch$ = computed(get => findPaletteColors(get(searchState$)));
 const errorState$ = state<Error | "">("");
+const creationErrorSourceState$ = state<"blank" | "csv" | null>(null);
 const importState$ = state(0);
 const viewportState$ = state<Viewport>({ zoom: 12, x: 32, y: 32 });
 const gridVisibleState$ = state(true);
@@ -40,7 +41,8 @@ const draftStatusState$ = state<DraftStatus>({ kind: null, action: null, error: 
 const pageState$ = state<"create" | "edit">("create");
 const hasDocumentState$ = state(false);
 const csvLoadingState$ = state(false);
-export const workflow$ = computed(get => ({ page: get(pageState$), hasDocument: get(hasDocumentState$), csvLoading: get(csvLoadingState$) }));
+export const workflow$ = computed(get => ({ page: get(pageState$), hasDocument: get(hasDocumentState$),
+  csvLoading: get(csvLoadingState$), errorSource: get(creationErrorSourceState$) }));
 export const draftStatus$ = computed(get => {
   const status = get(draftStatusState$);
   return { ...status, message: draftText(status, get(translation$)) };
@@ -70,7 +72,9 @@ export const editor$ = computed(get => {
 });
 export type EditorModel = ReturnType<typeof editor$.read>;
 
-export const reportError$ = command(({ set }, error: Error | "") => { set(errorState$, error); });
+export const reportError$ = command(({ set }, error: Error | "", source: "blank" | "csv" | null = null) => {
+  set(errorState$, error); set(creationErrorSourceState$, error ? source : null);
+});
 export const rename$ = command(({ get, set }, title: string) => {
   set(titleState$, title.slice(0, 100));
   set(historyState$, { ...get(historyState$), revision: get(historyState$).revision + 1 });
@@ -90,10 +94,10 @@ export const chooseTool$ = command(({ set }, tool: Tool) => {
   set(finishStroke$); set(toolState$, tool);
 });
 export const showCreate$ = command(({ set }) => {
-  set(finishStroke$); set(errorState$, ""); set(pageState$, "create");
+  set(finishStroke$); set(reportError$, ""); set(pageState$, "create");
 });
 export const showEditor$ = command(({ get, set }) => {
-  if (get(hasDocumentState$)) { set(errorState$, ""); set(pageState$, "edit"); }
+  if (get(hasDocumentState$)) { set(reportError$, ""); set(pageState$, "edit"); }
 });
 export const cancelCsv$ = command(({ get, set }) => {
   set(importState$, get(importState$) + 1); set(csvLoadingState$, false);
@@ -165,7 +169,7 @@ export const redo$ = command(({ get, set }) => {
 const replaceDocument$ = command(({ get, set }, grid: PatternGrid, title: string) => {
   if (grid.length > MAX_GRID || grid[0].length > MAX_GRID) throw new UiError("editorSize", { max: MAX_GRID });
   set(historyState$, { grid, past: [], future: [], stroke: null, revision: get(historyState$).revision + 1 });
-  set(titleState$, title.slice(0, 100)); set(errorState$, "");
+  set(titleState$, title.slice(0, 100)); set(reportError$, "");
   set(viewportState$, { zoom: 12, x: 32, y: 32 });
   set(hasDocumentState$, true); set(pageState$, "edit");
 });
@@ -179,7 +183,7 @@ export const replaceIfCurrent$ = command(({ get, set }, revision: number, grid: 
 });
 export const newDocument$ = command(({ set }, width: number, height: number) => {
   try { set(replaceDocument$, blank(width, height), "Untitled pattern"); return true; }
-  catch (error) { set(errorState$, captureError(error)); return false; }
+  catch (error) { set(reportError$, captureError(error), "blank"); return false; }
 });
 
 export interface CsvFile { name: string; size: number; text(): Promise<string> }
@@ -187,14 +191,14 @@ export const importCsv$ = command(async ({ get, set }, file: CsvFile, signal: Ab
   signal.throwIfAborted();
   const token = get(importState$) + 1;
   const revision = get(historyState$).revision;
-  set(importState$, token); set(errorState$, ""); set(csvLoadingState$, true);
+  set(importState$, token); set(reportError$, ""); set(csvLoadingState$, true);
   try {
     if (file.size > 2_000_000) throw new UiError("csvSize");
     const text = await file.text();
     signal.throwIfAborted();
     if (get(importState$) !== token) return false;
     if (get(historyState$).revision !== revision) {
-      set(errorState$, new UiError("csvChanged")); return false;
+      set(reportError$, new UiError("csvChanged"), "csv"); return false;
     }
     const grid = parsePatternCsv(text);
     set(replaceDocument$, grid, file.name.replace(/\.csv$/i, ""));
@@ -202,7 +206,7 @@ export const importCsv$ = command(async ({ get, set }, file: CsvFile, signal: Ab
   } catch (error) {
     signal.throwIfAborted();
     if (get(importState$) === token && get(historyState$).revision === revision)
-      set(errorState$, captureError(error));
+      set(reportError$, captureError(error), "csv");
     return false;
   } finally {
     if (!signal.aborted && get(importState$) === token) set(csvLoadingState$, false);

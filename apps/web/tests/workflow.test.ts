@@ -40,7 +40,7 @@ it("starts with three creation choices, validates dimensions and only saves an e
   expect(host.querySelector(".export-form")).toBeNull();
   await Promise.resolve(); expect(values.has(DRAFT_KEY)).toBe(false);
   input('[name="columns"]', "0"); click(".blank-form button");
-  expect(host.querySelector('[role="alert"]')?.textContent).toContain("integers");
+  expect(host.querySelector('.blank-card [role="alert"]')?.textContent).toContain("integers");
   expect(app.store.get(workflow$).hasDocument).toBe(false);
   input('[name="columns"]', "3"); input('[name="rows"]', "2"); click(".blank-form button");
   expect(app.store.get(editor$).document.grid).toEqual([[null, null, null], [null, null, null]]);
@@ -75,11 +75,16 @@ it("imports CSV dimensions and empty borders exactly and refuses approximate col
   expect(app.store.get(editor$).document.grid).toEqual(grid);
   expect(app.store.get(editor$).title).toBe("Exact");
   click(".document-actions button");
+  input('[name="columns"]', "0"); click(".blank-form button");
+  expect(host.querySelector('.blank-card [role="alert"]')?.textContent).toContain("integers");
   importCsv({ name: "Unknown.csv", size: 7, text: async () => "#55514C" });
-  await vi.waitFor(() => expect(host.querySelector('[role="alert"]')?.textContent).toContain("Unknown MARD color"));
+  await vi.waitFor(() => expect(host.querySelector('[aria-labelledby="csv-heading"] [role="alert"]')?.textContent).toContain("Unknown MARD color"));
+  expect(host.querySelectorAll('[role="alert"]')).toHaveLength(1);
   expect(app.store.get(workflow$).page).toBe("create");
   expect(app.store.get(editor$).document.grid).toEqual(grid);
   expect(app.store.get(editor$).title).toBe("Exact");
+  click(".resume-pattern button");
+  expect(host.querySelector('[role="alert"]')).toBeNull();
 });
 
 it("cancels a pending CSV when continuing the current work and ignores its late result", async () => {
