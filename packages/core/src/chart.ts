@@ -11,7 +11,9 @@ function escapeXml(value: string): string {
 }
 
 function relativeLuminance(hex: string): number {
-  const channels = [1, 3, 5].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255);
+  const channels = [1, 3, 5].map(
+    (offset) => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255,
+  );
   const [red, green, blue] = channels.map((channel) =>
     channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
   );
@@ -37,10 +39,18 @@ export function renderChart(
   const minimumCellSize = Math.max(20, String(columns).length * 8);
   const minimumWidth = Math.max(800, columns * minimumCellSize + 250);
   if (pageWidth < minimumWidth) {
-    throw new BeadError("chartMinimum", `Chart needs a width of at least ${minimumWidth} pixels for ${columns} columns`, { width: minimumWidth, columns });
+    throw new BeadError(
+      "chartMinimum",
+      `Chart needs a width of at least ${minimumWidth} pixels for ${columns} columns`,
+      { width: minimumWidth, columns },
+    );
   }
   const colors = [...counts.entries()]
-    .map(([code, count]) => ({ code, count, hex: pattern.flat().find((cell) => cell.code === code)!.hex }))
+    .map(([code, count]) => ({
+      code,
+      count,
+      hex: pattern.flat().find((cell) => cell.code === code)!.hex,
+    }))
     .sort((left, right) => relativeLuminance(left.hex) - relativeLuminance(right.hex));
   const beadCount = colors.reduce((total, color) => total + color.count, 0);
 
@@ -54,7 +64,9 @@ export function renderChart(
   const legendGap = Math.max(12, Math.round(pageWidth * 0.006));
   const legendMargin = Math.max(80, Math.round(pageWidth * 0.045));
   const maxLegendColumns = 9;
-  const availableColumns = Math.floor((pageWidth - legendMargin * 2 + legendGap) / (220 + legendGap));
+  const availableColumns = Math.floor(
+    (pageWidth - legendMargin * 2 + legendGap) / (220 + legendGap),
+  );
   const legendColumns = Math.max(1, Math.min(maxLegendColumns, availableColumns, colors.length));
   const legendCardWidth =
     (pageWidth - legendMargin * 2 - legendGap * (legendColumns - 1)) / legendColumns;
@@ -100,7 +112,7 @@ export function renderChart(
     const width = edge ? 2.2 : ten ? 2.2 : five ? 1.5 : 1;
     const dash = five && !ten ? ' stroke-dasharray="6 6"' : "";
     svg.push(
-      `<line x1="${x}" y1="${gridY}" x2="${x}" y2="${gridY + gridHeight}" stroke="${stroke}" stroke-width="${width}"${dash}/>`
+      `<line x1="${x}" y1="${gridY}" x2="${x}" y2="${gridY + gridHeight}" stroke="${stroke}" stroke-width="${width}"${dash}/>`,
     );
   }
   for (let row = 0; row <= rows; row += 1) {
@@ -112,7 +124,7 @@ export function renderChart(
     const width = edge ? 2.2 : ten ? 2.2 : five ? 1.5 : 1;
     const dash = five && !ten ? ' stroke-dasharray="6 6"' : "";
     svg.push(
-      `<line x1="${gridX}" y1="${y}" x2="${gridX + gridWidth}" y2="${y}" stroke="${stroke}" stroke-width="${width}"${dash}/>`
+      `<line x1="${gridX}" y1="${y}" x2="${gridX + gridWidth}" y2="${y}" stroke="${stroke}" stroke-width="${width}"${dash}/>`,
     );
   }
 

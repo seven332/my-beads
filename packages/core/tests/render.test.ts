@@ -32,9 +32,11 @@ it("validates chart width when called without the CLI adapter", () => {
 it("keeps legend cards readable and diagnoses grids wider than the page", () => {
   const narrow = createPattern([["H7", "H5", "M12", "G17", "H4", "G14", "M9", "H20", "H2"]]);
   const svg = renderChart(narrow.pattern, narrow.counts, "Nine colors", 800);
-  const cards = [...svg.matchAll(/<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)" rx="14"/g)];
+  const cards = [
+    ...svg.matchAll(/<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)" rx="14"/g),
+  ];
   expect(cards).toHaveLength(9);
-  expect(new Set(cards.map(match => match[2])).size).toBe(5);
+  expect(new Set(cards.map((match) => match[2])).size).toBe(5);
   for (const card of cards) {
     expect(Number(card[3])).toBeGreaterThanOrEqual(220);
     expect(Number(card[1]) + Number(card[3])).toBeLessThanOrEqual(800);

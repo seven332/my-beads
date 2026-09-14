@@ -10,23 +10,45 @@ export async function readImage(file: File, signal: AbortSignal): Promise<RgbaIm
   const image = new Image();
   try {
     await new Promise<void>((resolve, reject) => {
-      const cleanup = () => { signal.removeEventListener("abort", abort); image.onload = null; image.onerror = null; };
-      const abort = () => { cleanup(); image.src = ""; reject(signal.reason); };
-      image.onload = () => { cleanup(); resolve(); };
-      image.onerror = () => { cleanup(); reject(new UiError("imageDecode")); };
+      const cleanup = () => {
+        signal.removeEventListener("abort", abort);
+        image.onload = null;
+        image.onerror = null;
+      };
+      const abort = () => {
+        cleanup();
+        image.src = "";
+        reject(signal.reason);
+      };
+      image.onload = () => {
+        cleanup();
+        resolve();
+      };
+      image.onerror = () => {
+        cleanup();
+        reject(new UiError("imageDecode"));
+      };
       signal.addEventListener("abort", abort, { once: true });
       image.src = url;
     });
     signal.throwIfAborted();
-    const width = image.naturalWidth, height = image.naturalHeight;
+    const width = image.naturalWidth,
+      height = image.naturalHeight;
     validateImageSize(width, height);
     const canvas = document.createElement("canvas");
-    canvas.width = width; canvas.height = height;
+    canvas.width = width;
+    canvas.height = height;
     try {
       const context = canvas.getContext("2d", { willReadFrequently: true, colorSpace: "srgb" });
       if (!context) throw new UiError("canvasUnavailable");
       context.drawImage(image, 0, 0);
       return { width, height, data: context.getImageData(0, 0, width, height).data };
-    } finally { canvas.width = 0; canvas.height = 0; }
-  } finally { image.src = ""; URL.revokeObjectURL(url); }
+    } finally {
+      canvas.width = 0;
+      canvas.height = 0;
+    }
+  } finally {
+    image.src = "";
+    URL.revokeObjectURL(url);
+  }
 }

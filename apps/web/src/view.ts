@@ -14,31 +14,96 @@ import { Grid3x3 } from "@lucide/icons";
 import { icon } from "./icon.js";
 
 export interface Actions extends ImageActions, CreateActions, ExportActions {
-  tool(tool: Tool): void; color(code: string): void; search(value: string): void;
-  rename(value: string): void; palette(open: boolean): void;
-  undo(): void; redo(): void; grid(): void; codes(): void; zoom(factor: number): void; fit(): void;
+  tool(tool: Tool): void;
+  color(code: string): void;
+  search(value: string): void;
+  rename(value: string): void;
+  palette(open: boolean): void;
+  undo(): void;
+  redo(): void;
+  grid(): void;
+  codes(): void;
+  zoom(factor: number): void;
+  fit(): void;
   startNew(): void;
-  paletteView(view: PaletteView): void; highlight(code: string | null): void; fitHighlight(): void;
-  saveDraft(): void; language(locale: Locale): void;
+  paletteView(view: PaletteView): void;
+  highlight(code: string | null): void;
+  fitHighlight(): void;
+  saveDraft(): void;
+  language(locale: Locale): void;
 }
 
-export function view(model: EditorModel, actions: Actions, refs: ViewRefs, image: ImageSession | null,
-  draft: DraftStatus & { message: string }, locale: Locale, t: Translate, flow: ReturnType<typeof workflow$.read>, exports: ExportSettings) {
-  const brand = html`<a class="brand" href="#" aria-label=${t($ => $.app.name)} @click=${(event: Event) => { event.preventDefault(); actions.startNew(); }}>
-    <span class="brand-mark">${icon(Grid3x3)}</span><span class="brand-name">${t($ => $.app.name)}</span></a>`;
-  const language = html`<label class="language-picker"><span>${t($ => $.app.language)}</span>
-    <select aria-label=${t($ => $.app.language)} .value=${live(locale)} @change=${(event: Event) => {
-      const selected = (event.target as HTMLSelectElement).value; if (isLocale(selected)) actions.language(selected);
-    }}>${Object.entries(localeNames).map(([code, name]) => html`<option value=${code} lang=${code} .selected=${code === locale}>${name}</option>`)}</select></label>`;
-  const status = flow.hasDocument || draft.error ? html`<div class="draft-status" role=${draft.error ? "alert" : "status"} aria-label=${t($ => $.draft.status)}>
-    <span>${draft.message}</span>${draft.action && flow.hasDocument ? html`<button type="button" @click=${actions.saveDraft}>${draft.action === "replace" ? t($ => $.draft.replace) : t($ => $.draft.retry)}</button>` : nothing}
-  </div>` : nothing;
+export function view(
+  model: EditorModel,
+  actions: Actions,
+  refs: ViewRefs,
+  image: ImageSession | null,
+  draft: DraftStatus & { message: string },
+  locale: Locale,
+  t: Translate,
+  flow: ReturnType<typeof workflow$.read>,
+  exports: ExportSettings,
+) {
+  const brand = html`<a
+    class="brand"
+    href="#"
+    aria-label=${t(($) => $.app.name)}
+    @click=${(event: Event) => {
+      event.preventDefault();
+      actions.startNew();
+    }}
+  >
+    <span class="brand-mark">${icon(Grid3x3)}</span
+    ><span class="brand-name">${t(($) => $.app.name)}</span></a
+  >`;
+  const language = html`<label class="language-picker"
+    ><span>${t(($) => $.app.language)}</span>
+    <select
+      aria-label=${t(($) => $.app.language)}
+      .value=${live(locale)}
+      @change=${(event: Event) => {
+        const selected = (event.target as HTMLSelectElement).value;
+        if (isLocale(selected)) actions.language(selected);
+      }}
+    >
+      ${Object.entries(localeNames).map(
+        ([code, name]) =>
+          html`<option value=${code} lang=${code} .selected=${code === locale}>${name}</option>`,
+      )}
+    </select></label
+  >`;
+  const status =
+    flow.hasDocument || draft.error
+      ? html`<div
+          class="draft-status"
+          role=${draft.error ? "alert" : "status"}
+          aria-label=${t(($) => $.draft.status)}
+        >
+          <span>${draft.message}</span>${draft.action && flow.hasDocument
+            ? html`<button type="button" @click=${actions.saveDraft}>
+                ${draft.action === "replace" ? t(($) => $.draft.replace) : t(($) => $.draft.retry)}
+              </button>`
+            : nothing}
+        </div>`
+      : nothing;
   return html`<div class="workspace" lang=${locale} data-page=${flow.page}>
-    ${flow.page === "create" ? html`
-      <header class="topbar">${brand}<span class="topbar-note">${t($ => $.app.tagline)}</span>${language}</header>
-      ${status}${createView(model, flow, actions, t)}
-      <footer class="app-footer"><span>${t($ => $.app.footer)}</span><span>${t($ => $.app.localFiles)}</span></footer>
-    ` : editorView(model, actions, refs.canvas, t, brand, language, status, exports.open)}
-    ${imageView(image, actions, t, refs)}${exportView(model, exports, actions, t, refs.exportDialog)}
+    ${flow.page === "create"
+      ? html`
+          <header class="topbar">
+            ${brand}<span class="topbar-note">${t(($) => $.app.tagline)}</span>${language}
+          </header>
+          ${status}${createView(model, flow, actions, t)}
+          <footer class="app-footer">
+            <span>${t(($) => $.app.footer)}</span><span>${t(($) => $.app.localFiles)}</span>
+          </footer>
+        `
+      : editorView(model, actions, refs.canvas, t, brand, language, status, exports.open)}
+    ${imageView(image, actions, t, refs)}${exportView(
+      model,
+      exports,
+      actions,
+      t,
+      refs.exportDialog,
+    )}
   </div>`;
 }

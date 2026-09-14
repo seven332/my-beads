@@ -3,7 +3,11 @@ import { defaultPalette, normalizeHex, validatePalette, type PaletteDocument } f
 
 /** A rectangular document: MARD codes for beads, null for empty cells. */
 export type PatternGrid = readonly (readonly (string | null)[])[];
-export type PatternCell = { readonly code: string; readonly hex: string; readonly transparent: boolean };
+export type PatternCell = {
+  readonly code: string;
+  readonly hex: string;
+  readonly transparent: boolean;
+};
 export type PatternData = {
   readonly grid: PatternGrid;
   readonly pattern: readonly (readonly PatternCell[])[];
@@ -16,9 +20,16 @@ function validateShape(rows: readonly (readonly unknown[])[]): void {
   }
   const columns = rows[0].length;
   for (const [rowIndex, row] of rows.entries()) {
-    if (!Array.isArray(row)) throw new BeadError("patternRow", `Pattern row ${rowIndex + 1} must be an array`, { row: rowIndex + 1 });
+    if (!Array.isArray(row))
+      throw new BeadError("patternRow", `Pattern row ${rowIndex + 1} must be an array`, {
+        row: rowIndex + 1,
+      });
     if (row.length !== columns) {
-      throw new BeadError("csvColumns", `CSV row ${rowIndex + 1} has ${row.length} columns; expected ${columns}`, { row: rowIndex + 1, actual: row.length, expected: columns });
+      throw new BeadError(
+        "csvColumns",
+        `CSV row ${rowIndex + 1} has ${row.length} columns; expected ${columns}`,
+        { row: rowIndex + 1, actual: row.length, expected: columns },
+      );
     }
   }
 }
@@ -60,13 +71,17 @@ export function parseCsv(text: string): string[][] {
     } else if (character === '"' && mode === "start") {
       mode = "quoted";
     } else if (character === '"' || (mode === "closed" && character.trim())) {
-      throw new BeadError("csvCharacter", "CSV contains an unexpected character outside a quoted field");
+      throw new BeadError(
+        "csvCharacter",
+        "CSV contains an unexpected character outside a quoted field",
+      );
     } else if (mode !== "closed") {
       field += character;
       if (character.trim()) mode = "plain";
     }
   }
-  if (mode === "quoted") throw new BeadError("csvQuote", "CSV contains an unterminated quoted field");
+  if (mode === "quoted")
+    throw new BeadError("csvQuote", "CSV contains an unterminated quoted field");
   if (!endedRow) {
     endField();
     rows.push(row);
@@ -84,34 +99,50 @@ export function createPattern(
   const { colors } = validatePalette(palette);
   const codesByHex = new Map(Object.entries(colors).map(([code, hex]) => [hex, code]));
   const counts = new Map<string, number>();
-  const pattern = rows.map((row, rowIndex) => Array.from(row, (rawValue, columnIndex) => {
-    if (rawValue !== null && typeof rawValue !== "string") {
-      throw new BeadError("patternCell", `Invalid cell at row ${rowIndex + 1}, column ${columnIndex + 1}; expected a color or null`, { row: rowIndex + 1, column: columnIndex + 1 });
-    }
-    const value = rawValue?.trim().toUpperCase() ?? "";
-    if (value === "" || value === "TRANSPARENT" || value === "ERASE") {
-      return { code: "", hex: "#F7F8F8", transparent: true };
-    }
-    const code = value.startsWith("#") ? codesByHex.get(normalizeHex(value)) : value;
-    const hex = code === undefined ? undefined : colors[code];
-    if (!code || !hex) {
-      throw new BeadError("unknownColor", `Unknown MARD color '${rawValue}' at row ${rowIndex + 1}, column ${columnIndex + 1}`, { value: String(rawValue), row: rowIndex + 1, column: columnIndex + 1 });
-    }
-    counts.set(code, (counts.get(code) ?? 0) + 1);
-    return { code, hex, transparent: false };
-  }));
+  const pattern = rows.map((row, rowIndex) =>
+    Array.from(row, (rawValue, columnIndex) => {
+      if (rawValue !== null && typeof rawValue !== "string") {
+        throw new BeadError(
+          "patternCell",
+          `Invalid cell at row ${rowIndex + 1}, column ${columnIndex + 1}; expected a color or null`,
+          { row: rowIndex + 1, column: columnIndex + 1 },
+        );
+      }
+      const value = rawValue?.trim().toUpperCase() ?? "";
+      if (value === "" || value === "TRANSPARENT" || value === "ERASE") {
+        return { code: "", hex: "#F7F8F8", transparent: true };
+      }
+      const code = value.startsWith("#") ? codesByHex.get(normalizeHex(value)) : value;
+      const hex = code === undefined ? undefined : colors[code];
+      if (!code || !hex) {
+        throw new BeadError(
+          "unknownColor",
+          `Unknown MARD color '${rawValue}' at row ${rowIndex + 1}, column ${columnIndex + 1}`,
+          { value: String(rawValue), row: rowIndex + 1, column: columnIndex + 1 },
+        );
+      }
+      counts.set(code, (counts.get(code) ?? 0) + 1);
+      return { code, hex, transparent: false };
+    }),
+  );
   return {
-    grid: pattern.map((row) => row.map((cell) => cell.transparent ? null : cell.code)),
+    grid: pattern.map((row) => row.map((cell) => (cell.transparent ? null : cell.code))),
     pattern,
     counts,
   };
 }
 
-export function parsePatternCsv(text: string, palette: PaletteDocument = defaultPalette): PatternGrid {
+export function parsePatternCsv(
+  text: string,
+  palette: PaletteDocument = defaultPalette,
+): PatternGrid {
   return createPattern(parseCsv(text), palette).grid;
 }
 
-export function serializePatternCsv(grid: PatternGrid, palette: PaletteDocument = defaultPalette): string {
+export function serializePatternCsv(
+  grid: PatternGrid,
+  palette: PaletteDocument = defaultPalette,
+): string {
   const normalized = createPattern(grid, palette).grid;
   // Quote empty cells and custom codes containing CSV delimiters.
   const field = (code: string | null): string => {

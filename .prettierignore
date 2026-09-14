@@ -1,0 +1,11 @@
+# Local work and generated output
+codex-work/
+**/dist/
+**/coverage/
+**/test-results/
+**/playwright-report/
+
+# Package-manager output, pattern assets, and third-party content
+pnpm-lock.yaml
+templates/
+apps/web/public/lucide-LICENSE.txt

@@ -1,13 +1,20 @@
 import { describe, expect, it } from "vitest";
 import {
-  createPattern, defaultPalette, parseCsv, parsePatternCsv, serializePatternCsv,
-  validatePalette, type PatternGrid,
+  createPattern,
+  defaultPalette,
+  parseCsv,
+  parsePatternCsv,
+  serializePatternCsv,
+  validatePalette,
+  type PatternGrid,
 } from "../src/index.js";
 
 describe("CSV documents", () => {
   it("normalizes BOM, whitespace, CRLF, hex values and transparent aliases", () => {
-    expect(parsePatternCsv('\uFEFF" h7 ",#ffffff,ERASE\r\nTRANSPARENT,,"H7"\r\n'))
-      .toEqual([["H7", "H2", null], [null, null, "H7"]]);
+    expect(parsePatternCsv('\uFEFF" h7 ",#ffffff,ERASE\r\nTRANSPARENT,,"H7"\r\n')).toEqual([
+      ["H7", "H2", null],
+      [null, null, "H7"],
+    ]);
   });
 
   it("parses escaped quotes, commas and newlines within quoted fields", () => {
@@ -16,15 +23,26 @@ describe("CSV documents", () => {
   });
 
   const grids: PatternGrid[] = [
-    [[null]], [["H7"]], [[null, null], [null, null]],
-    [["H7", null, "H2"], [null, "B23", null]],
+    [[null]],
+    [["H7"]],
+    [
+      [null, null],
+      [null, null],
+    ],
+    [
+      ["H7", null, "H2"],
+      [null, "B23", null],
+    ],
   ];
   it.each(grids.map((grid) => ({ grid })))("round-trips $grid", ({ grid }) => {
     expect(parsePatternCsv(serializePatternCsv(grid))).toEqual(grid);
   });
 
   it("retains trailing empty rows and columns", () => {
-    expect(parsePatternCsv("H7,\n,\n")).toEqual([["H7", null], [null, null]]);
+    expect(parsePatternCsv("H7,\n,\n")).toEqual([
+      ["H7", null],
+      [null, null],
+    ]);
     expect(parsePatternCsv('""')).toEqual([[null]]);
     expect(parsePatternCsv("\n")).toEqual([[null]]);
   });
@@ -83,10 +101,19 @@ describe("palettes", () => {
     expect(parsePatternCsv(serializePatternCsv(grid, palette), palette)).toEqual(grid);
   });
 
-  it.each([null, [], {}, { colors: null }, { colors: [] }, { colors: {} },
-    { colors: { H7: 5 } }, { colors: { H7: "#GGGGGG" } },
-    { colors: { H7: "#000000", h7: "#FFFFFF" } }, { colors: { "": "#000000" } },
-    { colors: { TRANSPARENT: "#000000" } }, { colors: { "#000000": "#FFFFFF" } },
+  it.each([
+    null,
+    [],
+    {},
+    { colors: null },
+    { colors: [] },
+    { colors: {} },
+    { colors: { H7: 5 } },
+    { colors: { H7: "#GGGGGG" } },
+    { colors: { H7: "#000000", h7: "#FFFFFF" } },
+    { colors: { "": "#000000" } },
+    { colors: { TRANSPARENT: "#000000" } },
+    { colors: { "#000000": "#FFFFFF" } },
   ])("rejects invalid external data %j", (palette) => {
     expect(() => validatePalette(palette)).toThrow();
   });

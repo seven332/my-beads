@@ -12,6 +12,8 @@
     "generate:pixel": "tsx apps/cli/src/generate-pixel-art.ts",
     "match:color": "tsx apps/cli/src/find-closest-color.ts",
     "dev": "pnpm --filter @my-beads/web dev",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "lint": "eslint . && pnpm --filter @my-beads/web lint:i18n",
     "typecheck": "tsc --noEmit && pnpm --filter @my-beads/core typecheck && pnpm --filter @my-beads/web typecheck",
     "test": "pnpm -r test",
@@ -24,6 +26,7 @@
     "esbuild": "0.28.2",
     "eslint": "10.10.0",
     "eslint-plugin-lit": "2.3.1",
+    "prettier": "3.8.5",
     "tsx": "^4.23.13",
     "typescript": "6.0.3",
     "typescript-eslint": "8.70.0"

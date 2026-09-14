@@ -49,8 +49,7 @@ export function deltaE2000(first: Lab, second: Lab): number {
   const chroma1 = Math.hypot(a1, b1);
   const chroma2 = Math.hypot(a2, b2);
   const meanChroma = (chroma1 + chroma2) / 2;
-  const compensation =
-    0.5 * (1 - Math.sqrt(meanChroma ** 7 / (meanChroma ** 7 + 25 ** 7)));
+  const compensation = 0.5 * (1 - Math.sqrt(meanChroma ** 7 / (meanChroma ** 7 + 25 ** 7)));
   const adjustedA1 = (1 + compensation) * a1;
   const adjustedA2 = (1 + compensation) * a2;
   const adjustedChroma1 = Math.hypot(adjustedA1, b1);
@@ -99,17 +98,13 @@ export function deltaE2000(first: Lab, second: Lab): number {
     0.32 * Math.cos((3 * meanHue + 6) * radians) -
     0.2 * Math.cos((4 * meanHue - 63) * radians);
   const lightnessWeight =
-    1 +
-    (0.015 * (meanLightness - 50) ** 2) /
-      Math.sqrt(20 + (meanLightness - 50) ** 2);
+    1 + (0.015 * (meanLightness - 50) ** 2) / Math.sqrt(20 + (meanLightness - 50) ** 2);
   const chromaWeight = 1 + 0.045 * meanAdjustedChroma;
   const hueDifferenceWeight = 1 + 0.015 * meanAdjustedChroma * hueWeight;
   const rotation =
     -2 *
     Math.sqrt(meanAdjustedChroma ** 7 / (meanAdjustedChroma ** 7 + 25 ** 7)) *
-    Math.sin(
-      60 * Math.exp(-(((meanHue - 275) / 25) ** 2)) * radians,
-    );
+    Math.sin(60 * Math.exp(-(((meanHue - 275) / 25) ** 2)) * radians);
   const normalizedLightness = deltaLightness / lightnessWeight;
   const normalizedChroma = deltaChroma / chromaWeight;
   const normalizedHue = deltaHue / hueDifferenceWeight;
@@ -149,9 +144,7 @@ function assignUniqueColors(costs: number[][]): number[] {
       for (let column = 1; column <= columnCount; column += 1) {
         if (usedColumns[column]) continue;
         const cost =
-          costs[currentRow - 1][column - 1] -
-          rowPotentials[currentRow] -
-          columnPotentials[column];
+          costs[currentRow - 1][column - 1] - rowPotentials[currentRow] - columnPotentials[column];
         if (cost < minimumCosts[column]) {
           minimumCosts[column] = cost;
           previousColumns[column] = currentColumn;
@@ -202,9 +195,7 @@ export function matchColors(
   if (!inputHexes.length) return [];
   const paletteColors: PaletteColor[] = Object.entries(validated.colors)
     .filter(
-      ([code]) =>
-        !series.length ||
-        series.some((prefix) => code.toUpperCase().startsWith(prefix)),
+      ([code]) => !series.length || series.some((prefix) => code.toUpperCase().startsWith(prefix)),
     )
     .map(([code, rawHex]) => {
       const hex = normalizeHex(rawHex);
@@ -231,8 +222,7 @@ export function matchColors(
   const excludedColorPenalty = 1_000_000;
   const costs = differences.map((row, inputIndex) =>
     row.map((difference, colorIndex) =>
-      inputs[inputIndex].preserveChroma &&
-      paletteColors[colorIndex].chroma < chromaticThreshold
+      inputs[inputIndex].preserveChroma && paletteColors[colorIndex].chroma < chromaticThreshold
         ? difference + excludedColorPenalty
         : difference,
     ),

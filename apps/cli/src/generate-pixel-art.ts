@@ -6,12 +6,7 @@ import { Resvg } from "@resvg/resvg-js";
 import { renderPixelArtSvg } from "@my-beads/core";
 import { defaultPalettePath, loadPattern } from "./pattern.js";
 
-type Options = {
-  input: string;
-  output: string;
-  palette: string;
-  scale: number;
-};
+type Options = { input: string; output: string; palette: string; scale: number };
 
 function usage(): string {
   return [

@@ -4,7 +4,8 @@ import { Eraser, Pencil, type LucideIconData } from "@lucide/icons";
 import { icon } from "../src/icon.js";
 
 it("keeps repeated icons independent when a neighboring icon changes", () => {
-  const host = document.createElement("div"), original = JSON.stringify(Pencil);
+  const host = document.createElement("div"),
+    original = JSON.stringify(Pencil);
   const view = (first: LucideIconData) => html`<div>${icon(first)}${icon(Pencil)}</div>`;
   render(view(Pencil), host);
   const [first, second] = host.querySelectorAll("svg");
@@ -24,13 +25,16 @@ it("keeps repeated icons independent when a neighboring icon changes", () => {
 });
 
 it("renders nested SVG nodes with native dimensions and decorative accessibility", () => {
-  const data: LucideIconData = { width: 32, height: 16, node: [
-    ["g", { key: "group" }, [["rect", { key: "shape", width: 32, height: 16 }]]],
-  ] };
+  const data: LucideIconData = {
+    width: 32,
+    height: 16,
+    node: [["g", { key: "group" }, [["rect", { key: "shape", width: 32, height: 16 }]]]],
+  };
   const host = document.createElement("div");
   render(icon(data), host);
   const svg = host.querySelector("svg")!;
-  for (const node of [svg, ...svg.querySelectorAll("*")]) expect(node.namespaceURI).toBe("http://www.w3.org/2000/svg");
+  for (const node of [svg, ...svg.querySelectorAll("*")])
+    expect(node.namespaceURI).toBe("http://www.w3.org/2000/svg");
   expect(svg.getAttribute("viewBox")).toBe("0 0 32 16");
   expect(svg.getAttribute("stroke")).toBe("currentColor");
   expect(svg.getAttribute("aria-hidden")).toBe("true");
