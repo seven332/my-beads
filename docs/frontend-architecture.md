@@ -127,6 +127,18 @@ Strokes started inside the grid still pass raw endpoints to the core for boundar
 clipping, while their cursor disappears outside and reappears on reentry. Keyboard
 focus initializes a cell; arrow keys can restore a cleared cursor, and Enter/Space
 only edit when a cell is selected.
+
+The native mouse cursor is independent of the orange selected-cell outline.
+`canvas-cursor.ts` caches 32 × 32 SVG cursors from the toolbar's Lucide glyphs,
+with black strokes over white outlines and a `crosshair` fallback. Glyphs have
+four pixels of padding; image-pixel hotspots are (6,26) for Pencil/Pipette,
+(12,25) on the Eraser contact edge and (24,26) at the PaintBucket drop tip.
+Pan uses `grab`; an active pan, including a middle-button override, uses `grabbing`.
+The Canvas controller updates this style immediately on tool and gesture changes,
+resets it on release/cancellation/capture or focus loss, and removes it on teardown.
+Cursor images do not scale with zoom, require no deployment path, and add no
+hover selection state, pointer overlay or rendering loop. Touch interaction is unchanged.
+
 Counts come from computed core data. Imports use both an owned AbortSignal and
 revision/token checks, so newer work cannot be overwritten by a late file read.
 
