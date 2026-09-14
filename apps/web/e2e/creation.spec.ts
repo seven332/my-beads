@@ -74,6 +74,10 @@ test("creation errors are visible beside the chosen method on mobile", async ({ 
   await expect(csv.getByRole("alert")).toContainText("Unknown MARD color");
   await expect(csv.getByRole("alert")).toBeInViewport();
   await expect(page.getByRole("alert")).toHaveCount(1);
+  await page.getByLabel("Open CSV").setInputFiles({ name: "invalid.csv", mimeType: "text/csv", buffer: Buffer.from("W".repeat(100)) });
+  await expect(csv.getByRole("alert")).toContainText("W".repeat(100));
+  expect(await csv.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
 test("creation, recreation and export remain usable in both languages on narrow screens", async ({ page }) => {

@@ -88,6 +88,7 @@ details[open] summary { margin-bottom: 16px; }
 .creation-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
 .creation-card { display: flex; flex-direction: column; padding: 28px; border: 1px solid #dce0d7; border-radius: 16px; background: #fcfcf9; min-width: 0; }
 .creation-card h2 { font-size: 20px; letter-spacing: -.4px; }
+.creation-card .error { overflow-wrap: anywhere; }
 .creation-icon { width: 50px; height: 50px; display: grid; place-items: center; font-size: 30px; color: #587349; background: #e8eddf; border-radius: 12px; margin-bottom: 24px; }
 .blank-card { border-color: #b6c4a8; }
 .card-description { color: #697762; font-size: 13px; line-height: 1.8; margin: 14px 0 24px; }
