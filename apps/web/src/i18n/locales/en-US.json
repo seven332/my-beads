@@ -1,4 +1,16 @@
 {
+  "picker": {
+    "open": "Open color picker",
+    "close": "Close color picker",
+    "heading": "Find a color",
+    "drag": "Drag to adjust saturation and brightness",
+    "hueSlider": "Adjust hue",
+    "hue": "Hue (degrees)",
+    "saturation": "Saturation (%)",
+    "brightness": "Brightness (%)",
+    "short": { "hue": "H", "saturation": "S", "brightness": "B" },
+    "help": "Choose a MARD match below to use it."
+  },
   "appearance": {
     "label": "Appearance",
     "current": "Appearance: {{mode}}",

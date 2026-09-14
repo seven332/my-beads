@@ -16,6 +16,13 @@ import { mountKeyboard } from "./keyboard.js";
 import { composing } from "./shortcuts.js";
 import { mountTheme } from "./theme-browser.js";
 import { theme$, themePreference$, selectTheme$, systemThemeChanged$ } from "./theme-state.js";
+import { defaultPalette } from "@my-beads/core";
+import {
+  showColorPicker$,
+  pickColor$,
+  editColorChannel$,
+  commitColorChannel$,
+} from "./palette-state.js";
 
 /** One mount owns the store, watcher, imports, Canvas resources and download URLs. */
 export function mountApp(
@@ -173,6 +180,13 @@ export function mountApp(
     tool: (tool) => store.set(state.chooseTool$, tool),
     color: (code) => store.set(state.chooseColor$, code),
     search: (value) => store.set(state.searchPalette$, value),
+    colorPicker: (open) => {
+      store.set(showColorPicker$, open, defaultPalette.colors[store.get(state.editor$).color]);
+      host.querySelector<HTMLElement>(open ? ".color-hue" : ".color-picker-toggle")?.focus();
+    },
+    pickColor: (update) => store.set(pickColor$, update),
+    colorChannel: (channel, text) => store.set(editColorChannel$, channel, text),
+    commitColorChannel: (channel) => store.set(commitColorChannel$, channel),
     rename: (value) => store.set(state.rename$, value),
     create: (width, height) => {
       cancelImport();
@@ -263,13 +277,16 @@ export function mountApp(
       );
     },
   };
-  const lifecycle = createViewLifecycle({
-    begin: (point) => store.set(state.beginStroke$, point),
-    extend: (point) => store.set(state.extendStroke$, point),
-    finish: (cancel) => store.set(state.finishStroke$, cancel),
-    pan: (dx, dy) => store.set(state.moveViewport$, dx, dy),
-    zoom: (factor, anchor) => store.set(state.zoom$, factor, anchor),
-  });
+  const lifecycle = createViewLifecycle(
+    {
+      begin: (point) => store.set(state.beginStroke$, point),
+      extend: (point) => store.set(state.extendStroke$, point),
+      finish: (cancel) => store.set(state.finishStroke$, cancel),
+      pan: (dx, dy) => store.set(state.moveViewport$, dx, dy),
+      zoom: (factor, anchor) => store.set(state.zoom$, factor, anchor),
+    },
+    (saturation, brightness) => store.set(pickColor$, { saturation, brightness }),
+  );
   const keyboard = mountKeyboard(root, {
     enabled: () =>
       store.get(state.workflow$).page === "edit" &&
@@ -346,6 +363,15 @@ export function mountApp(
       store.get(images.imageSession$)
     )
       return;
+    if (
+      event.key === "Escape" &&
+      store.get(state.editor$).colorPicker.open &&
+      (paletteEscape || target.closest(".palette-panel"))
+    ) {
+      event.preventDefault();
+      actions.colorPicker(false);
+      return;
+    }
     if (paletteEscape) {
       event.preventDefault();
       palette(false);

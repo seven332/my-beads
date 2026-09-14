@@ -1,4 +1,16 @@
 {
+  "picker": {
+    "open": "打开选色器",
+    "close": "关闭选色器",
+    "heading": "寻找颜色",
+    "drag": "拖动调整饱和度和明度",
+    "hueSlider": "调整色相",
+    "hue": "色相（度）",
+    "saturation": "饱和度（%）",
+    "brightness": "明度（%）",
+    "short": { "hue": "色相", "saturation": "饱和度", "brightness": "明度" },
+    "help": "点击下方的 MARD 推荐色即可使用。"
+  },
   "appearance": {
     "label": "外观",
     "current": "外观：{{mode}}",

@@ -22,13 +22,21 @@ export type PaletteSearchResult =
 
 const colors = Object.entries(defaultPalette.colors).map(([code, hex]) => ({ code, hex }));
 
+/** Exact bead codes take precedence over ambiguous three-digit HEX input. */
+export function paletteTargetHex(query: string): string | null {
+  const search = query.trim().toUpperCase();
+  if (Object.hasOwn(defaultPalette.colors, search)) return defaultPalette.colors[search];
+  return /^#?(?:[0-9A-F]{3}|[0-9A-F]{6})$/.test(search) ? normalizeHex(search) : null;
+}
+
 export function findPaletteColors(query: string): PaletteSearchResult {
   const search = query.trim().toUpperCase();
   // MARD codes such as B23 also look like three-digit hex colors.
   const exactCode = colors.find((color) => color.code === search);
   if (exactCode) return { kind: "matches", inputHex: null, colors: [exactCode] };
 
-  if (!/^#?(?:[0-9A-F]{3}|[0-9A-F]{6})$/.test(search)) {
+  const inputHex = paletteTargetHex(search);
+  if (!inputHex) {
     return {
       kind: "matches",
       inputHex: null,
@@ -36,7 +44,6 @@ export function findPaletteColors(query: string): PaletteSearchResult {
     };
   }
 
-  const inputHex = normalizeHex(search);
   const exactColors = colors.filter((color) => color.hex === inputHex);
   if (exactColors.length) return { kind: "matches", inputHex, colors: exactColors };
 

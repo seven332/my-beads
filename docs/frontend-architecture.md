@@ -37,7 +37,8 @@ introduce a dependency on that checkout or its private rule package.
   selections with computed values; avoid an additional mutable cache for derived data.
 - A view reads state and dispatches intent. It does not mutate the document directly.
 
-Palette search derives from its query in a separate computed unit, so drawing and
+`palette-state.ts` owns the search query and transient visual picker. Search derives
+from its query in a separate computed unit, so drawing and
 viewport updates reuse the current results. The pure browser search helper resolves
 exact codes before complete three/six-digit hex values, then falls back to partial
 text filtering. Exact palette hex matches bypass approximation; other complete hex
@@ -45,6 +46,27 @@ values reuse both core matching policies and combine duplicate codes with both r
 labels. The view compares the source swatch and explained suggestions. Only explicit
 color selection dispatches the existing color command; search does not change the
 document, selected color or history. No search results are persisted.
+
+`color-picker-view.ts` shares the text search with an expandable Figma-inspired
+target-color picker inside the existing floating palette. The swatch opens a
+saturation/brightness area, a native hue range and H/S/B number fields. The number
+fields provide full keyboard access alongside the pointer-only area. Opening and
+closing focus the hue control and swatch respectively, scrolling them into view;
+Escape closes the picker before the mobile palette. Switching views or navigating
+away closes it. An expanded picker and its results share the panel's contained
+scroll area, including narrow and short viewports.
+
+`color-picker.ts` converts sRGB HEX and HSV (HSB). Keep HSV intent separately from
+the rounded search HEX: neutral colors preserve hue, black preserves saturation,
+and a hue change at zero brightness must not snap back after a render. Numeric
+fields retain unfinished strings until blur, while invalid values leave the last
+valid search target intact. Exact MARD codes still take precedence over ambiguous
+three-digit HEX. `color-area.ts` owns one primary pointer capture, clamps outside
+coordinates and releases listeners/capture on cancellation, blur and teardown.
+The existing view lifecycle retains this area across updates and disposes it on
+removal. Picker changes never call the brush/history commands or affect exports.
+Tests cover known color boundaries, data isolation, native controls, real pointer
+and touch input, live matching, theme/locale updates and responsive hit targets.
 
 Used colors is a separate palette view derived from the live document counts in
 natural MARD code order. Nonempty replacements/recovery start in Used, blanks in

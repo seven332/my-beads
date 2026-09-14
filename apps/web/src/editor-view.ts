@@ -1,6 +1,8 @@
 import { html, nothing, type TemplateResult } from "lit-html";
 import { live } from "lit-html/directives/live.js";
-import { ref, type Ref } from "lit-html/directives/ref.js";
+import { ref } from "lit-html/directives/ref.js";
+import type { ViewRefs } from "./view-lifecycle.js";
+import { colorSearch } from "./color-picker-view.js";
 import { defaultPalette } from "@my-beads/core";
 import type { EditorModel } from "./state.js";
 import type { Actions } from "./view.js";
@@ -26,7 +28,7 @@ import { shortcutHint, shortcuts } from "./shortcuts.js";
 export function editorView(
   model: EditorModel,
   actions: Actions,
-  canvas: Ref<HTMLCanvasElement>,
+  refs: ViewRefs,
   t: Translate,
   brand: TemplateResult,
   language: TemplateResult,
@@ -42,7 +44,7 @@ export function editorView(
     <div class="canvas-container">
       <canvas
         class="pattern-canvas"
-        ${ref(canvas)}
+        ${ref(refs.canvas)}
         tabindex="0"
         role="img"
         aria-label=${t(($) => $.app.canvas)}
@@ -213,6 +215,7 @@ export function editorView(
       class="palette-panel floating-panel"
       id="editor-palette"
       aria-label=${t(($) => $.palette.heading)}
+      data-picker-open=${String(model.colorPicker.open)}
       data-canvas-panel
     >
       <div class="section-heading">
@@ -253,16 +256,7 @@ export function editorView(
           ${t(($) => $.palette.all)}
         </button>
       </div>
-      ${model.paletteView === "all"
-        ? html`<input
-            class="palette-search"
-            type="search"
-            placeholder=${t(($) => $.palette.searchPlaceholder)}
-            aria-label=${t(($) => $.palette.search)}
-            .value=${live(model.search)}
-            @input=${(event: Event) => actions.search((event.target as HTMLInputElement).value)}
-          />`
-        : nothing}
+      ${model.paletteView === "all" ? colorSearch(model, actions, refs.colorArea, t) : nothing}
       ${model.paletteView === "all"
         ? paletteResults(model.paletteSearch, model.color, model.document.counts, actions.color, t)
         : usedColors(model, actions.color, actions.highlight, t)}

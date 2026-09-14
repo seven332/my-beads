@@ -5,11 +5,15 @@ import type { EditorModel } from "./state.js";
 import type { ImageSession } from "./image-state.js";
 import { readCanvasTheme, type CanvasTheme } from "./canvas-theme.js";
 import type { Theme } from "./theme-preference.js";
+import { mountColorArea } from "./color-area.js";
 
 export type ViewRefs = ReturnType<typeof createViewLifecycle>["refs"];
 
 /** Refs identify nodes; resource effects run only after synchronous render inserts them. */
-export function createViewLifecycle(actions: CanvasActions) {
+export function createViewLifecycle(
+  actions: CanvasActions,
+  pickColor: (saturation: number, brightness: number) => void,
+) {
   const refs = {
     canvas: createRef<HTMLCanvasElement>(),
     imageDialog: createRef<HTMLDialogElement>(),
@@ -17,6 +21,7 @@ export function createViewLifecycle(actions: CanvasActions) {
     keyboardDialog: createRef<HTMLDialogElement>(),
     sourcePreview: createRef<HTMLCanvasElement>(),
     mappedPreview: createRef<HTMLCanvasElement>(),
+    colorArea: createRef<HTMLElement>(),
   };
   let canvas:
     | {
@@ -27,6 +32,9 @@ export function createViewLifecycle(actions: CanvasActions) {
       }
     | undefined;
   let dialogs: HTMLDialogElement[] = [];
+  let colorArea:
+    | { element: HTMLElement; controller: ReturnType<typeof mountColorArea> }
+    | undefined;
   const previews = new Map<HTMLCanvasElement, PatternGrid>();
   function releaseCanvas() {
     const previous = canvas;
@@ -62,6 +70,15 @@ export function createViewLifecycle(actions: CanvasActions) {
       canvas?.controller.holdPan(held);
     },
     sync(model: EditorModel, image: ImageSession | null, theme: Theme) {
+      if (colorArea?.element !== refs.colorArea.value) {
+        colorArea?.controller.destroy();
+        colorArea = refs.colorArea.value
+          ? {
+              element: refs.colorArea.value,
+              controller: mountColorArea(refs.colorArea.value, pickColor),
+            }
+          : undefined;
+      }
       if (canvas?.element !== refs.canvas.value) {
         releaseCanvas();
         if (refs.canvas.value)
@@ -92,6 +109,8 @@ export function createViewLifecycle(actions: CanvasActions) {
       paint(refs.mappedPreview.value, image?.mapped?.grid, true);
     },
     destroy() {
+      colorArea?.controller.destroy();
+      colorArea = undefined;
       releaseCanvas();
       for (const dialog of dialogs) dialog.close();
       dialogs = [];
