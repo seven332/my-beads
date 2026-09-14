@@ -51,7 +51,8 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
     // Browser focus scrolling can reveal only part of the field in a short panel.
     const panel = host.querySelector(".palette-panel");
     if (open && panel) panel.scrollTop = 0;
-    host.querySelector<HTMLElement>(open ? ".palette-search" : ".palette-toggle")?.focus({ preventScroll: true });
+    const entry = store.get(state.editor$).paletteView === "all" ? ".palette-search" : '.palette-view button[aria-pressed="true"]';
+    host.querySelector<HTMLElement>(open ? entry : ".palette-toggle")?.focus({ preventScroll: true });
   }
   function focusPage(selector: string) {
     host.scrollIntoView({ block: "start", behavior: "instant" });
@@ -60,6 +61,22 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
   function created() { fit(); focusPage(".title-input"); }
   const actions: Actions = {
     palette,
+    paletteView: view => {
+      store.set(state.selectPaletteView$, view);
+      if (view === "all") host.querySelector<HTMLInputElement>(".palette-search")?.focus({ preventScroll: true });
+    },
+    highlight: code => {
+      store.set(state.highlightColor$, code);
+      if (code !== null && paletteIsOverlay(host)) {
+        store.set(state.showPalette$, false);
+        host.querySelector<HTMLElement>(store.get(state.editor$).highlightedColor ? ".highlight-clear" : ".palette-toggle")?.focus({ preventScroll: true });
+      } else if (code === null) host.querySelector<HTMLCanvasElement>(".pattern-canvas")?.focus({ preventScroll: true });
+    },
+    fitHighlight: () => {
+      if (paletteIsOverlay(host)) store.set(state.showPalette$, false);
+      const area = editingArea(host);
+      if (area) store.set(state.fitHighlightedColor$, area);
+    },
     startNew: () => { cancelImport(); closeExport(); store.set(state.showCreate$); focusPage("h1"); },
     resume: () => { cancelImport(); store.set(state.showEditor$); focusPage(".title-input"); },
     openExport: () => store.set(exports.openExport$), closeExport,

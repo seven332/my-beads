@@ -1,5 +1,5 @@
 import { h, type VNode, type Hooks } from "snabbdom";
-import type { EditorModel, Tool, workflow$ } from "./state.js";
+import type { EditorModel, PaletteView, Tool, workflow$ } from "./state.js";
 import { imageView, type ImageActions } from "./image-view.js";
 import type { ImageSession } from "./image-state.js";
 import type { DraftStatus } from "./drafts.js";
@@ -16,6 +16,7 @@ export interface Actions extends ImageActions, CreateActions, ExportActions {
   rename(value: string): void; palette(open: boolean): void;
   undo(): void; redo(): void; grid(): void; codes(): void; zoom(factor: number): void; fit(): void;
   startNew(): void;
+  paletteView(view: PaletteView): void; highlight(code: string | null): void; fitHighlight(): void;
   saveDraft(): void; language(locale: Locale): void;
 }
 

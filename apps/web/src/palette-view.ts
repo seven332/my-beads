@@ -2,6 +2,29 @@ import { h, type VNode } from "snabbdom";
 import type { PaletteSearchResult } from "./palette-search.js";
 
 import type { Translate } from "./i18n/index.js";
+import { defaultPalette } from "@my-beads/core";
+import { ScanSearch } from "@lucide/icons";
+import { icon } from "./icon.js";
+import type { EditorModel } from "./state.js";
+
+export function usedColors(model: EditorModel, choose: (code: string) => void, highlight: (code: string) => void, t: Translate): VNode {
+  return h("div.palette-results.used-colors", [
+    h("p.used-help", t($ => $.palette.usedHelp)),
+    ...model.usedColors.map(([code, count]) => {
+      const hex = defaultPalette.colors[code], locating = model.highlightedColor === code;
+      return h("div.used-color", { key: code, attrs: { "data-highlighted": String(locating) } }, [
+        h("button.used-color-pick", { attrs: { type: "button", "aria-label": `${code} ${hex}`,
+          "aria-pressed": String(model.color === code), "aria-describedby": `used-count-${code}` }, on: { click: () => choose(code) } }, [
+          h("span.color-swatch", { attrs: { style: `background:${hex}` } }), h("strong", code),
+          h("span.used-count", { attrs: { id: `used-count-${code}` } }, t($ => $.beads, { count })),
+        ]),
+        h("button.locate-color", { attrs: { type: "button", "aria-label": t($ => $.palette.locate, { code }),
+          title: t($ => $.palette.locate, { code }), "aria-pressed": String(locating) }, on: { click: () => highlight(code) } }, [icon(ScanSearch)]),
+      ]);
+    }),
+    model.usedColors.length ? h("span") : h("p.empty-results", { attrs: { role: "status" } }, t($ => $.palette.noUsed)),
+  ]);
+}
 
 export function paletteResults(result: PaletteSearchResult, selected: string,
   counts: ReadonlyMap<string, number>, choose: (code: string) => void, t: Translate): VNode {

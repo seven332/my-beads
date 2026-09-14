@@ -94,6 +94,7 @@ test("Sherma: all tools, grouped undo, CSV round trip and exact PNG/chart downlo
   const grid = parsePatternCsv(await readFile(shermaPath, "utf8")).map(row => [...row]);
   const { cell } = await fitCoordinates(page, 50, 50);
   const canvas = await page.getByRole("img", { name: "Pattern canvas" }).elementHandle();
+  await openPalette(page);
   await page.getByLabel("Search colors").fill("H7");
   await page.getByRole("button", { name: "H7 #000000", exact: true }).click();
   const start = cell(0, 0), end = cell(4, 0);

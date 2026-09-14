@@ -4,6 +4,7 @@ import { unobscuredArea, type CanvasEdge } from "../src/canvas-viewport.js";
 export async function openPalette(page: Page) {
   const toggle = page.locator(".palette-toggle");
   if (await toggle.isVisible() && await toggle.getAttribute("aria-expanded") !== "true") await toggle.click();
+  await page.locator(".palette-view button").nth(1).click();
   await expect(page.locator(".palette-search")).toBeVisible();
 }
 
