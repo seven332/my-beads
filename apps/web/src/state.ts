@@ -64,6 +64,7 @@ const importState$ = state(0);
 const viewportState$ = state<Viewport>({ zoom: 12, x: 32, y: 32 });
 const gridVisibleState$ = state(true);
 const codesVisibleState$ = state(false);
+const keyboardHelpState$ = state(false);
 const paletteOpenState$ = state(false);
 const paletteViewState$ = state<PaletteView>("all");
 const highlightedColorState$ = state<string | null>(null);
@@ -110,6 +111,7 @@ export const editor$ = computed((get) => {
     viewport: get(viewportState$),
     gridVisible: get(gridVisibleState$),
     codesVisible: get(codesVisibleState$),
+    keyboardHelpOpen: get(keyboardHelpState$),
     paletteOpen: get(paletteOpenState$),
     paletteView: get(paletteViewState$),
     highlightedColor: get(highlightedColorState$),
@@ -151,6 +153,7 @@ export const chooseTool$ = command(({ set }, tool: Tool) => {
   set(toolState$, tool);
 });
 export const showCreate$ = command(({ set }) => {
+  set(keyboardHelpState$, false);
   set(finishStroke$);
   set(reportError$, "");
   set(pageState$, "create");
@@ -178,6 +181,9 @@ export const toggleGrid$ = command(({ get, set }) => {
 });
 export const toggleCodes$ = command(({ get, set }) => {
   set(codesVisibleState$, !get(codesVisibleState$));
+});
+export const showKeyboardHelp$ = command(({ set }, open: boolean) => {
+  set(keyboardHelpState$, open);
 });
 export const showPalette$ = command(({ set }, open: boolean) => {
   set(paletteOpenState$, open);

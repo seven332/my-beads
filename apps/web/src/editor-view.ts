@@ -10,6 +10,7 @@ import {
   Download,
   Eraser,
   Hand,
+  Keyboard,
   Minus,
   PaintBucket,
   Pencil,
@@ -20,6 +21,7 @@ import {
   X,
 } from "@lucide/icons";
 import { icon } from "./icon.js";
+import { shortcutHint, shortcuts } from "./shortcuts.js";
 
 export function editorView(
   model: EditorModel,
@@ -57,6 +59,16 @@ export function editorView(
           .value=${live(model.title)}
           @input=${(event: Event) => actions.rename((event.target as HTMLInputElement).value)}
         />
+        <button
+          class="keyboard-help-button icon-button"
+          type="button"
+          aria-label=${t(($) => $.keyboard.heading)}
+          title=${shortcutHint(t, "help")}
+          aria-keyshortcuts=${shortcuts.help.aria}
+          @click=${(event: Event) => actions.openKeyboardHelp(event.currentTarget as HTMLElement)}
+        >
+          ${icon(Keyboard)}
+        </button>
       </div>
       <div class="editor-actions floating-panel" data-canvas-panel>
         ${language}
@@ -95,7 +107,8 @@ export function editorView(
               class="tool"
               type="button"
               aria-label=${label}
-              title=${label}
+              title=${shortcutHint(t, tool)}
+              aria-keyshortcuts=${shortcuts[tool].aria}
               aria-pressed=${String(model.tool === tool)}
               @click=${() => actions.tool(tool)}
             >
@@ -109,7 +122,8 @@ export function editorView(
             type="button"
             ?disabled=${!model.canUndo}
             aria-label=${t(($) => $.app.undo)}
-            title=${t(($) => $.app.undo)}
+            title=${shortcutHint(t, "undo")}
+            aria-keyshortcuts=${shortcuts.undo.aria}
             @click=${actions.undo}
           >
             ${icon(Undo2)}
@@ -118,7 +132,8 @@ export function editorView(
             type="button"
             ?disabled=${!model.canRedo}
             aria-label=${t(($) => $.app.redo)}
-            title=${t(($) => $.app.redo)}
+            title=${shortcutHint(t, "redo")}
+            aria-keyshortcuts=${shortcuts.redo.aria}
             @click=${actions.redo}
           >
             ${icon(Redo2)}
@@ -141,10 +156,22 @@ export function editorView(
           ><span>${model.color}</span>
         </button>
         <div class="display-controls">
-          <button type="button" aria-pressed=${String(model.gridVisible)} @click=${actions.grid}>
+          <button
+            type="button"
+            title=${shortcutHint(t, "grid")}
+            aria-keyshortcuts=${shortcuts.grid.aria}
+            aria-pressed=${String(model.gridVisible)}
+            @click=${actions.grid}
+          >
             ${t(($) => $.app.grid)}
           </button>
-          <button type="button" aria-pressed=${String(model.codesVisible)} @click=${actions.codes}>
+          <button
+            type="button"
+            title=${shortcutHint(t, "codes")}
+            aria-keyshortcuts=${shortcuts.codes.aria}
+            aria-pressed=${String(model.codesVisible)}
+            @click=${actions.codes}
+          >
             ${t(($) => $.app.codes)}
           </button>
         </div>
@@ -152,6 +179,8 @@ export function editorView(
           <button
             type="button"
             aria-label=${t(($) => $.app.zoomOut)}
+            title=${shortcutHint(t, "zoomOut")}
+            aria-keyshortcuts=${shortcuts.zoomOut.aria}
             @click=${() => actions.zoom(1 / 1.25)}
           >
             ${icon(Minus)}
@@ -162,11 +191,19 @@ export function editorView(
           <button
             type="button"
             aria-label=${t(($) => $.app.zoomIn)}
+            title=${shortcutHint(t, "zoomIn")}
+            aria-keyshortcuts=${shortcuts.zoomIn.aria}
             @click=${() => actions.zoom(1.25)}
           >
             ${icon(Plus)}
           </button>
-          <button type="button" aria-label=${t(($) => $.app.fitWindow)} @click=${actions.fit}>
+          <button
+            type="button"
+            aria-label=${t(($) => $.app.fitWindow)}
+            title=${shortcutHint(t, "fit")}
+            aria-keyshortcuts=${shortcuts.fit.aria}
+            @click=${actions.fit}
+          >
             ${t(($) => $.app.fit)}
           </button>
         </div>
@@ -255,6 +292,8 @@ export function editorView(
             <button
               type="button"
               ?disabled=${!model.document.counts.has(model.highlightedColor)}
+              title=${shortcutHint(t, "fitHighlight")}
+              aria-keyshortcuts=${shortcuts.fitHighlight.aria}
               @click=${actions.fitHighlight}
             >
               ${t(($) => $.palette.showLocations)}

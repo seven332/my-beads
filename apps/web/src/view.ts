@@ -12,6 +12,7 @@ import type { ExportSettings } from "./export-state.js";
 import type { ViewRefs } from "./view-lifecycle.js";
 import { Grid3x3 } from "@lucide/icons";
 import { icon } from "./icon.js";
+import { keyboardHelp } from "./keyboard-help.js";
 
 export interface Actions extends ImageActions, CreateActions, ExportActions {
   tool(tool: Tool): void;
@@ -31,6 +32,8 @@ export interface Actions extends ImageActions, CreateActions, ExportActions {
   fitHighlight(): void;
   saveDraft(): void;
   language(locale: Locale): void;
+  openKeyboardHelp(invoker?: HTMLElement): void;
+  closeKeyboardHelp(): void;
 }
 
 export function view(
@@ -105,5 +108,6 @@ export function view(
       t,
       refs.exportDialog,
     )}
+    ${keyboardHelp(model.keyboardHelpOpen, actions.closeKeyboardHelp, t, refs.keyboardDialog)}
   </div>`;
 }
