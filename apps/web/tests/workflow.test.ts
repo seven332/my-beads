@@ -1,0 +1,148 @@
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { mountApp } from "../src/app.js";
+import { beginStroke$, editor$, finishStroke$, newDocument$, rename$, workflow$, zoom$ } from "../src/state.js";
+import { DRAFT_KEY, decodeDraft } from "../src/drafts.js";
+import * as exporter from "../src/exports.js";
+
+let host: HTMLElement;
+let app: ReturnType<typeof mountApp>;
+let values: Map<string, string>;
+function click(selector: string) { host.querySelector<HTMLButtonElement>(selector)!.click(); }
+function input(selector: string, value: string) {
+  const element = host.querySelector<HTMLInputElement>(selector)!;
+  element.value = value; element.dispatchEvent(new Event("input", { bubbles: true }));
+}
+function importCsv(file: { name: string; size: number; text(): Promise<string> }) {
+  const element = host.querySelector<HTMLInputElement>('[aria-label="Open CSV"]')!;
+  Object.defineProperty(element, "files", { configurable: true, value: [file] });
+  element.dispatchEvent(new Event("change", { bubbles: true }));
+}
+beforeEach(() => {
+  Element.prototype.scrollIntoView = vi.fn();
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  Object.defineProperties(HTMLDialogElement.prototype, {
+    showModal: { configurable: true, value: function (this: HTMLDialogElement) { this.open = true; } },
+    close: { configurable: true, value: function (this: HTMLDialogElement) { this.open = false; } },
+  });
+  values = new Map(); host = document.createElement("div"); document.body.append(host);
+  app = mountApp(host, { storage: () => ({ getItem: key => values.get(key) ?? null, setItem: (key, value) => { values.set(key, value); } }) });
+});
+afterEach(() => {
+  app.destroy(); host.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals();
+  Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+  Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal"); Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
+});
+
+it("starts with three creation choices, validates dimensions and only saves an explicitly created canvas", async () => {
+  expect(host.querySelectorAll(".creation-card")).toHaveLength(3);
+  expect(host.querySelector("canvas")).toBeNull();
+  expect(host.querySelector(".export-form")).toBeNull();
+  await Promise.resolve(); expect(values.has(DRAFT_KEY)).toBe(false);
+  input('[name="columns"]', "0"); click(".blank-form button");
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain("integers");
+  expect(app.store.get(workflow$).hasDocument).toBe(false);
+  input('[name="columns"]', "3"); input('[name="rows"]', "2"); click(".blank-form button");
+  expect(app.store.get(editor$).document.grid).toEqual([[null, null, null], [null, null, null]]);
+  expect(host.querySelector(".creation-options")).toBeNull();
+  expect(host.querySelector(".pattern-canvas")).not.toBeNull();
+  await vi.waitFor(() => expect(decodeDraft(values.get(DRAFT_KEY)!).grid).toEqual([[null, null, null], [null, null, null]]));
+});
+
+it("returns from creation with the same document, history, viewport and saved draft", async () => {
+  app.store.set(newDocument$, 3, 2); app.store.set(rename$, "Keep me");
+  app.store.set(beginStroke$, { x: 1, y: 0 }); app.store.set(finishStroke$); app.store.set(zoom$, 2);
+  await vi.waitFor(() => expect(values.has(DRAFT_KEY)).toBe(true));
+  const before = app.store.get(editor$), saved = values.get(DRAFT_KEY);
+  click(".document-actions button");
+  expect(host.querySelector(".resume-pattern strong")?.textContent).toBe("Keep me");
+  expect(host.querySelector("canvas")).toBeNull();
+  host.querySelector("h1")!.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "z", ctrlKey: true }));
+  expect(app.store.get(editor$)).toEqual(before);
+  input('[name="columns"]', "257"); click(".blank-form button");
+  expect(app.store.get(workflow$).page).toBe("create");
+  expect(app.store.get(editor$).document).toBe(before.document);
+  click(".resume-pattern button");
+  expect(app.store.get(editor$)).toEqual(before);
+  await Promise.resolve(); expect(values.get(DRAFT_KEY)).toBe(saved);
+});
+
+it("imports CSV dimensions and empty borders exactly and refuses approximate colors", async () => {
+  input('[name="columns"]', "99"); input('[name="rows"]', "88");
+  importCsv({ name: "Exact.csv", size: 50, text: async () => '\uFEFF,,\r\n#000000,H5,\r\n,ERASE,TRANSPARENT\r\n' });
+  await vi.waitFor(() => expect(app.store.get(workflow$).page).toBe("edit"));
+  const grid = [[null, null, null], ["H7", "H5", null], [null, null, null]];
+  expect(app.store.get(editor$).document.grid).toEqual(grid);
+  expect(app.store.get(editor$).title).toBe("Exact");
+  click(".document-actions button");
+  importCsv({ name: "Unknown.csv", size: 7, text: async () => "#55514C" });
+  await vi.waitFor(() => expect(host.querySelector('[role="alert"]')?.textContent).toContain("Unknown MARD color"));
+  expect(app.store.get(workflow$).page).toBe("create");
+  expect(app.store.get(editor$).document.grid).toEqual(grid);
+  expect(app.store.get(editor$).title).toBe("Exact");
+});
+
+it("cancels a pending CSV when continuing the current work and ignores its late result", async () => {
+  app.store.set(newDocument$, 2, 1); app.store.set(rename$, "Original");
+  click(".document-actions button");
+  const pending = Promise.withResolvers<string>();
+  importCsv({ name: "Late.csv", size: 2, text: () => pending.promise });
+  expect(app.store.get(workflow$).csvLoading).toBe(true);
+  click(".resume-pattern button");
+  expect(app.store.get(workflow$).csvLoading).toBe(false);
+  pending.resolve("H7"); await pending.promise; await Promise.resolve();
+  expect(app.store.get(editor$).title).toBe("Original");
+  expect(app.store.get(editor$).document.grid).toEqual([[null, null]]);
+  expect(host.querySelector(".pattern-canvas")).not.toBeNull();
+});
+
+it("lets a newer creation supersede a slow CSV without losing its loading status", async () => {
+  const old = Promise.withResolvers<string>(), latest = Promise.withResolvers<string>();
+  importCsv({ name: "Old.csv", size: 2, text: () => old.promise });
+  importCsv({ name: "Latest.csv", size: 2, text: () => latest.promise });
+  old.resolve("H7"); await old.promise; await Promise.resolve();
+  expect(app.store.get(workflow$).csvLoading).toBe(true);
+  latest.resolve("H2,H5");
+  await vi.waitFor(() => expect(app.store.get(editor$).title).toBe("Latest"));
+  expect(app.store.get(editor$).document.grid).toEqual([["H2", "H5"]]);
+  expect(app.store.get(workflow$).csvLoading).toBe(false);
+});
+
+it("opens export inside the editor, preserves the Canvas and isolates history shortcuts", () => {
+  app.store.set(newDocument$, 2, 1);
+  app.store.set(beginStroke$, { x: 0, y: 0 }); app.store.set(finishStroke$);
+  const canvas = host.querySelector(".pattern-canvas");
+  click('.document-actions [aria-label="Export"]');
+  expect(host.querySelector<HTMLDialogElement>(".export-dialog")!.open).toBe(true);
+  expect(host.querySelector('[name="scale"]')).toBeNull(); expect(host.querySelector('[name="width"]')).toBeNull();
+  const format = host.querySelector<HTMLSelectElement>('[name="format"]')!;
+  format.value = "pixel"; format.dispatchEvent(new Event("change", { bubbles: true }));
+  input('[name="scale"]', "7");
+  host.querySelector(".export-heading button")!.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "z", ctrlKey: true }));
+  expect(app.store.get(editor$).beads).toBe(1);
+  click(".export-heading button");
+  expect(host.querySelector(".pattern-canvas")).toBe(canvas);
+  click('.document-actions [aria-label="Export"]');
+  expect(host.querySelector<HTMLInputElement>('[name="scale"]')!.value).toBe("7");
+});
+
+it("cancels a closing export, ignores its late result and revokes only completed downloads on teardown", async () => {
+  const first = Promise.withResolvers<{ blob: Blob; filename: string }>();
+  const second = Promise.withResolvers<{ blob: Blob; filename: string }>();
+  const pending = vi.spyOn(exporter, "exportPattern").mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+  const create = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:completed");
+  const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+  const download = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  click(".blank-form button"); click('.document-actions [aria-label="Export"]'); click(".export-form button");
+  expect(host.querySelector<HTMLFieldSetElement>(".export-form fieldset")!.disabled).toBe(true);
+  click(".export-heading button");
+  expect(pending.mock.calls[0][3].aborted).toBe(true);
+  click('.document-actions [aria-label="Export"]'); click(".export-form button");
+  first.resolve({ blob: new Blob(["old"]), filename: "old.csv" }); await first.promise; await Promise.resolve();
+  expect(create).not.toHaveBeenCalled();
+  expect(host.querySelector<HTMLFieldSetElement>(".export-form fieldset")!.disabled).toBe(true);
+  second.resolve({ blob: new Blob(["new"]), filename: "new.csv" }); await second.promise;
+  await vi.waitFor(() => expect(download).toHaveBeenCalledOnce());
+  expect(create).toHaveBeenCalledOnce();
+  app.destroy(); expect(revoke).toHaveBeenCalledExactlyOnceWith("blob:completed");
+});

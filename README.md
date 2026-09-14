@@ -116,7 +116,15 @@ Start the local editor from the repository root:
 pnpm dev
 ```
 
-Open the localhost URL printed by Vite. Use **Open CSV** to load a pattern, or **Start a new pattern** to create a blank grid. Imports are validated before replacing the document; invalid files leave your work intact. All file processing happens in your browser.
+Open the localhost URL printed by Vite. The creation page offers three starting points:
+
+- **Blank canvas:** choose columns and rows, then create the empty grid.
+- **From CSV:** import the original dimensions, MARD colors and empty cells. Blank-canvas settings do not affect CSV imports; colors must match the palette exactly.
+- **From an image:** preview and adjust the existing PNG/WebP sampling and color mapping before applying.
+
+Creating a pattern opens the editor. **New pattern** in the editor returns to the creation page; **Continue editing** takes you back with the same title, grid, history and viewport. A new pattern replaces the current work only after successful creation or import. Invalid files and canceled previews leave it intact. Export a copy before replacing a pattern you want to keep. All file processing happens in your browser.
+
+A valid saved draft opens directly in the editor. Visiting the creation page alone does not create or overwrite a draft.
 
 The interface supports **English** and **简体中文**, with the Chinese name **我来拼豆**. Use **Language / 界面语言** in the header to switch without losing your work. Your saved choice takes priority over browser languages; unsupported languages fall back to English. Chinese browser variants use Simplified Chinese. The preference is stored separately from the draft on this device; switching still works when storage is unavailable, but the choice cannot be remembered.
 
@@ -127,7 +135,7 @@ Printable chart labels remain in English in either interface language. Pattern t
 - **Palette:** search MARD codes or hex values, choose a color, and see per-color counts.
 - **Navigate:** use +/− or pinch to zoom around the viewport/pointer; scroll, use Pan, or middle-drag to move the canvas. Fit centers the entire grid. Grid and Codes toggle overlays; codes appear when zoomed in enough to read.
 - **Keyboard:** focus the canvas, move with arrow keys and draw with Enter or Space. Shift + arrows pans. Cmd/Ctrl + Z undoes; add Shift to redo.
-- **Download:** select CSV, transparent pixel PNG, printable SVG, or printable PNG. Pixel scale is an integer from 1 to 512, including 1×; chart width defaults to 2400. The title is editable. Printable legends keep hex values and bead counts on separate lines and retain the MARD 221 footer.
+- **Export:** the editor's header opens a dialog for CSV, transparent pixel PNG, printable SVG, or printable PNG. Only settings for the selected format appear. Pixel scale is an integer from 1 to 512, including 1×; chart width defaults to 2400. Format and size choices survive closing and reopening the dialog. Escape returns to editing. Printable legends keep hex values and bead counts on separate lines and retain the MARD 221 footer.
 
 The editor accepts grids up to 256 × 256, CSV files up to 2 MB and 100 undo steps. PNG exports are limited to 8192 pixels per side and 32 million pixels; SVG avoids the raster limit. Download a copy before replacing a document you want to keep.
 
@@ -144,7 +152,7 @@ For example, `#4C4C40` suggests **H5 · #474747** for Closest color and **B23 ·
 
 ### Import a Pixel Image
 
-Use **Open image** for PNG or WebP. Set the intended **Target columns** and **Target rows**: a 1000 × 1000 image can become a 50 × 50 bead grid. The target defaults to the current grid dimensions. Each cell samples the source pixel at its center with nearest-neighbor sampling, without smoothing or background blending.
+Choose **From an image → Open image** on the creation page for PNG or WebP. From the editor, use **New pattern** to reach it. Set the intended **Target columns** and **Target rows**: a 1000 × 1000 image can become a 50 × 50 bead grid. The target defaults to the current grid dimensions, or 50 × 50 before your first creation. Each cell samples the source pixel at its center with nearest-neighbor sampling, without smoothing or background blending.
 
 **Alpha threshold** defaults to 128 (0–255). Fully transparent pixels always remain empty; other pixels become beads when their alpha is at least the threshold. The preview shows the sampled source and its MARD version before the current document changes.
 

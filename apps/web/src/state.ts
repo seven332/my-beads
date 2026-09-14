@@ -37,6 +37,10 @@ const viewportState$ = state<Viewport>({ zoom: 12, x: 32, y: 32 });
 const gridVisibleState$ = state(true);
 const codesVisibleState$ = state(false);
 const draftStatusState$ = state<DraftStatus>({ kind: null, action: null, error: false });
+const pageState$ = state<"create" | "edit">("create");
+const hasDocumentState$ = state(false);
+const csvLoadingState$ = state(false);
+export const workflow$ = computed(get => ({ page: get(pageState$), hasDocument: get(hasDocumentState$), csvLoading: get(csvLoadingState$) }));
 export const draftStatus$ = computed(get => {
   const status = get(draftStatusState$);
   return { ...status, message: draftText(status, get(translation$)) };
@@ -84,6 +88,15 @@ export const finishStroke$ = command(({ get, set }, cancel = false) => {
 });
 export const chooseTool$ = command(({ set }, tool: Tool) => {
   set(finishStroke$); set(toolState$, tool);
+});
+export const showCreate$ = command(({ set }) => {
+  set(finishStroke$); set(errorState$, ""); set(pageState$, "create");
+});
+export const showEditor$ = command(({ get, set }) => {
+  if (get(hasDocumentState$)) { set(errorState$, ""); set(pageState$, "edit"); }
+});
+export const cancelCsv$ = command(({ get, set }) => {
+  set(importState$, get(importState$) + 1); set(csvLoadingState$, false);
 });
 export const chooseColor$ = command(({ set }, code: string) => {
   if (!Object.hasOwn(defaultPalette.colors, code)) return;
@@ -154,6 +167,7 @@ const replaceDocument$ = command(({ get, set }, grid: PatternGrid, title: string
   set(historyState$, { grid, past: [], future: [], stroke: null, revision: get(historyState$).revision + 1 });
   set(titleState$, title.slice(0, 100)); set(errorState$, "");
   set(viewportState$, { zoom: 12, x: 32, y: 32 });
+  set(hasDocumentState$, true); set(pageState$, "edit");
 });
 export const restoreDocument$ = command(({ set }, grid: PatternGrid, title: string) => {
   set(replaceDocument$, createPattern(grid).grid, title);
@@ -164,8 +178,8 @@ export const replaceIfCurrent$ = command(({ get, set }, revision: number, grid: 
   return true;
 });
 export const newDocument$ = command(({ set }, width: number, height: number) => {
-  try { set(replaceDocument$, blank(width, height), "Untitled pattern"); }
-  catch (error) { set(errorState$, captureError(error)); }
+  try { set(replaceDocument$, blank(width, height), "Untitled pattern"); return true; }
+  catch (error) { set(errorState$, captureError(error)); return false; }
 });
 
 export interface CsvFile { name: string; size: number; text(): Promise<string> }
@@ -173,7 +187,7 @@ export const importCsv$ = command(async ({ get, set }, file: CsvFile, signal: Ab
   signal.throwIfAborted();
   const token = get(importState$) + 1;
   const revision = get(historyState$).revision;
-  set(importState$, token); set(errorState$, "");
+  set(importState$, token); set(errorState$, ""); set(csvLoadingState$, true);
   try {
     if (file.size > 2_000_000) throw new UiError("csvSize");
     const text = await file.text();
@@ -190,5 +204,7 @@ export const importCsv$ = command(async ({ get, set }, file: CsvFile, signal: Ab
     if (get(importState$) === token && get(historyState$).revision === revision)
       set(errorState$, captureError(error));
     return false;
+  } finally {
+    if (!signal.aborted && get(importState$) === token) set(csvLoadingState$, false);
   }
 });

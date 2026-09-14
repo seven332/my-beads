@@ -3,15 +3,19 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
 import { createPattern, defaultPalette, parsePatternCsv, type PatternGrid } from "@my-beads/core";
+import { openExport, closeExport, startNew } from "./helpers.js";
 
 const shermaPath = fileURLToPath(new URL("../../../templates/hollow-knight/sherma-singing-50x50.csv", import.meta.url));
 async function bytes(download: Download) { return readFile((await download.path())!); }
 async function download(page: Page, format: string, scale = 1) {
+  await openExport(page);
   await page.getByLabel("Export format").selectOption(format);
-  await page.getByLabel("Pixel scale").fill(String(scale));
+  if (format === "pixel") await page.getByLabel("Pixel scale").fill(String(scale));
   const pending = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download" }).click();
-  return bytes(await pending);
+  const result = await bytes(await pending);
+  await closeExport(page);
+  return result;
 }
 async function fitCoordinates(page: Page, columns: number, rows: number) {
   await page.getByRole("button", { name: "Fit to window" }).click();
@@ -121,6 +125,7 @@ test("Sherma: all tools, grouped undo, CSV round trip and exact PNG/chart downlo
   await page.getByLabel("Pattern title").fill("Sherma study");
   const csv = await download(page, "csv");
   expect(parsePatternCsv(csv.toString())).toEqual(grid);
+  await startNew(page);
   await page.getByLabel("Open CSV").setInputFiles({ name: "roundtrip.csv", mimeType: "text/csv", buffer: csv });
   await expect(page.getByLabel("Pattern title")).toHaveValue("roundtrip");
   expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual(grid);
@@ -142,7 +147,6 @@ test("Sherma: all tools, grouped undo, CSV round trip and exact PNG/chart downlo
 
 test("zoom and pan preserve cell targeting; invalid imports and exports preserve work", async ({ page }) => {
   await page.goto("/");
-  await page.getByText("Start a new pattern", { exact: true }).click();
   await page.getByLabel("Columns", { exact: true }).fill("4"); await page.getByLabel("Rows", { exact: true }).fill("4");
   await page.getByRole("button", { name: "Create blank grid" }).click();
   const { box, zoom } = await fitCoordinates(page, 4, 4);
@@ -155,19 +159,23 @@ test("zoom and pan preserve cell targeting; invalid imports and exports preserve
   await expect(page.getByTestId("counts")).toHaveText("1 bead · 1 color");
   const grid = parsePatternCsv((await download(page, "csv")).toString());
   expect(grid[2][2]).toBe("H7"); expect(grid.flat().filter(Boolean)).toHaveLength(1);
+  await startNew(page);
   await page.getByLabel("Open CSV").setInputFiles({ name: "bad.csv", mimeType: "text/csv", buffer: Buffer.from("H7\nH7,H7") });
   await expect(page.getByRole("alert")).toContainText("row");
   expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual(grid);
-  await page.getByLabel("Export format").selectOption("svg");
-  await page.getByLabel("Chart width").fill("800");
+  await startNew(page);
   await page.getByLabel("Open CSV").setInputFiles(shermaPath);
   await expect(page.getByTestId("counts")).toHaveText("1,270 beads · 9 colors");
+  await openExport(page);
+  await page.getByLabel("Export format").selectOption("svg");
+  await page.getByLabel("Chart width").fill("800");
   await page.getByRole("button", { name: "Download" }).click();
   await expect(page.getByRole("alert")).toContainText("at least 1250");
 });
 
 test("keyboard canvas editing and interrupted pointer strokes", async ({ page }) => {
-  await page.goto("/"); const { cell } = await fitCoordinates(page, 50, 50);
+  await page.goto("/"); await page.getByRole("button", { name: "Create blank grid" }).click();
+  const { cell } = await fitCoordinates(page, 50, 50);
   await page.mouse.move(cell(0, 0).x, cell(0, 0).y); await page.mouse.down();
   await page.getByRole("img", { name: "Pattern canvas" }).press("Escape"); await page.mouse.up();
   await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
@@ -256,13 +264,19 @@ test("export validates only the settings used by the selected format", async ({ 
   await page.goto("/");
   await page.getByLabel("Open CSV").setInputFiles({ name: "single.csv", mimeType: "text/csv", buffer: Buffer.from("H7") });
   await expect(page.getByLabel("Pattern title")).toHaveValue("single");
+  await openExport(page);
+  await page.getByLabel("Export format").selectOption("svg");
   await page.getByLabel("Chart width").fill("0");
   expect(parsePatternCsv((await download(page, "csv", 0)).toString())).toEqual([["H7"]]);
   verifyPixels(await download(page, "pixel", 1), [["H7"]], 1);
+  await openExport(page);
+  await page.getByLabel("Export format").selectOption("svg");
   await page.getByLabel("Chart width").fill("800");
   expect((await download(page, "svg", 0)).toString()).toContain("MARD 221");
 
+  await openExport(page);
   await page.getByLabel("Export format").selectOption("pixel");
+  await page.getByLabel("Pixel scale").fill("0");
   await page.getByRole("button", { name: "Download" }).click();
   await expect(page.getByRole("alert")).toContainText("Pixel scale must be an integer");
   await page.getByLabel("Export format").selectOption("svg");
@@ -274,6 +288,7 @@ test("export validates only the settings used by the selected format", async ({ 
 
 test("window blur cancels the active stroke and allows the next gesture", async ({ page }) => {
   await page.goto("/");
+  await page.getByRole("button", { name: "Create blank grid" }).click();
   const { cell } = await fitCoordinates(page, 50, 50);
   await page.mouse.move(cell(0, 0).x, cell(0, 0).y);
   await page.mouse.down();
@@ -294,6 +309,7 @@ test("window blur cancels the active stroke and allows the next gesture", async 
 test("drawing on a partially visible canvas preserves page scroll and cell targeting", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
+  await page.getByRole("button", { name: "Create blank grid" }).click();
   const { zoom } = await fitCoordinates(page, 50, 50);
   const canvas = page.getByRole("img", { name: "Pattern canvas" });
   await canvas.evaluate(element => window.scrollTo(0, window.scrollY + element.getBoundingClientRect().top + 180));

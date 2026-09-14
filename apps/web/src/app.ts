@@ -8,6 +8,7 @@ import { view, type Actions } from "./view.js";
 import { mountCanvas } from "./canvas.js";
 import { exportPattern } from "./exports.js";
 import * as images from "./image-state.js";
+import * as exports from "./export-state.js";
 import { readImage } from "./image-file.js";
 import { createDrafts, type DraftStorage } from "./drafts.js";
 
@@ -20,6 +21,7 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
   store.set(selectLocale$, resolveLocale(savedLocale, navigator.languages.length ? navigator.languages : [navigator.language]));
   const lifetime = new AbortController();
   let importController: AbortController | undefined;
+  let exportController: AbortController | undefined;
   const downloads = new Map<string, ReturnType<typeof setTimeout>>();
   const patch = init([attributesModule, propsModule, eventListenersModule]);
   const root = document.createElement("div"); host.append(root);
@@ -31,27 +33,42 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
   const drafts = createDrafts(storage, status => store.set(state.reportDraft$, status));
   const recovered = drafts.load();
   if (recovered) store.set(state.restoreDocument$, recovered.grid, recovered.title);
-  function cancelImport() { importController?.abort(); store.set(images.cancelImage$); }
+  function cancelImport() { importController?.abort(); store.set(images.cancelImage$); store.set(state.cancelCsv$); }
+  function closeExport() {
+    const wasOpen = store.get(exports.exportSettings$).open;
+    exportController?.abort(); store.set(exports.closeExport$);
+    if (wasOpen) host.querySelector<HTMLButtonElement>(".document-actions .primary")?.focus({ preventScroll: true });
+  }
   function flushDraft() { drafts.observe(store.get(state.committedDocument$)); drafts.flush(); }
   function fit() {
-    const element = host.querySelector("canvas");
+    const element = host.querySelector(".pattern-canvas");
     if (element) { const rect = element.getBoundingClientRect(); store.set(state.fitViewport$, rect.width, rect.height); }
   }
+  function focusPage(selector: string) {
+    host.scrollIntoView({ block: "start", behavior: "instant" });
+    host.querySelector<HTMLElement>(selector)?.focus({ preventScroll: true });
+  }
+  function created() { fit(); focusPage(".title-input"); }
   const actions: Actions = {
+    startNew: () => { cancelImport(); closeExport(); store.set(state.showCreate$); focusPage("h1"); },
+    resume: () => { cancelImport(); store.set(state.showEditor$); focusPage(".title-input"); },
+    openExport: () => store.set(exports.openExport$), closeExport,
+    exportFormat: format => store.set(exports.selectExportFormat$, format),
+    exportSize: (field, value) => store.set(exports.changeExportSize$, field, value),
     language: locale => {
       store.set(selectLocale$, locale);
       try { storage().setItem(LOCALE_KEY, locale); } catch { /* A preference failure must not interrupt editing. */ }
     },
     tool: tool => store.set(state.chooseTool$, tool), color: code => store.set(state.chooseColor$, code),
     search: value => store.set(state.searchPalette$, value), rename: value => store.set(state.rename$, value),
-    create: (width, height) => { cancelImport(); store.set(state.newDocument$, width, height); fit(); },
+    create: (width, height) => { cancelImport(); if (store.set(state.newDocument$, width, height)) created(); },
     import: file => {
       cancelImport(); importController = new AbortController();
       const signal = AbortSignal.any([lifetime.signal, importController.signal]);
-      store.set(state.importCsv$, file, signal).then(imported => { if (imported && !signal.aborted) fit(); }, error => { if (!signal.aborted) fail(error); });
+      store.set(state.importCsv$, file, signal).then(imported => { if (imported && !signal.aborted) created(); }, error => { if (!signal.aborted) fail(error); });
     },
     importImage: file => {
-      cancelImport(); importController = new AbortController();
+      cancelImport(); store.set(state.reportError$, ""); importController = new AbortController();
       const signal = AbortSignal.any([lifetime.signal, importController.signal]);
       store.set(images.loadImage$, { name: file.name, read: signal => (adapters.readImage ?? readImage)(file, signal) }, signal)
         .catch(error => { if (!signal.aborted) fail(error); });
@@ -60,7 +77,7 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
     changeImageSettings: () => store.set(images.changeImageSettings$),
     overrideImage: (source, code) => store.set(images.overrideImage$, source, code),
     cancelImage: cancelImport,
-    applyImage: () => { if (store.set(images.applyImage$)) { importController?.abort(); fit(); } },
+    applyImage: () => { if (store.set(images.applyImage$)) { importController?.abort(); created(); } },
     saveDraft: () => drafts.retry(store.get(state.committedDocument$)),
     undo: () => store.set(state.undo$), redo: () => store.set(state.redo$),
     grid: () => store.set(state.toggleGrid$), codes: () => store.set(state.toggleCodes$),
@@ -69,15 +86,20 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
       store.set(state.zoom$, factor, { x: rect.width / 2, y: rect.height / 2 });
     }, fit,
     export: options => {
+      if (store.get(exports.exportSettings$).pending) return;
       store.set(state.finishStroke$); store.set(state.reportError$, "");
+      exportController = new AbortController();
+      const signal = AbortSignal.any([lifetime.signal, exportController.signal]);
+      store.set(exports.reportExportPending$, true);
       const model = store.get(state.editor$);
-      exportPattern(model.document, model.title, options, lifetime.signal).then(({ blob, filename }) => {
-        if (lifetime.signal.aborted) return;
+      exportPattern(model.document, model.title, options, signal).then(({ blob, filename }) => {
+        if (signal.aborted) return;
+        store.set(exports.reportExportPending$, false);
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a"); link.href = url; link.download = filename;
         host.append(link); link.click(); link.remove();
         downloads.set(url, setTimeout(() => { URL.revokeObjectURL(url); downloads.delete(url); }, 60_000));
-      }, error => { if (!lifetime.signal.aborted) fail(error); });
+      }, error => { if (!signal.aborted) { store.set(exports.reportExportPending$, false); fail(error); } });
     },
   };
   const canvasHooks = {
@@ -97,7 +119,7 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
     const locale = get(locale$), t = get(translation$);
     document.documentElement.lang = locale;
     document.title = t($ => $.app.pageTitle);
-    vnode = patch(vnode, view(model, actions, canvasHooks, get(images.imageSession$), get(state.draftStatus$), locale, t));
+    vnode = patch(vnode, view(model, actions, canvasHooks, get(images.imageSession$), get(state.draftStatus$), locale, t, get(state.workflow$), get(exports.exportSettings$)));
     canvas?.update(model);
     drafts.observe(get(state.committedDocument$));
   }, { signal: lifetime.signal });
@@ -105,7 +127,7 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
   fit();
   function shortcut(event: KeyboardEvent) {
     const target = event.target as HTMLElement;
-    if (store.get(images.imageSession$) || target.matches("input, textarea, select") || target.isContentEditable) return;
+    if (store.get(state.workflow$).page !== "edit" || store.get(exports.exportSettings$).open || store.get(images.imageSession$) || target.matches("input, textarea, select") || target.isContentEditable) return;
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
       event.preventDefault(); if (event.shiftKey) actions.redo(); else actions.undo();
     }
@@ -117,7 +139,7 @@ export function mountApp(host: HTMLElement, adapters: { storage?: () => DraftSto
     destroy() {
       if (lifetime.signal.aborted) return;
       flushDraft(); drafts.dispose(); window.removeEventListener("pagehide", flushDraft);
-      lifetime.abort(); importController?.abort(); host.removeEventListener("keydown", shortcut);
+      lifetime.abort(); importController?.abort(); exportController?.abort(); host.removeEventListener("keydown", shortcut);
       for (const [url, timer] of downloads) { clearTimeout(timer); URL.revokeObjectURL(url); }
       downloads.clear(); vnode = patch(vnode, h("div")); (vnode.elm as Element).remove();
     },

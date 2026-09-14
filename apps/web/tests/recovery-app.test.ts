@@ -9,6 +9,7 @@ let app: ReturnType<typeof mountApp>;
 let values: Map<string, string>;
 const storage = () => ({ getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } });
 beforeEach(() => {
+  Element.prototype.scrollIntoView = vi.fn();
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
   vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
   // jsdom lacks native dialog methods; Chromium/WebKit cover actual modal behavior.
@@ -20,6 +21,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   app?.destroy(); host.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals();
+  Reflect.deleteProperty(Element.prototype, "scrollIntoView");
   Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal"); Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
 });
 
@@ -83,6 +85,7 @@ it("isolates editor history shortcuts while an image is loading and restores the
   app.store.set(undo$);
   await vi.waitFor(() => expect(decodeDraft(values.get(DRAFT_KEY)!).grid).toEqual([["H7", null]]));
   const saved = values.get(DRAFT_KEY);
+  host.querySelector<HTMLButtonElement>(".document-actions button")!.click();
   const input = host.querySelector<HTMLInputElement>('[aria-label="Open image"]')!;
   Object.defineProperty(input, "files", { value: [new File([], "loading.png", { type: "image/png" })] });
   input.dispatchEvent(new Event("change", { bubbles: true }));
@@ -99,6 +102,7 @@ it("isolates editor history shortcuts while an image is loading and restores the
   expect(textUndo.defaultPrevented).toBe(false);
   await Promise.resolve(); expect(values.get(DRAFT_KEY)).toBe(saved);
   cancel.click();
+  host.querySelector<HTMLButtonElement>(".resume-pattern button")!.click();
   host.querySelector("canvas")!.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true }));
   expect(app.store.get(editor$).document.grid).toEqual([[null, null]]);
   pending.resolve({ width: 1, height: 1, data: new Uint8Array([0, 0, 0, 255]) });

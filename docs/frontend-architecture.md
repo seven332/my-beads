@@ -95,6 +95,23 @@ decoded downloads, alongside the existing core and CLI regression suites.
 
 ## Image imports and drafts
 
+`state.ts` owns the create/edit page and whether a document has been explicitly
+created or recovered. Fresh visits show `create-view.ts`; a valid draft resumes
+editing. All three creation paths share the validated document replacement boundary,
+which switches to editing only after success. Opening creation leaves the committed
+document, history and viewport intact. The Canvas unmounts while creation is visible
+and remounts on return; language changes and export dialogs retain its DOM node.
+The mount cancels pending imports when starting another source or continuing the
+current document. CSV settings never depend on the blank-canvas form or image mapping.
+
+Export is an editor action, not a separate page. `export-state.ts` retains dialog
+format/size choices and pending status; `export-view.ts` shows only the selected
+format's settings. Native dialog focus and Escape return to the editor. History
+shortcuts are suspended outside the editor or inside either dialog. The mount owns
+each export AbortController so closing the dialog or unmounting prevents a late
+download. Workflow navigation is not persisted; the existing document-only draft
+schema remains unchanged.
+
 `image-file.ts` owns local PNG/WebP decoding, image events, cancellation and object
 URLs. It checks compressed size and decoded dimensions before Canvas allocation;
 only RGBA data leaves the adapter. Core `image-import.ts` samples cell centers,

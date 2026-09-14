@@ -53,7 +53,36 @@
     "closest": { "label": "Closest color", "description": "Smallest color difference across the full palette, including grays." },
     "chroma": { "label": "Preserve chroma", "description": "Favors tinted colors over neutral grays when the input has a tint." }
   },
+  "create": {
+    "heading": "Create a pattern",
+    "intro": "Start with a blank canvas, a CSV pattern, or an image. Then make it yours, one bead at a time.",
+    "blank": "Blank canvas",
+    "blankDescription": "An empty grid, ready for your ideas. Choose how many beads fit across and down.",
+    "sizeHelp": "1–256 cells per side · One cell, one bead",
+    "csv": "From CSV",
+    "csvDescription": "Pick up an existing pattern with its original dimensions, colors, and empty cells.",
+    "csvDetail": "MARD codes or exact palette hex values · Up to 2 MB · No resizing or color matching",
+    "image": "From an image",
+    "imageDescription": "Turn pixel art into a bead pattern. Preview the grid and adjust its MARD colors before creating.",
+    "imageDetail": "PNG or WebP · Up to 10 MB · Adjustable grid size and color mapping",
+    "local": "Your files stay on this device. All patterns use MARD 221.",
+    "new": "New pattern",
+    "current": "CURRENT PATTERN",
+    "keepCurrent": "Your current pattern stays here until a new one is created. Export a copy if you want to keep both.",
+    "resume": "Continue editing",
+    "readingCsv": "Reading CSV…"
+  },
   "export": {
+    "open": "Export",
+    "close": "Back to editing",
+    "preparing": "Preparing download…",
+    "english": "Chart labels are in English. Your pattern title is kept as entered.",
+    "descriptions": {
+      "csv": "Keep every color code and empty cell in a file you can edit again.",
+      "pixel": "A transparent PNG with crisp, square pixels. Choose how much to enlarge each cell.",
+      "svg": "A printable chart with cell codes, coordinates, and a color legend. Scales without losing sharpness.",
+      "chart": "The same labeled chart as a PNG, ready to save or print."
+    },
     "heading": "Export pattern",
     "format": "Format",
     "formatLabel": "Export format",
@@ -66,10 +95,8 @@
     "download": "Download"
   },
   "newPattern": {
-    "heading": "Start a new pattern",
     "columns": "Columns",
     "rows": "Rows",
-    "warning": "Replaces the current pattern. Download your work first.",
     "create": "Create blank grid"
   },
   "draft": {
@@ -86,7 +113,7 @@
     "heading": "IMPORT PIXEL ART",
     "chooseAnother": "Choose another image",
     "replace": "Replace image",
-    "intro": "Choose the intended bead grid. Each cell samples one source pixel; transparent cells stay empty. Apply replaces the current pattern.",
+    "intro": "Choose the intended bead grid. Each cell samples one source pixel; transparent cells stay empty. Apply the preview to start editing.",
     "columns": "Target columns",
     "rows": "Target rows",
     "alpha": "Alpha threshold",
