@@ -26,7 +26,7 @@ export function keyboardHelp(
       </dl>
     </section>`;
   return html`<dialog
-    class="keyboard-dialog"
+    class="dialog keyboard-dialog max-h-[calc(100dvh_-_24px)] w-[min(720px,calc(100vw_-_24px))] overscroll-contain p-6 mobile:p-4"
     ${ref(dialog)}
     aria-labelledby="keyboard-heading"
     @cancel=${(event: Event) => {
@@ -34,8 +34,8 @@ export function keyboardHelp(
       close();
     }}
   >
-    <div class="keyboard-heading">
-      <h2 id="keyboard-heading">${t(($) => $.keyboard.heading)}</h2>
+    <div class="keyboard-heading flex items-center justify-between gap-3">
+      <h2 class="text-[22px]" id="keyboard-heading">${t(($) => $.keyboard.heading)}</h2>
       <button
         class="icon-button"
         type="button"
@@ -45,8 +45,8 @@ export function keyboardHelp(
         ${icon(X)}
       </button>
     </div>
-    <p class="keyboard-note">${t(($) => $.keyboard.scope)}</p>
-    <div class="keyboard-groups">
+    <p class="text-ui leading-[1.6] text-status">${t(($) => $.keyboard.scope)}</p>
+    <div class="keyboard-groups grid grid-cols-2 gap-x-7 gap-y-3 mobile:grid-cols-1">
       ${group(
         t(($) => $.app.tools),
         ["pencil", "eraser", "bucket", "eyedropper", "pan"],
@@ -85,6 +85,6 @@ export function keyboardHelp(
         ["undo", "redo", "help"],
       )}
     </div>
-    <p class="keyboard-note">${t(($) => $.keyboard.highlightNote)}</p>
+    <p class="text-ui leading-[1.6] text-status">${t(($) => $.keyboard.highlightNote)}</p>
   </dialog>`;
 }

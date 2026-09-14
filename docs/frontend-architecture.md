@@ -175,6 +175,53 @@ decoded downloads, alongside the existing core and CLI regression suites.
 
 ## Editor workspace layout
 
+### Interface styling
+
+Tailwind CSS 4 runs through the official Vite plugin. `style.css` is the single CSS
+entry and explicitly scans this app's source directory and HTML entry, independent
+of the workspace command's working directory. It declares `theme`, `base`,
+`components`, and `utilities` layers in that order. Tailwind Preflight is intentionally
+omitted: `base.css` retains the existing browser/control defaults. Specify a border
+style as well as its width when adding utility-styled borders.
+
+`theme.css` defines semantic `--ui-*` values and exposes them through `@theme inline`
+aliases, so utilities and retained native CSS read the same overridable values.
+Use roles such as `bg-surface`, `text-secondary`, and `border-selection-border`
+instead of adding raw interface hex colors to templates or component styles.
+Keep typography names distinct from color names: `text-ui` is the 12px font size;
+`bg-control` uses the control surface color. The current SF/system font stack and
+light-theme values are preserved. Existing subtle text/border roles remain distinct
+to avoid changing the appearance during adoption.
+
+Creation, shared fields, and dialog contents use utilities. `components.css` holds
+shared control styles and the remaining palette/preview rules; `editor.css` owns
+the specialized editor layout and controls. Repeated multi-element structure can
+use lit-html template helpers. Do not recreate every utility list as an `@apply`
+class. Keep native CSS where grid geometry, safe areas, or combined width/height
+conditions are clearer. The `tablet`, `stack`, `mobile`, and `narrow` variants preserve
+the existing inclusive 900px, 740px, 600px, and 460px boundaries. Preserve behavior
+hooks such as `.pattern-canvas`, `.palette-toggle`, and `[data-canvas-panel]`; never
+query elements by their utility classes.
+
+Write complete utility names. Dynamic MARD/source colors continue to use validated
+inline values; a class such as `bg-[${hex}]` cannot be discovered at build time.
+Prettier's Tailwind plugin is scoped to web source templates/CSS and uses this app's
+stylesheet for sorting. Static `class` attributes inside `html` templates are sorted;
+do not assume conditional strings or `classMap` keys are sorted. Prefer static
+ARIA/data variants for styling existing state when appropriate.
+
+This foundation does not yet provide dark mode. A future implementation can override
+the semantic values on a theme root and provide light/dark/system preferences,
+early initialization, persistence, and system-change handling. Canvas empty cells,
+grid lines, locator masks, and selection strokes require separate theme inputs and
+redraws. MARD bead colors and export renderers remain independent of interface theme.
+
+Tailwind v4's core browser baseline is Chrome 111+, Safari 16.4+, and Firefox 128+;
+Chromium and WebKit are covered by the project's browser tests. See the official
+[Vite integration](https://tailwindcss.com/docs/installation/using-vite),
+[theme variables](https://tailwindcss.com/docs/theme), and
+[browser compatibility](https://tailwindcss.com/docs/compatibility) documentation.
+
 Interface icons use static named imports from `@lucide/icons`. `icon.ts` renders
 an ordinary SVG template with recursive static SVG shapes. Its private attribute
 directive copies package attributes without leaking Lucide's internal keys. Dynamic

@@ -28,9 +28,10 @@ export function exportView(
   const size = (field: "scale" | "width") =>
     keyed(
       field,
-      html`<label class="field"
+      html`<label class="mb-[13px] grid gap-1.5 text-caption text-label"
         ><span>${t(($) => $.export[field])}</span>
         <input
+          class="w-full text-ui"
           name=${field}
           type="number"
           min=${field === "scale" ? 1 : 800}
@@ -42,7 +43,7 @@ export function exportView(
       </label>`,
     );
   return html`<dialog
-    class="export-dialog"
+    class="dialog export-dialog max-h-[calc(100dvh_-_32px)] w-[min(520px,calc(100vw_-_32px))] p-7 narrow:p-5"
     ${ref(dialog)}
     aria-labelledby="export-heading"
     @cancel=${(event: Event) => {
@@ -50,8 +51,8 @@ export function exportView(
       actions.closeExport();
     }}
   >
-    <div class="export-heading">
-      <h2 id="export-heading">${t(($) => $.export.heading)}</h2>
+    <div class="export-heading flex items-center justify-between gap-4">
+      <h2 class="text-[23px]" id="export-heading">${t(($) => $.export.heading)}</h2>
       <button
         class="icon-button"
         type="button"
@@ -61,9 +62,9 @@ export function exportView(
         ${icon(X)}
       </button>
     </div>
-    <div class="export-document">
+    <div class="my-6 border-0 border-b border-solid border-border pb-5 [overflow-wrap:anywhere]">
       <strong>${model.title}</strong>
-      <p>
+      <p class="mb-0 text-ui leading-[1.8] text-secondary">
         ${t(($) => $.app.dimensions, {
           columns: model.document.grid[0].length,
           rows: model.document.grid.length,
@@ -84,10 +85,11 @@ export function exportView(
         });
       }}
     >
-      <fieldset ?disabled=${settings.pending}>
-        <label class="field"
+      <fieldset class="m-0 min-w-0 border-0 p-0" ?disabled=${settings.pending}>
+        <label class="mb-[13px] grid gap-1.5 text-caption text-label"
           ><span>${t(($) => $.export.format)}</span>
           <select
+            class="w-full text-ui"
             name="format"
             aria-label=${t(($) => $.export.formatLabel)}
             .value=${live(settings.format)}
@@ -102,11 +104,13 @@ export function exportView(
             )}
           </select>
         </label>
-        <p class="export-description">${t(($) => $.export.descriptions[settings.format])}</p>
+        <p class="mt-0 mb-5 text-body leading-[1.8] text-secondary">
+          ${t(($) => $.export.descriptions[settings.format])}
+        </p>
         ${settings.format === "pixel" ? size("scale") : chart ? size("width") : nothing}
         ${chart ? html`<p class="muted">${t(($) => $.export.english)}</p>` : nothing}
         ${model.error ? html`<p class="error" role="alert">${model.error}</p>` : nothing}
-        <button class="primary with-icon" type="submit">
+        <button class="primary with-icon mt-3" type="submit">
           ${settings.pending
             ? t(($) => $.export.preparing)
             : html`${icon(Download)}<span>${t(($) => $.export.download)}</span>`}

@@ -41,9 +41,10 @@ export function imageView(
   if (!session) return nothing;
   const { options, mapped, sample } = session;
   const number = (label: string, name: string, value: number, max: number) =>
-    html`<label class="field"
+    html`<label class="mb-[13px] grid gap-1.5 text-caption text-label"
       ><span>${label}</span>
       <input
+        class="w-full text-ui"
         name=${name}
         type="number"
         min=${name === "alpha" ? 0 : 1}
@@ -54,7 +55,7 @@ export function imageView(
   return keyed(
     session.id,
     html`<dialog
-      class="image-dialog"
+      class="dialog image-dialog max-h-[calc(100vh_-_40px)] w-[min(900px,calc(100vw_-_28px))] p-6 mobile:p-4"
       ${ref(refs.imageDialog)}
       aria-labelledby="image-heading"
       @cancel=${(event: Event) => {
@@ -62,10 +63,12 @@ export function imageView(
         actions.cancelImage();
       }}
     >
-      <div class="image-heading">
+      <div
+        class="image-heading flex items-center justify-between gap-4 mobile:flex-col mobile:items-start"
+      >
         <div>
           <span class="eyebrow">${t(($) => $.image.heading)}</span>
-          <h2 id="image-heading">${session.name}</h2>
+          <h2 class="text-[22px] [overflow-wrap:anywhere]" id="image-heading">${session.name}</h2>
         </div>
         ${imagePicker(
           t(($) => $.image.chooseAnother),
@@ -93,7 +96,7 @@ export function imageView(
           });
         }}
       >
-        <div class="image-dimensions">
+        <div class="grid grid-cols-3 gap-4 mobile:gap-2">
           ${number(
             t(($) => $.image.columns),
             "columns",
@@ -111,20 +114,21 @@ export function imageView(
             255,
           )}
         </div>
-        <div class="image-matching">
-          <label class="check-field"
+        <div class="flex flex-wrap items-center justify-between gap-4 text-ui">
+          <label class="flex items-center gap-[7px]"
             ><input type="checkbox" name="chroma" .defaultChecked=${!options.includeNeutral} />${t(
               ($) => $.image.chroma,
             )}</label
           >
-          <label class="check-field"
+          <label class="flex items-center gap-[7px]"
             ><input type="checkbox" name="unique" .defaultChecked=${!!options.unique} />${t(
               ($) => $.image.unique,
             )}</label
           >
-          <label class="field"
+          <label class="m-0 grid gap-1.5 text-caption text-label"
             ><span>${t(($) => $.image.series)}</span
             ><input
+              class="w-full text-ui"
               name="series"
               placeholder=${t(($) => $.image.seriesPlaceholder)}
               .defaultValue=${options.series?.join(", ") ?? ""}
@@ -140,29 +144,29 @@ export function imageView(
         : nothing}
       ${sample && mapped
         ? html`<div>
-            <div class="image-previews">
-              <figure>
+            <div class="image-previews my-5 grid grid-cols-2 gap-5 mobile:gap-2.5">
+              <figure class="m-0 min-w-0 text-center">
                 <canvas
                   class="image-preview"
                   ${ref(refs.sourcePreview)}
                   role="img"
                   aria-label=${t(($) => $.image.sourcePreview)}
                 ></canvas>
-                <figcaption>
+                <figcaption class="mt-[9px] text-caption">
                   ${t(($) => $.image.sourceCaption, {
                     width: session.pixels!.width,
                     height: session.pixels!.height,
                   })}
                 </figcaption>
               </figure>
-              <figure>
+              <figure class="m-0 min-w-0 text-center">
                 <canvas
                   class="image-preview"
                   ${ref(refs.mappedPreview)}
                   role="img"
                   aria-label=${t(($) => $.image.mardPreview)}
                 ></canvas>
-                <figcaption>
+                <figcaption class="mt-[9px] text-caption">
                   MARD 221 ·
                   ${t(($) => $.app.dimensions, { columns: options.columns, rows: options.rows })} ·
                   ${t(($) => $.beads, {
@@ -171,8 +175,8 @@ export function imageView(
                 </figcaption>
               </figure>
             </div>
-            <div class="mapping-heading">
-              <h3>${t(($) => $.image.mapping)}</h3>
+            <div class="flex items-center justify-between gap-4">
+              <h3 class="text-[15px]">${t(($) => $.image.mapping)}</h3>
               <span class="muted"
                 >${t(($) => $.image.sourceColors, { count: mapped.mappings.length })}</span
               >
@@ -181,7 +185,10 @@ export function imageView(
             <datalist id="image-mard-codes">
               ${mapped.candidates.map(([code, hex]) => html`<option value=${code}>${hex}</option>`)}
             </datalist>
-            <div class="mapping-list" aria-label=${t(($) => $.image.mappings)}>
+            <div
+              class="mapping-list max-h-[260px] overflow-auto rounded-lg border border-solid border-border"
+              aria-label=${t(($) => $.image.mappings)}
+            >
               ${repeat(
                 mapped.mappings,
                 (mapping) => mapping.source,

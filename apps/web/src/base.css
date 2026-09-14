@@ -1,0 +1,52 @@
+:root {
+  font-family: var(--ui-font-sans);
+  color: var(--ui-foreground);
+  background: var(--ui-page);
+  font-synthesis: none;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button,
+summary,
+.import-button {
+  cursor: pointer;
+}
+button {
+  color: inherit;
+  background: var(--ui-control);
+  border: 1px solid var(--ui-control-border);
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 550;
+}
+button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+canvas:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 3px;
+}
+input,
+select {
+  color: inherit;
+  border: 1px solid var(--ui-control-border);
+  background: var(--ui-control);
+  border-radius: 6px;
+  padding: 9px 10px;
+  min-width: 0;
+}
