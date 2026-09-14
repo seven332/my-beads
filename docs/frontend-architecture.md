@@ -84,6 +84,8 @@ before pointerup. Capture loss while pressed and explicit pointer cancellation
 restore the starting grid; no-op gestures preserve redo. At most 100
 snapshots are retained, sharing unchanged rows. The Canvas draws only visible cells
 into a viewport-sized backing buffer and batches redraws with animation frames.
+Local cursor movement also schedules a frame when the document and selected color
+stay unchanged, such as picking the same color or filling an already matching region.
 Counts come from computed core data. Imports use both an owned AbortSignal and
 revision/token checks, so newer work cannot be overwritten by a late file read.
 

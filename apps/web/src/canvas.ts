@@ -49,6 +49,11 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
     }
   }
   function schedule() { if (!frame && !destroyed) frame = requestAnimationFrame(paint); }
+  function setCursor(point: Point) {
+    cursor = point;
+    // Cursor movement is local; picking the same color may not update the store.
+    schedule();
+  }
   function position(event: PointerEvent | WheelEvent): Point {
     const rect = canvas.getBoundingClientRect(); return { x: event.clientX - rect.left, y: event.clientY - rect.top };
   }
@@ -62,13 +67,13 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
     const p = position(event);
     pointer = { id: event.pointerId, ...p, pan: model.tool === "pan" || event.button === 1 };
     canvas.setPointerCapture(event.pointerId);
-    if (!pointer.pan) { cursor = cell(p); actions.begin(cursor); }
+    if (!pointer.pan) { setCursor(cell(p)); actions.begin(cursor); }
   }
   function move(event: PointerEvent) {
     if (!pointer || pointer.id !== event.pointerId || !model) return;
     const p = position(event);
     if (pointer.pan) actions.pan(p.x - pointer.x, p.y - pointer.y);
-    else { cursor = cell(p); actions.extend(cursor); }
+    else { setCursor(cell(p)); actions.extend(cursor); }
     pointer = { ...pointer, ...p };
   }
   function end(event: PointerEvent) {
@@ -96,9 +101,8 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
       event.preventDefault();
       if (event.shiftKey) actions.pan(-delta[0] * 30, -delta[1] * 30);
       else {
-        cursor = { x: Math.max(0, Math.min(model.document.grid[0].length - 1, cursor.x + delta[0])),
-          y: Math.max(0, Math.min(model.document.grid.length - 1, cursor.y + delta[1])) };
-        schedule();
+        setCursor({ x: Math.max(0, Math.min(model.document.grid[0].length - 1, cursor.x + delta[0])),
+          y: Math.max(0, Math.min(model.document.grid.length - 1, cursor.y + delta[1])) });
       }
     } else if (event.key === " " || event.key === "Enter") {
       event.preventDefault(); actions.begin(cursor); actions.finish();
@@ -115,9 +119,8 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
   return {
     update(next: EditorModel) {
       model = next;
-      cursor = { x: Math.max(0, Math.min(cursor.x, next.document.grid[0].length - 1)),
-        y: Math.max(0, Math.min(cursor.y, next.document.grid.length - 1)) };
-      schedule();
+      setCursor({ x: Math.max(0, Math.min(cursor.x, next.document.grid[0].length - 1)),
+        y: Math.max(0, Math.min(cursor.y, next.document.grid.length - 1)) });
     },
     destroy() {
       destroyed = true; cancel(); cancelAnimationFrame(frame); observer.disconnect();
