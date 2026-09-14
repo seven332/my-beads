@@ -131,23 +131,34 @@ export default {
         : pattern?.type === "ObjectPattern" ? pattern.properties.filter(p => p.type === "Property").map(p => p.value) : [];
       return children.flatMap(child => defaults(child, name, seen));
     }
+    function objectProperties(original, seen) {
+      const node = unwrap(original);
+      if (!node || seen.has(node)) return [];
+      const next = new Set(seen).add(node);
+      return values(node, seen).flatMap(object => object.type !== "ObjectExpression" ? []
+        : object.properties.flatMap(property => property.type === "SpreadElement"
+          ? objectProperties(property.argument, next) : [property]));
+    }
     function mapItems(receiver, path, seen) {
       receiver = unwrap(receiver);
-      if (receiver?.type === "CallExpression" && receiver.callee.type === "MemberExpression" && globalIdentifier(receiver.callee.object, "Object")) {
+      if (!receiver || seen.has(receiver)) return [];
+      const next = new Set(seen).add(receiver);
+      if (receiver.type === "CallExpression" && receiver.callee.type === "MemberExpression" && globalIdentifier(receiver.callee.object, "Object")) {
         const method = key(receiver.callee);
         if (["entries", "values"].includes(method)) {
-          return values(receiver.arguments[0], seen).flatMap(object => object.type !== "ObjectExpression" ? [] : object.properties.flatMap(property => {
+          return objectProperties(receiver.arguments[0], next).flatMap(property => {
             if (property.type !== "Property") return [];
-            if (method === "values") return project(property.value, path, seen);
-            if (path[0] === "1") return project(property.value, path.slice(1), seen);
+            if (method === "values") return project(property.value, path, next);
+            if (path[0] === "1") return project(property.value, path.slice(1), next);
             // Object.entries keys can also be displayed. Reuse the key's location for diagnostics.
             if (path[0] === "0" && key(property) !== undefined) return [{ ...property.key, type: "Literal", value: key(property) }];
             return [];
-          }));
+          });
         }
       }
       return values(receiver, seen).flatMap(array => array.type === "ArrayExpression"
-        ? array.elements.flatMap(item => item ? project(item, path, seen) : []) : []);
+        ? array.elements.flatMap(item => item?.type === "SpreadElement" ? mapItems(item.argument, path, next)
+          : item ? project(item, path, next) : []) : []);
     }
     function parameterValues(def, name, seen) {
       const fn = def.node, index = fn.params.findIndex(param => patternPath(param, name) !== null);
@@ -179,9 +190,8 @@ export default {
       if (node.type === "MemberExpression") {
         const name = key(node);
         if (name !== undefined) return project(node.object, [name], seen).flatMap(value => values(value, seen, followParameters));
-        return values(node.object, seen, followParameters).flatMap(object => object.type === "ObjectExpression"
-          ? object.properties.filter(p => p.type === "Property").flatMap(p => values(p.value, seen, followParameters))
-          : object.type === "ArrayExpression" ? object.elements.flatMap(item => values(item, seen, followParameters)) : []);
+        return [...objectProperties(node.object, seen).flatMap(property => values(property.value, seen, followParameters)),
+          ...mapItems(node.object, [], seen).flatMap(item => values(item, seen, followParameters))];
       }
       if (node.type === "ConditionalExpression") return [node.consequent, node.alternate].flatMap(value => values(value, seen, followParameters));
       if (node.type === "LogicalExpression") return [node.left, node.right].flatMap(value => values(value, seen, followParameters));

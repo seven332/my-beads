@@ -164,8 +164,9 @@ The web-only ESLint rule `ccstate/no-hardcoded-ui-text` checks Snabbdom child te
 visible attributes (including accessible names, placeholders and tooltips), local
 rendering-helper arguments, DOM text assignments and browser error messages. It
 follows local constants, aliases, destructuring, conditional/template expressions,
-return values and common array/object mappings. It resolves imported `h` bindings,
-so aliases work and unrelated or shadowed functions are not treated as Snabbdom.
+return values and common array/object mappings, including local object and array
+spreads. It resolves imported `h` bindings, so aliases work and unrelated or
+shadowed functions are not treated as Snabbdom.
 There is no exemption for a function merely named `t`.
 
 Use `h("button", t($ => $.export.download))` instead of `h("button", "Download")`.
