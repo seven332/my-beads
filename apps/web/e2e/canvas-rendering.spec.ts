@@ -38,19 +38,23 @@ async function scene(page: Page, csv: string) {
 
 for (const tool of ["Eyedropper", "Paint bucket", "Pencil", "Eraser"] as const) {
   test(`${tool} clears the cursor outside the grid and navigation never creates an edge selection`, async ({ page }) => {
-    const csv = tool === "Eraser" ? ",,," : "H7,H7,H7,H7";
+    // Selecting cell 1 is a no-op, but an unintended edit/pick at the other cells is observable.
+    const csv = tool === "Eraser" ? "H7,,H7,H7" : "H2,H7,H2,H2";
     const { click, move, cursorPixels } = await scene(page, csv);
     await page.getByRole("button", { name: tool, exact: true }).click();
-    await click(1);
-    await expect.poll(cursorPixels).toBeGreaterThan(0);
     // All four sides are still inside the full-window Canvas element, but not the grid.
     for (const [column, dy] of [[-1, 0], [4, 0], [1, -32], [1, 32]]) {
+      await click(1);
+      await expect.poll(cursorPixels).toBeGreaterThan(0);
       await move(column, dy); await page.mouse.down();
       await expect.poll(cursorPixels).toBe(0);
       await move(2); await page.mouse.up();
       await expect.poll(cursorPixels).toBe(0);
       // A key press on the still-focused, deselected surface must not paint a boundary cell.
       await page.keyboard.press("Enter");
+      await page.keyboard.press("Space");
+      await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
+      await expect(page.locator(".selected-color strong")).toHaveText("H7");
       await page.mouse.wheel(16, 0);
       await expect.poll(cursorPixels).toBe(0);
       await page.keyboard.press("Shift+ArrowRight");
