@@ -306,7 +306,9 @@ domain root or repository subpath. `pnpm test:production` builds it, then starts
 an owned preview server under `/my-beads/` on port 4174 with no server reuse.
 Package-local Chromium/WebKit smoke tests validate asset paths, editing/export
 and draft recovery without a development server or screenshot baseline. The
-existing Checks browser job runs this alongside the full development workflows.
+Checks workflow runs this in a production smoke job alongside two E2E shards. The stable
+Browser workflows check aggregates their results. See [browser CI](browser-ci.md)
+for change detection, reports, and local shard commands.
 
 `pages.yml` filters main pushes by declared web/core/build inputs and also allows
 main-only manual runs. Shared dependency files trigger conservatively; this is
