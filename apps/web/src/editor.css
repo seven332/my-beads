@@ -148,14 +148,14 @@
 .editor-actions .preferences {
   margin: 0;
 }
-.editor-actions .language-picker > span {
+.editor-actions .language-picker > span:first-child {
   position: absolute;
   width: 1px;
   height: 1px;
   overflow: hidden;
   clip-path: inset(50%);
 }
-.editor-actions select {
+.editor-actions .language-picker .select-trigger {
   font-size: 12px;
   background: transparent;
   border-color: transparent;
@@ -644,7 +644,7 @@
   .editor-actions .document-actions button {
     font-size: 11px;
   }
-  .editor-actions .language-picker select {
+  .editor-actions .language-picker .select-trigger {
     padding: 5px;
     max-width: 108px;
   }

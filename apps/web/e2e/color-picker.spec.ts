@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { openPalette } from "./helpers.js";
+import { selectChoice, openPalette } from "./helpers.js";
 
 async function scene(page: Page, target?: string) {
   await page.goto("/");
@@ -9,7 +9,7 @@ async function scene(page: Page, target?: string) {
   await page.getByRole("button", { name: "Open color picker" }).click();
   await expect(page.getByRole("slider", { name: "Adjust hue" })).toBeFocused();
   await expect(page.getByRole("slider", { name: "Adjust hue" })).toBeInViewport({ ratio: 1 });
-  await page.getByLabel("Color format", { exact: true }).selectOption("hsb");
+  await selectChoice(page.getByRole("combobox", { name: "Color format", exact: true }), "hsb");
   return page.locator(".color-area");
 }
 
@@ -19,26 +19,26 @@ test("HEX, RGB, HSL and HSB edit the same target without changing the brush or C
   await page.goto("/");
   await page.getByRole("button", { name: "Create blank grid" }).click();
   await page.getByRole("button", { name: "Open color picker" }).click();
-  const format = page.getByLabel("Color format", { exact: true });
+  const format = page.getByRole("combobox", { name: "Color format", exact: true });
   const search = page.getByLabel("Search colors", { exact: true });
   const canvas = await page.locator(".pattern-canvas").elementHandle();
   const area = await page.locator(".color-area").elementHandle();
-  await expect(format).toHaveValue("hex");
+  await expect(format).toHaveJSProperty("value", "hex");
   await page.getByLabel("Hex color", { exact: true }).fill("336699");
   await expect(search).toHaveValue("#336699");
-  await format.selectOption("rgb");
+  await selectChoice(format, "rgb");
   await expect(page.getByLabel("Red (0–255)", { exact: true })).toHaveValue("51");
   await expect(page.getByLabel("Green (0–255)", { exact: true })).toHaveValue("102");
   await expect(page.getByLabel("Blue (0–255)", { exact: true })).toHaveValue("153");
-  await format.selectOption("hsl");
+  await selectChoice(format, "hsl");
   await expect(page.getByLabel("Hue (degrees)", { exact: true })).toHaveValue("210");
   await expect(page.getByLabel("Saturation (%)", { exact: true })).toHaveValue("50");
   await expect(page.getByLabel("Lightness (%)", { exact: true })).toHaveValue("40");
-  await format.selectOption("hsb");
+  await selectChoice(format, "hsb");
   await expect(page.getByLabel("Saturation (%)", { exact: true })).toHaveValue("66.7");
   await expect(page.getByLabel("Brightness (%)", { exact: true })).toHaveValue("60");
   await expect(search).toHaveValue("#336699");
-  await format.selectOption("rgb");
+  await selectChoice(format, "rgb");
   const red = page.getByLabel("Red (0–255)", { exact: true });
   await red.fill("256");
   await expect(search).toHaveValue("#336699");
@@ -46,13 +46,13 @@ test("HEX, RGB, HSL and HSB edit the same target without changing the brush or C
   await expect(red).toHaveValue("51");
   await red.fill("255");
   await expect(search).toHaveValue("#FF6699");
-  await format.selectOption("hsl");
+  await selectChoice(format, "hsl");
   await page.getByLabel("Hue (degrees)", { exact: true }).fill("240");
   await page.getByLabel("Saturation (%)", { exact: true }).fill("100");
   await page.getByLabel("Lightness (%)", { exact: true }).fill("50");
   await expect(search).toHaveValue("#0000FF");
   await page.getByLabel("Saturation (%)", { exact: true }).fill("");
-  await format.selectOption("hsb");
+  await selectChoice(format, "hsb");
   await expect(page.getByLabel("Saturation (%)", { exact: true })).toHaveValue("100");
   await expect(page.getByLabel("Brightness (%)", { exact: true })).toHaveValue("100");
   await expect(page.locator(".selected-color strong")).toHaveText("H7");
@@ -70,7 +70,7 @@ test("reopening the picker restores its format and fields without changing the t
   await page.getByRole("button", { name: "Create blank grid" }).click();
   const toggle = page.getByRole("button", { name: "Open color picker" });
   await toggle.click();
-  const format = page.getByLabel("Color format", { exact: true });
+  const format = page.getByRole("combobox", { name: "Color format", exact: true });
   const search = page.getByLabel("Search colors", { exact: true });
   await search.fill("#336699");
   for (const [mode, values] of [
@@ -79,14 +79,14 @@ test("reopening the picker restores its format and fields without changing the t
     ["hsb", ["210", "66.7", "60"]],
     ["hex", ["#336699"]],
   ] as const) {
-    await format.selectOption(mode);
+    await selectChoice(format, mode);
     for (const close of ["button", "escape"]) {
       if (close === "button")
         await page.getByRole("button", { name: "Close color picker" }).click();
       else await page.keyboard.press("Escape");
       await expect(page.locator(".color-picker")).toHaveCount(0);
       await toggle.click();
-      await expect(format).toHaveValue(mode);
+      await expect(format).toHaveJSProperty("value", mode);
       await expect(page.locator(".color-channels")).toHaveAttribute("data-format", mode);
       const fields = page.locator(".color-channels input");
       await expect(fields).toHaveCount(values.length);
@@ -99,7 +99,7 @@ test("reopening the picker restores its format and fields without changing the t
   await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
 });
 
-test("partial HEX survives renders and the format select retains native keyboard behavior", async ({
+test("partial HEX survives renders and the format menu supports keyboard navigation", async ({
   page,
 }) => {
   await page.goto("/");
@@ -116,7 +116,7 @@ test("partial HEX survives renders and the format select retains native keyboard
   await expect(search).toHaveValue("#BB2233");
   await hex.press("Tab");
   await expect(hex).toHaveValue("#BB2233");
-  const format = page.getByLabel("Color format", { exact: true });
+  const format = page.getByRole("combobox", { name: "Color format", exact: true });
   await format.focus();
   await format.press("h");
   await expect(format).toBeFocused();
@@ -124,9 +124,13 @@ test("partial HEX survives renders and the format select retains native keyboard
     "aria-pressed",
     "true",
   );
-  await format.selectOption("rgb");
-  await page.getByLabel("Language").selectOption("zh-CN");
-  await expect(page.getByLabel("颜色格式", { exact: true })).toHaveValue("rgb");
+  await selectChoice(format, "rgb");
+  await selectChoice(page.getByRole("combobox", { name: "Language", exact: true }), "zh-CN");
+  await page.getByRole("button", { name: "打开选色器", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "颜色格式", exact: true })).toHaveJSProperty(
+    "value",
+    "rgb",
+  );
   await expect(page.getByLabel("红（0–255）", { exact: true })).toHaveValue("187");
 });
 
@@ -281,18 +285,19 @@ for (const [width, height, locale] of [
   test(`picker and matches are reachable at ${width}x${height} in ${locale}`, async ({ page }) => {
     await page.setViewportSize({ width, height });
     await page.goto("/");
-    await page.getByLabel("Language").selectOption(locale);
+    await selectChoice(page.getByRole("combobox", { name: "Language", exact: true }), locale);
     await page.locator(".blank-form button").click();
     await openPalette(page);
     await page.locator(".palette-search").fill("#4c4c40");
-    await page
-      .getByLabel(locale === "en-US" ? "Appearance" : "外观", { exact: true })
-      .selectOption("dark");
+    await selectChoice(
+      page.getByRole("combobox", { name: locale === "en-US" ? "Appearance" : "外观", exact: true }),
+      "dark",
+    );
     await page.locator(".color-picker-toggle").click();
     await expect(page.locator(".palette-panel")).toBeHidden();
     await expect(page.locator(".editor-dock")).toBeHidden();
     for (const format of ["hex", "rgb", "hsl", "hsb"]) {
-      await page.locator(".color-format select").selectOption(format);
+      await selectChoice(page.locator(".color-format .select-trigger"), format);
       for (const field of await page.locator(".color-channels input").all()) {
         await field.scrollIntoViewIfNeeded();
         const bounds = (await field.boundingBox())!;

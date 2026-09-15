@@ -308,6 +308,7 @@ export function mountApp(
     },
   };
   const lifecycle = createViewLifecycle(
+    root,
     {
       begin: (point) => store.set(state.beginStroke$, point),
       extend: (point) => store.set(state.extendStroke$, point),

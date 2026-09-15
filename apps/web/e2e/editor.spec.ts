@@ -3,7 +3,14 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
 import { createPattern, defaultPalette, parsePatternCsv, type PatternGrid } from "@my-beads/core";
-import { openExport, closeExport, startNew, fitCoordinates, openPalette } from "./helpers.js";
+import {
+  selectChoice,
+  openExport,
+  closeExport,
+  startNew,
+  fitCoordinates,
+  openPalette,
+} from "./helpers.js";
 
 const shermaPath = fileURLToPath(
   new URL("../../../templates/hollow-knight/sherma-singing-50x50.csv", import.meta.url),
@@ -13,7 +20,7 @@ async function bytes(download: Download) {
 }
 async function download(page: Page, format: string, scale = 1) {
   await openExport(page);
-  await page.getByLabel("Export format").selectOption(format);
+  await selectChoice(page.getByRole("combobox", { name: "Export format", exact: true }), format);
   if (format === "pixel") await page.getByLabel("Pixel scale").fill(String(scale));
   const pending = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download" }).click();
@@ -206,7 +213,7 @@ test("zoom and pan preserve cell targeting; invalid imports and exports preserve
   await page.getByLabel("Open CSV").setInputFiles(shermaPath);
   await expect(page.getByTestId("counts")).toHaveText("1,270 beads · 9 colors");
   await openExport(page);
-  await page.getByLabel("Export format").selectOption("svg");
+  await selectChoice(page.getByRole("combobox", { name: "Export format", exact: true }), "svg");
   await page.getByLabel("Chart width").fill("800");
   await page.getByRole("button", { name: "Download" }).click();
   await expect(page.getByRole("alert")).toContainText("at least 1250");
@@ -366,21 +373,21 @@ test("export validates only the settings used by the selected format", async ({ 
     .setInputFiles({ name: "single.csv", mimeType: "text/csv", buffer: Buffer.from("H7") });
   await expect(page.getByLabel("Pattern title")).toHaveValue("single");
   await openExport(page);
-  await page.getByLabel("Export format").selectOption("svg");
+  await selectChoice(page.getByRole("combobox", { name: "Export format", exact: true }), "svg");
   await page.getByLabel("Chart width").fill("0");
   expect(parsePatternCsv((await download(page, "csv", 0)).toString())).toEqual([["H7"]]);
   verifyPixels(await download(page, "pixel", 1), [["H7"]], 1);
   await openExport(page);
-  await page.getByLabel("Export format").selectOption("svg");
+  await selectChoice(page.getByRole("combobox", { name: "Export format", exact: true }), "svg");
   await page.getByLabel("Chart width").fill("800");
   expect((await download(page, "svg", 0)).toString()).toContain("MARD 221");
 
   await openExport(page);
-  await page.getByLabel("Export format").selectOption("pixel");
+  await selectChoice(page.getByRole("combobox", { name: "Export format", exact: true }), "pixel");
   await page.getByLabel("Pixel scale").fill("0");
   await page.getByRole("button", { name: "Download" }).click();
   await expect(page.getByRole("alert")).toContainText("Pixel scale must be an integer");
-  await page.getByLabel("Export format").selectOption("svg");
+  await selectChoice(page.getByRole("combobox", { name: "Export format", exact: true }), "svg");
   await page.getByLabel("Chart width").fill("0");
   await page.getByRole("button", { name: "Download" }).click();
   await expect(page.getByRole("alert")).toContainText("Chart width must be an integer");

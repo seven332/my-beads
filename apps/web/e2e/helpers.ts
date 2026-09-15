@@ -1,5 +1,15 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { unobscuredArea, type CanvasEdge } from "../src/canvas-viewport.js";
+
+/** Exercise the actual themed menu instead of bypassing its pointer interaction. */
+export async function selectChoice(trigger: Locator, value: string) {
+  if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
+  const id = await trigger.getAttribute("aria-controls");
+  const selected = trigger.page().locator(`.select-trigger[aria-controls="${id}"]`);
+  await trigger.page().locator(`#${id}`).locator(`[role="option"][data-value="${value}"]`).click();
+  await expect(selected).toHaveJSProperty("value", value);
+  await expect(selected).toHaveAttribute("aria-expanded", "false");
+}
 
 export async function openPalette(page: Page) {
   const toggle = page.locator(".palette-toggle");

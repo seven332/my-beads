@@ -11,6 +11,7 @@ import { icon } from "./icon.js";
 import { button, iconButton } from "./ui/button.js";
 import { field as formField } from "./ui/field.js";
 import { modal } from "./ui/dialog.js";
+import { select } from "./ui/select.js";
 
 export interface ExportActions {
   openExport(): void;
@@ -87,21 +88,16 @@ export function exportView(
         <fieldset class="m-0 min-w-0 border-0 p-0" ?disabled=${settings.pending}>
           ${formField(
             t(($) => $.export.format),
-            html`<select
-              class="w-full text-ui"
-              name="format"
-              aria-label=${t(($) => $.export.formatLabel)}
-              .value=${live(settings.format)}
-              @change=${(event: Event) =>
-                actions.exportFormat((event.target as HTMLSelectElement).value as ExportFormat)}
-            >
-              ${(["csv", "pixel", "svg", "chart"] as const).map(
-                (format) =>
-                  html`<option value=${format} .selected=${settings.format === format}>
-                    ${t(($) => $.export[format])}
-                  </option>`,
-              )}
-            </select>`,
+            select(
+              t(($) => $.export.formatLabel),
+              settings.format,
+              (["csv", "pixel", "svg", "chart"] as const).map((value) => ({
+                value,
+                label: t(($) => $.export[value]),
+              })),
+              actions.exportFormat,
+              { name: "format" },
+            ),
           )}
           <p class="mt-0 mb-5 text-body leading-[1.8] text-secondary">
             ${t(($) => $.export.descriptions[settings.format])}

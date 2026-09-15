@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { PNG } from "pngjs";
 import { parsePatternCsv } from "@my-beads/core";
-import { openPalette } from "./helpers.js";
+import { selectChoice, openPalette } from "./helpers.js";
 
 test.use({ locale: "zh-CN" });
 
@@ -19,7 +19,10 @@ async function download(page: Page, label: string): Promise<Buffer> {
 test("uses the Chinese brand, persists language and keeps exports in English", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("link", { name: "我来拼豆" })).toBeVisible();
-  await expect(page.getByLabel("界面语言")).toHaveValue("zh-CN");
+  await expect(page.getByRole("combobox", { name: "界面语言", exact: true })).toHaveJSProperty(
+    "value",
+    "zh-CN",
+  );
   await expect(page).toHaveTitle("我来拼豆 — 拼豆图纸编辑器");
   await page
     .getByLabel("打开 CSV")
@@ -34,19 +37,22 @@ test("uses the Chinese brand, persists language and keeps exports in English", a
   await expect(page.getByText("色差最小", { exact: true })).toBeVisible();
   await expect(page.getByText("保留色彩倾向", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "导出", exact: true }).click();
-  await page.getByLabel("导出格式").selectOption("svg");
+  await selectChoice(page.getByRole("combobox", { name: "导出格式", exact: true }), "svg");
   await page.getByLabel("图纸宽度").fill("800");
   const chineseSvg = await download(page, "下载");
   expect(chineseSvg.toString()).toContain("3 × 2 grid · 3 colors · 4 beads");
   expect(chineseSvg.toString()).toContain("MARD 221");
   expect(chineseSvg.toString()).not.toMatch(/[\u4e00-\u9fff]/);
-  await page.getByLabel("界面语言").selectOption("en-US");
+  await selectChoice(page.getByRole("combobox", { name: "界面语言", exact: true }), "en-US");
   await expect(page.locator("html")).toHaveAttribute("lang", "en-US");
   await page.getByRole("button", { name: "Export", exact: true }).click();
-  await expect(page.getByLabel("Export format")).toHaveValue("svg");
+  await expect(page.getByRole("combobox", { name: "Export format", exact: true })).toHaveJSProperty(
+    "value",
+    "svg",
+  );
   expect(await download(page, "Download")).toEqual(chineseSvg);
   await page.getByRole("button", { name: "Export", exact: true }).click();
-  await page.getByLabel("Export format").selectOption("csv");
+  await selectChoice(page.getByRole("combobox", { name: "Export format", exact: true }), "csv");
   expect(parsePatternCsv((await download(page, "Download")).toString())).toEqual([
     ["H7", null, "H5"],
     ["H2", "H7", null],
@@ -55,7 +61,7 @@ test("uses the Chinese brand, persists language and keeps exports in English", a
   await expect(page.getByRole("link", { name: "My Beads" })).toBeVisible();
   await expect(page.getByLabel("Pattern title")).toHaveValue("Bilingual");
   await expect(page.getByTestId("counts")).toHaveText("4 beads · 3 colors");
-  await page.getByLabel("Language").selectOption("zh-CN");
+  await selectChoice(page.getByRole("combobox", { name: "Language", exact: true }), "zh-CN");
   await expect(page.getByText("已恢复保存的草稿。", { exact: true })).toBeVisible();
 });
 
@@ -86,7 +92,7 @@ test("imports images with Chinese controls and validation, then exports the mapp
   await dialog.getByRole("button", { name: "应用图片" }).click();
   await expect(page.getByTestId("counts")).toHaveText("2 颗 · 2 色");
   await page.getByRole("button", { name: "导出", exact: true }).click();
-  await page.getByLabel("导出格式").selectOption("pixel");
+  await selectChoice(page.getByRole("combobox", { name: "导出格式", exact: true }), "pixel");
   await page.getByLabel("像素放大倍率").fill("3");
   const pixel = PNG.sync.read(await download(page, "下载"));
   expect([pixel.width, pixel.height]).toEqual([6, 3]);
@@ -101,17 +107,17 @@ test("keeps language controls and color recommendations within narrow viewports 
   await page.getByRole("button", { name: "创建空白网格", exact: true }).click();
   await page.getByLabel("搜索颜色").fill("#4C4C40");
   for (const locale of ["zh-CN", "en-US"]) {
-    await page.locator(".language-picker select").selectOption(locale);
+    await selectChoice(page.locator(".language-picker .select-trigger"), locale);
     for (const width of [320, 390, 461, 480, 600, 740, 900]) {
       await page.setViewportSize({ width, height: 900 });
       await openPalette(page);
-      await expect(page.locator(".language-picker select")).toBeVisible();
+      await expect(page.locator(".language-picker .select-trigger")).toBeVisible();
       const layout = await page.evaluate(() => ({
         width: document.documentElement.clientWidth,
         content: document.documentElement.scrollWidth,
         controls: [
           ...document.querySelectorAll(
-            ".language-picker select, .import-button, .color-recommendation",
+            ".language-picker .select-trigger, .import-button, .color-recommendation",
           ),
         ].map((node) => {
           const rect = node.getBoundingClientRect();

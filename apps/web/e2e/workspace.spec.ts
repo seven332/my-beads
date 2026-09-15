@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { fitCoordinates, openPalette } from "./helpers.js";
+import { selectChoice, fitCoordinates, openPalette } from "./helpers.js";
 
 async function importGrid(page: Page, csv: string) {
   await page.goto("/");
@@ -65,7 +65,7 @@ for (const [width, height] of [
       Array.from({ length: 50 }, () => Array(50).fill("H7").join(",")).join("\n"),
     );
     for (const locale of ["en-US", "zh-CN"]) {
-      await page.locator(".language-picker select").selectOption(locale);
+      await selectChoice(page.locator(".language-picker .select-trigger"), locale);
       await page
         .locator(".title-input")
         .fill("A long pattern title / 标题很长的拼豆图纸 / ".repeat(3).slice(0, 100));

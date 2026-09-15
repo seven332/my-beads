@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { PNG } from "pngjs";
 import { parsePatternCsv } from "@my-beads/core";
-import { fitCoordinates, openExport, closeExport } from "./helpers.js";
+import { selectChoice, fitCoordinates, openExport, closeExport } from "./helpers.js";
 
 async function scene(page: Page, csv = "H7,H2,,") {
   await page.goto("/");
@@ -87,29 +87,29 @@ test("saved appearance works across creation and editing, OS changes and reloads
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("/");
   const appearance = page.getByRole("combobox", { name: "Appearance" });
-  await expect(appearance).toHaveValue("system");
+  await expect(appearance).toHaveJSProperty("value", "system");
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#191d1b");
-  await appearance.selectOption("light");
+  await selectChoice(appearance, "light");
   await expect(page.locator("html")).toHaveCSS("color-scheme", "light");
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#f4f3ef");
   await page.reload();
-  await expect(appearance).toHaveValue("light");
+  await expect(appearance).toHaveJSProperty("value", "light");
   await page.getByRole("button", { name: "Create blank grid" }).click();
-  await appearance.selectOption("dark");
+  await selectChoice(appearance, "dark");
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await appearance.selectOption("system");
+  await selectChoice(appearance, "system");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.getByRole("button", { name: "New pattern", exact: true }).click();
-  await expect(appearance).toHaveValue("system");
+  await expect(appearance).toHaveJSProperty("value", "system");
 });
 
 test("dark mode preserves CSV, transparent pixels and English printable chart output", async ({
   page,
 }) => {
   await scene(page);
-  await page.getByRole("combobox", { name: "Appearance" }).selectOption("dark");
+  await selectChoice(page.getByRole("combobox", { name: "Appearance" }), "dark");
   await openExport(page);
   const download = async () => {
     const pending = page.waitForEvent("download");
@@ -118,16 +118,16 @@ test("dark mode preserves CSV, transparent pixels and English printable chart ou
   };
   const csv = await download();
   expect(parsePatternCsv(csv.toString())).toEqual([["H7", "H2", null, null]]);
-  await page.getByLabel("Export format").selectOption("pixel");
+  await selectChoice(page.getByRole("combobox", { name: "Export format", exact: true }), "pixel");
   await page.getByLabel("Pixel scale").fill("1");
   const pixels = PNG.sync.read(await download());
   expect([pixels.width, pixels.height]).toEqual([4, 1]);
   expect([...pixels.data]).toEqual([0, 0, 0, 255, 255, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0]);
-  await page.getByLabel("Export format").selectOption("svg");
+  await selectChoice(page.getByRole("combobox", { name: "Export format", exact: true }), "svg");
   const darkChart = await download();
   expect(darkChart.toString()).toContain("MARD 221");
   await closeExport(page);
-  await page.getByRole("combobox", { name: "Appearance" }).selectOption("light");
+  await selectChoice(page.getByRole("combobox", { name: "Appearance" }), "light");
   await openExport(page);
   expect(await download()).toEqual(darkChart);
 });
@@ -168,7 +168,7 @@ for (const locale of ["en-US", "zh-CN"]) {
   }) => {
     await page.setViewportSize({ width: 320, height: 568 });
     await page.goto("/");
-    await page.getByLabel("Language").selectOption(locale);
+    await selectChoice(page.getByRole("combobox", { name: "Language", exact: true }), locale);
     const label = locale === "en-US" ? "Appearance" : "外观";
     const appearance = page.getByRole("combobox", { name: label });
     for (const editing of [false, true]) {
@@ -178,18 +178,20 @@ for (const locale of ["en-US", "zh-CN"]) {
       expect(box.height).toBeGreaterThanOrEqual(32);
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(320);
-      // Check the native select receives pointer input despite its transparent styling.
+      // The icon and its surrounding trigger both activate the same control.
       expect(
         await appearance.evaluate((node) => {
           const rect = node.getBoundingClientRect();
-          return (
-            document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2) === node
+          return node.contains(
+            document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2),
           );
         }),
       ).toBe(true);
       await appearance.focus();
-      await expect(page.locator(".appearance-picker")).toHaveCSS("outline-style", "solid");
-      await appearance.selectOption("dark");
+      await appearance.press("ArrowDown");
+      await expect(appearance).toHaveCSS("outline-style", "solid");
+      await appearance.press("Escape");
+      await selectChoice(appearance, "dark");
       await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,

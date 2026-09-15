@@ -51,8 +51,8 @@ document, selected color or history. No search results are persisted.
 target-color picker outside the floating palette's clipping ancestor. The swatch opens a
 saturation/brightness area, a native hue range and a format menu for HEX (default),
 RGB, HSL and HSB. HEX accepts three/six digits with an optional hash; RGB accepts
-integer channels from 0 to 255. HSL/HSB use degrees and percentages. The native
-select and value fields provide keyboard access alongside the pointer-only area.
+integer channels from 0 to 255. HSL/HSB use degrees and percentages. The shared
+format menu and native value fields provide keyboard access alongside the pointer-only area.
 `color-picker-overlay.ts` owns a native dialog: non-modal on desktop, positioned
 to the left of the palette and clamped to the viewport; modal as a bottom sheet
 in the existing compact layout (width <=900px or height <=600px). A mount-owned
@@ -90,8 +90,8 @@ Native modality changes can move focus during close/show, so the presentation
 controller marks that transition and field blur preserves unfinished values then.
 The lifecycle cancels active color-area capture before switching modality and
 disposes dialog observers/listeners on removal or app teardown.
-The format menu binds selection on its options so a newly mounted picker restores
-the current mode after its options are inserted.
+The format menu receives the controlled value so a newly mounted picker restores
+the current mode.
 The existing view lifecycle retains this area across updates and disposes it on
 removal. Picker changes never call the brush/history commands or affect exports.
 Tests cover known color boundaries, data isolation, native controls, real pointer
@@ -133,7 +133,7 @@ canvas rows, with its close button beside the view switch, leaving room for colo
 Closing the panel reveals the status again. Existing export adapters still read
 only document data.
 
-## Shared native UI controls
+## Shared UI controls
 
 `src/ui` contains small, stateless lit-html template helpers. They follow the
 composition and explicit-variant ideas illustrated by [shadcn/ui](https://ui.shadcn.com/docs)
@@ -148,18 +148,43 @@ original app-local code with no new UI dependency, custom elements or state syst
   `iconButton(label, graphic, options)` requires an accessible name and uses the
   existing decorative Lucide adapter. Layout-specific classes remain with callers.
 - `field(label, control, size)` composes a native label around the supplied input
-  or select. Views own control names, constraints, bindings and keys. Preserve
+  or selection trigger. Views own control names, constraints, bindings and keys. Preserve
   `live` for controlled strings, `defaultValue` for unfinished form edits, and
   `keyed` boundaries for explicit resets.
 - `modal(options, content)` supplies the native dialog, ref, accessible heading
   relationship and cancel dispatch. Views decide whether it exists; the existing
   lifecycle owns `showModal` and cleanup, and commands retain focus restoration.
+- `select(label, value, choices, change, options)` renders the language, appearance,
+  export-format and color-format controls. A native button with a combobox role
+  provides the trigger, including native disabled-fieldset behavior and explicit
+  tab order. The listbox uses a manual native popover to avoid clipping in panels
+  and remain inside its parent dialog's modal subtree. Trigger and options share
+  semantic theme tokens, Lucide indicators and translated labels; image-import
+  free-text MARD suggestions remain a separate native datalist.
+
+`ui/select-controller.ts` is a browser adapter owned by the view lifecycle. One
+menu can be open per mount. It holds only transient open/active-option/typeahead
+state; selections dispatch the current view's change handler into existing commands.
+DOM focus stays on the trigger with `aria-activedescendant`; arrows, Home/End and
+typed prefixes browse options without changing the committed value. Enter, Space
+and Tab commit; Escape cancels only the menu. Outside interactions cancel pending
+navigation and preserve other controls' actions. Canvas/backdrop dismissal gestures
+are consumed before the picker or Canvas handlers, including secondary touches.
+Combobox focus is excluded from editor shortcuts. Preventing option `mousedown`
+keeps focus stable without suppressing WebKit's touch-generated click.
+
+The adapter clamps and flips fixed menus within the visual viewport, with scrolling
+and larger touch rows on compact screens. Resize/scroll observers exist only while
+open. Post-render sync assigns stable relationships and closes disabled or removed
+controls. Picker modality changes close the menu before changing native dialogs;
+native popover closure and app teardown also release resources. Browser tests cover
+both Chromium and WebKit; DOM tests adapt only missing popover/layout APIs.
 
 Supply translated text to these helpers. The ESLint `textFunctions` configuration
 registers their text arguments, including aliased imports; register new text-taking
 helpers or import paths there as well. `label` and `title` options also retain the
 existing literal checks. These helpers do not accept arbitrary attribute bags or
-own stores, subscriptions or event listeners outside their templates.
+own stores or subscriptions. Menu browser listeners belong to the separate adapter.
 
 Use them for repeated native-control contracts. Keep specialized palette swatches,
 color-area gestures, file inputs and workspace geometry in their own views rather

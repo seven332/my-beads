@@ -134,7 +134,7 @@
   font-size: 10px;
 }
 .color-values input,
-.color-values select {
+.color-values .select-trigger {
   width: 100%;
   min-width: 0;
   height: 34px;

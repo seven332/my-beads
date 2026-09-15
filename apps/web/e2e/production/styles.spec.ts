@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { PNG } from "pngjs";
-import { openExport } from "../helpers.js";
+import { selectChoice, openExport } from "../helpers.js";
 
 test("built theme tokens reach utilities and native controls without recoloring pattern exports", async ({
   page,
@@ -23,7 +23,7 @@ test("built theme tokens reach utilities and native controls without recoloring 
     .setInputFiles({ name: "Colors.csv", mimeType: "text/csv", buffer: Buffer.from("H7,H2") });
   await openExport(page);
   await expect(page.getByRole("dialog")).toHaveCSS("background-color", "rgb(17, 34, 51)");
-  await page.getByLabel("Export format").selectOption("pixel");
+  await selectChoice(page.getByRole("combobox", { name: "Export format", exact: true }), "pixel");
   await page.getByLabel("Pixel scale").fill("1");
   const pending = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download", exact: true }).click();

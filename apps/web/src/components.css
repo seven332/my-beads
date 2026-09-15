@@ -65,7 +65,7 @@ button:hover {
   white-space: nowrap;
   font-size: 12px;
 }
-.language-picker select {
+.language-picker .select-trigger {
   width: auto;
   padding: 8px;
 }
@@ -76,31 +76,17 @@ button:hover {
   margin-left: auto;
 }
 .appearance-picker {
-  position: relative;
-  display: grid;
-  place-items: center;
   flex-shrink: 0;
+}
+.appearance-picker .select-trigger {
+  justify-content: center;
   width: 36px;
   height: 36px;
-  border: 1px solid var(--ui-control-border);
-  border-radius: 7px;
-  background: var(--ui-control);
+  padding: 8px;
 }
-.appearance-picker:hover {
-  background: var(--ui-control-hover);
-  border-color: var(--ui-control-hover-border);
-}
-.appearance-picker:focus-within {
-  outline: 2px solid var(--ui-focus);
-  outline-offset: 3px;
-}
-.appearance-picker select {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
+.appearance-picker .select-trigger > .icon {
+  width: 16px;
+  height: 16px;
 }
 .import-button {
   display: block;
@@ -459,7 +445,7 @@ details[open] summary {
   .topbar {
     gap: 14px;
   }
-  .language-picker > span {
+  .language-picker > span:first-child {
     position: absolute;
     width: 1px;
     height: 1px;

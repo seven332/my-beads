@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { parsePatternCsv } from "@my-beads/core";
-import { openExport, openPalette } from "../helpers.js";
+import { selectChoice, openExport, openPalette } from "../helpers.js";
 import { checkToolCursors } from "../cursor-helpers.js";
 
 test("built editor loads at a repository path and preserves editing, exports and drafts", async ({
@@ -63,11 +63,14 @@ test("built editor loads at a repository path and preserves editing, exports and
   await expect(page.getByLabel("Draft status")).toContainText("Recovered");
   await expect(page.getByTestId("counts")).toHaveText("2 beads · 2 colors");
   await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
-  await page.getByLabel("Language").selectOption("zh-CN");
+  await selectChoice(page.getByRole("combobox", { name: "Language", exact: true }), "zh-CN");
   await expect(page.getByRole("link", { name: "我来拼豆" })).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
   await page.reload();
-  await expect(page.getByLabel("界面语言")).toHaveValue("zh-CN");
+  await expect(page.getByRole("combobox", { name: "界面语言", exact: true })).toHaveJSProperty(
+    "value",
+    "zh-CN",
+  );
   await expect(page.getByTestId("counts")).toHaveText("2 颗 · 2 色");
   expect(errors).toEqual([]);
 });

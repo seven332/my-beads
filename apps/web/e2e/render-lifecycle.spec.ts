@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { fitCoordinates } from "./helpers.js";
+import { selectChoice, fitCoordinates } from "./helpers.js";
 
 test("unrelated renders preserve a captured stroke, then keep a text selection and native dialog focus", async ({
   page,
@@ -24,8 +24,8 @@ test("unrelated renders preserve a captured stroke, then keep a text selection a
   await page.mouse.down();
   await expect(page.getByTestId("counts")).toHaveText("1 bead · 1 color");
   // Update the interface without moving focus or releasing the active pointer.
-  await page.locator(".language-picker select").evaluate((element) => {
-    (element as HTMLSelectElement).value = "zh-CN";
+  await page.locator(".language-picker .select-trigger").evaluate((element) => {
+    (element as HTMLButtonElement).value = "zh-CN";
     element.dispatchEvent(new Event("change", { bubbles: true }));
   });
   expect(await canvas.evaluate((element, old) => element === old, original)).toBe(true);
@@ -37,7 +37,7 @@ test("unrelated renders preserve a captured stroke, then keep a text selection a
   await page.mouse.move(cell(1, 0).x, cell(1, 0).y);
   await page.mouse.up();
   await expect(page.getByTestId("counts")).toHaveText("2 颗 · 1 色");
-  await page.locator(".language-picker select").selectOption("en-US");
+  await selectChoice(page.locator(".language-picker .select-trigger"), "en-US");
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
 

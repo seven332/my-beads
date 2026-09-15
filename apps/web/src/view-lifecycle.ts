@@ -7,15 +7,18 @@ import { readCanvasTheme, type CanvasTheme } from "./canvas-theme.js";
 import type { Theme } from "./theme-preference.js";
 import { mountColorArea } from "./color-area.js";
 import { mountColorPickerOverlay } from "./color-picker-overlay.js";
+import { mountSelects } from "./ui/select-controller.js";
 
 export type ViewRefs = ReturnType<typeof createViewLifecycle>["refs"];
 
 /** Refs identify nodes; resource effects run only after synchronous render inserts them. */
 export function createViewLifecycle(
+  host: HTMLElement,
   actions: CanvasActions,
   pickColor: (saturation: number, brightness: number) => void,
   dismissColorPicker: (restoreFocus: boolean) => void,
 ) {
+  const selects = mountSelects(host);
   const refs = {
     canvas: createRef<HTMLCanvasElement>(),
     imageDialog: createRef<HTMLDialogElement>(),
@@ -98,7 +101,10 @@ export function createViewLifecycle(
             : undefined;
       }
       if (picker) {
-        if (picker.compact !== model.colorPicker.compact) colorArea?.controller.cancel();
+        if (picker.compact !== model.colorPicker.compact) {
+          selects.close();
+          colorArea?.controller.cancel();
+        }
         picker.compact = model.colorPicker.compact;
         picker.controller.sync(picker.compact);
       }
@@ -136,6 +142,7 @@ export function createViewLifecycle(
       );
       for (const dialog of previous) if (!dialogs.includes(dialog)) dialog.close();
       for (const dialog of dialogs) if (!dialog.open) dialog.showModal();
+      selects.sync();
       for (const element of previews.keys())
         if (element !== refs.sourcePreview.value && element !== refs.mappedPreview.value)
           previews.delete(element);
@@ -143,6 +150,7 @@ export function createViewLifecycle(
       paint(refs.mappedPreview.value, image?.mapped?.grid, true);
     },
     destroy() {
+      selects.destroy();
       colorArea?.controller.destroy();
       colorArea = undefined;
       picker?.controller.destroy();
