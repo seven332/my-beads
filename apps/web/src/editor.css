@@ -539,9 +539,8 @@
   }
   .history-controls {
     margin: 0;
-    padding: 0 0 0 5px;
+    padding: 0;
     border-top: 0;
-    border-left: 1px solid var(--ui-divider);
     align-items: center;
   }
   .history-controls button {
@@ -605,9 +604,9 @@
   }
   .editor-dock .editor-navigation {
     align-self: stretch;
-    justify-content: flex-start;
+    justify-content: space-between;
     padding: 6px 0 0;
-    gap: 6px;
+    gap: 8px;
     border-top: 1px solid var(--ui-divider);
   }
   .editor-navigation button {
@@ -615,8 +614,8 @@
     padding: 7px 6px;
   }
   .zoom-controls {
-    margin-left: auto;
-    padding-left: 4px;
+    padding-left: 0;
+    border-left: 0;
     gap: 1px;
   }
   .zoom-controls output {
