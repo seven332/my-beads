@@ -257,12 +257,14 @@ it("preserves image form drafts within a session and closes and replaces native 
   const signal = new AbortController().signal;
   await app.store.set(loadImage$, { name: "first.png", read }, signal);
   const first = host.querySelector<HTMLDialogElement>(".image-dialog")!;
+  expect(first.querySelector('[name="series"]')).toBeNull();
   input('dialog [name="columns"]', "7");
-  input('dialog [name="series"]', "H");
+  input('dialog [name="alpha"]', "64");
   first.querySelector<HTMLInputElement>('[name="unique"]')!.click();
   app.store.set(selectLocale$, "zh-CN");
   expect(first.querySelector<HTMLInputElement>('[name="columns"]')!.value).toBe("7");
-  expect(first.querySelector<HTMLInputElement>('[name="series"]')!.value).toBe("H");
+  expect(first.querySelector<HTMLInputElement>('[name="alpha"]')!.value).toBe("64");
+  expect(first.querySelector('[name="series"]')).toBeNull();
   expect(first.querySelector<HTMLInputElement>('[name="unique"]')!.checked).toBe(true);
   expect(show).toHaveBeenCalledOnce();
   await app.store.set(loadImage$, { name: "second.png", read }, signal);
@@ -271,7 +273,7 @@ it("preserves image form drafts within a session and closes and replaces native 
   expect(first.open).toBe(false);
   expect(second.open).toBe(true);
   expect(second.querySelector<HTMLInputElement>('[name="columns"]')!.value).toBe("50");
-  expect(second.querySelector<HTMLInputElement>('[name="series"]')!.value).toBe("");
+  expect(second.querySelector<HTMLInputElement>('[name="alpha"]')!.value).toBe("128");
   expect(second.querySelector<HTMLInputElement>('[name="unique"]')!.checked).toBe(false);
   expect(show).toHaveBeenCalledTimes(2);
   expect(close).toHaveBeenCalledOnce();

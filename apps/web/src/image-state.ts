@@ -12,7 +12,7 @@ import {
 } from "@my-beads/core";
 import { documentRevision$, editor$, replaceIfCurrent$ } from "./state.js";
 
-export interface ImageOptions extends SamplingOptions, MatchOptions {}
+export interface ImageOptions extends SamplingOptions, Omit<MatchOptions, "series"> {}
 export interface ImageSession {
   id: number;
   name: string;
@@ -84,7 +84,6 @@ export const loadImage$ = command(
       alpha: 128,
       includeNeutral: false,
       unique: false,
-      series: [],
     };
     set(imageTokenState$, token);
     set(sessionState$, {

@@ -446,6 +446,9 @@ only RGBA data leaves the adapter. Core `image-import.ts` samples cell centers,
 applies the alpha rule, counts source colors and reuses the shared color matcher.
 Manual overrides reserve candidates for distinct assignment. Sampling, source-color
 and raster limits bound the work; general photo quantization is not implicit.
+Web image import always offers the complete MARD 221 candidate palette, with
+chroma and distinct-assignment controls plus per-color overrides. Series filtering
+remains available in the shared core and CLI color-matching tool.
 
 `image-state.ts` owns a separate preview session and its original document revision.
 Its async command accepts an image-source IO boundary and an AbortSignal. A new

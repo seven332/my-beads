@@ -92,9 +92,6 @@ export function imageView(
               alpha: Number(data.get("alpha")),
               includeNeutral: !data.has("chroma"),
               unique: data.has("unique"),
-              series: String(data.get("series") ?? "")
-                .split(/[\s,]+/)
-                .filter(Boolean),
             });
           }}
         >
@@ -129,14 +126,6 @@ export function imageView(
                 ($) => $.image.unique,
               )}</label
             >
-            <label class="m-0 grid gap-1.5 text-caption text-label"
-              ><span>${t(($) => $.image.series)}</span
-              ><input
-                class="w-full text-ui"
-                name="series"
-                placeholder=${t(($) => $.image.seriesPlaceholder)}
-                .defaultValue=${options.series?.join(", ") ?? ""}
-            /></label>
             ${button(
               t(($) => $.image.update),
               { type: "submit", disabled: !session.pixels },
