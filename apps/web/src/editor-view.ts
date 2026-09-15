@@ -41,6 +41,7 @@ export function editorView(
     class="editor-layout"
     aria-label=${t(($) => $.app.workspace)}
     data-palette-open=${String(model.paletteOpen)}
+    data-picker-sheet=${String(model.colorPicker.open && model.colorPicker.compact)}
   >
     <div class="canvas-container">
       <canvas
@@ -217,7 +218,6 @@ export function editorView(
       class="palette-panel floating-panel"
       id="editor-palette"
       aria-label=${t(($) => $.palette.heading)}
-      data-picker-open=${String(model.colorPicker.open)}
       data-canvas-panel
     >
       <div class="section-heading">
@@ -249,11 +249,17 @@ export function editorView(
           { pressed: model.paletteView === "all", onClick: () => actions.paletteView("all") },
         )}
       </div>
+      ${model.paletteView === "all" ? colorSearch(model, actions, refs, t) : nothing}
       ${model.paletteView === "all"
-        ? colorSearch(model, actions, refs.colorArea, refs.colorHue, t)
-        : nothing}
-      ${model.paletteView === "all"
-        ? paletteResults(model.paletteSearch, model.color, model.document.counts, actions.color, t)
+        ? model.colorPicker.open && model.colorPicker.compact
+          ? nothing
+          : paletteResults(
+              model.paletteSearch,
+              model.color,
+              model.document.counts,
+              actions.color,
+              t,
+            )
         : usedColors(model, actions.color, actions.highlight, t)}
     </aside>
     <div class="editor-status floating-panel" data-canvas-panel>

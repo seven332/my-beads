@@ -113,7 +113,12 @@ it("keeps unfinished/invalid numeric text until commit and isolates independent 
     store.set(commitColorChannel$, "hue", "hsb");
     expect(store.get(colorPicker$).color?.fields.hue).toBe("120");
   }
-  expect(other.get(colorPicker$)).toEqual({ open: false, format: "hex", color: null });
+  expect(other.get(colorPicker$)).toEqual({
+    open: false,
+    compact: false,
+    format: "hex",
+    color: null,
+  });
   expect(other.get(paletteQuery$)).toBe("");
 });
 
@@ -193,6 +198,13 @@ it("preserves HSL saturation intent at white and black across mode changes", () 
 let app: ReturnType<typeof mountApp> | undefined;
 let host: HTMLElement | undefined;
 function mounted() {
+  for (const method of ["show", "showModal", "close"] as const)
+    Object.defineProperty(HTMLDialogElement.prototype, method, {
+      configurable: true,
+      value(this: HTMLDialogElement) {
+        this.open = method !== "close";
+      },
+    });
   vi.spyOn(navigator, "languages", "get").mockReturnValue(["en-US"]);
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
   vi.stubGlobal(
@@ -223,6 +235,8 @@ afterEach(() => {
   host = undefined;
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  for (const method of ["show", "showModal", "close"])
+    Reflect.deleteProperty(HTMLDialogElement.prototype, method);
 });
 function input(element: HTMLInputElement, value: string) {
   element.value = value;

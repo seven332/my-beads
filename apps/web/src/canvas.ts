@@ -122,6 +122,7 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
   function key(event: KeyboardEvent) {
     if (
       !model ||
+      model.colorPicker.open ||
       event.defaultPrevented ||
       composing(event) ||
       event.ctrlKey ||

@@ -25,7 +25,7 @@
       "brightness": "明度",
       "lightness": "亮度"
     },
-    "help": "点击下方的 MARD 推荐色即可使用。"
+    "help": "点击匹配的 MARD 色号即可使用。"
   },
   "appearance": {
     "label": "外观",

@@ -25,7 +25,7 @@
       "brightness": "B",
       "lightness": "L"
     },
-    "help": "Choose a MARD match below to use it."
+    "help": "Choose a MARD match to use it."
   },
   "appearance": {
     "label": "Appearance",

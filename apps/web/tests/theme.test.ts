@@ -25,7 +25,10 @@ function systemMedia(dark = false) {
     addListener() {},
     removeListener() {},
   });
-  vi.spyOn(window, "matchMedia").mockReturnValue(media);
+  const matchMedia = window.matchMedia.bind(window);
+  vi.spyOn(window, "matchMedia").mockImplementation((query) =>
+    query === media.media ? media : matchMedia(query),
+  );
   return {
     media,
     change(value: boolean) {

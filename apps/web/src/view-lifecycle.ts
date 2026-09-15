@@ -6,6 +6,7 @@ import type { ImageSession } from "./image-state.js";
 import { readCanvasTheme, type CanvasTheme } from "./canvas-theme.js";
 import type { Theme } from "./theme-preference.js";
 import { mountColorArea } from "./color-area.js";
+import { mountColorPickerOverlay } from "./color-picker-overlay.js";
 
 export type ViewRefs = ReturnType<typeof createViewLifecycle>["refs"];
 
@@ -13,6 +14,7 @@ export type ViewRefs = ReturnType<typeof createViewLifecycle>["refs"];
 export function createViewLifecycle(
   actions: CanvasActions,
   pickColor: (saturation: number, brightness: number) => void,
+  dismissColorPicker: (restoreFocus: boolean) => void,
 ) {
   const refs = {
     canvas: createRef<HTMLCanvasElement>(),
@@ -23,6 +25,8 @@ export function createViewLifecycle(
     mappedPreview: createRef<HTMLCanvasElement>(),
     colorArea: createRef<HTMLElement>(),
     colorHue: createRef<HTMLInputElement>(),
+    colorSearch: createRef<HTMLElement>(),
+    colorDialog: createRef<HTMLDialogElement>(),
   };
   let canvas:
     | {
@@ -33,6 +37,13 @@ export function createViewLifecycle(
       }
     | undefined;
   let dialogs: HTMLDialogElement[] = [];
+  let picker:
+    | {
+        element: HTMLDialogElement;
+        compact: boolean;
+        controller: ReturnType<typeof mountColorPickerOverlay>;
+      }
+    | undefined;
   let colorArea:
     | { element: HTMLElement; hue: HTMLInputElement; controller: ReturnType<typeof mountColorArea> }
     | undefined;
@@ -71,6 +82,26 @@ export function createViewLifecycle(
       canvas?.controller.holdPan(held);
     },
     sync(model: EditorModel, image: ImageSession | null, theme: Theme) {
+      if (picker?.element !== refs.colorDialog.value) {
+        picker?.controller.destroy();
+        picker =
+          refs.colorDialog.value && refs.colorSearch.value
+            ? {
+                element: refs.colorDialog.value,
+                compact: model.colorPicker.compact,
+                controller: mountColorPickerOverlay(
+                  refs.colorDialog.value,
+                  refs.colorSearch.value,
+                  dismissColorPicker,
+                ),
+              }
+            : undefined;
+      }
+      if (picker) {
+        if (picker.compact !== model.colorPicker.compact) colorArea?.controller.cancel();
+        picker.compact = model.colorPicker.compact;
+        picker.controller.sync(picker.compact);
+      }
       if (colorArea?.element !== refs.colorArea.value || colorArea?.hue !== refs.colorHue.value) {
         colorArea?.controller.destroy();
         colorArea =
@@ -114,6 +145,8 @@ export function createViewLifecycle(
     destroy() {
       colorArea?.controller.destroy();
       colorArea = undefined;
+      picker?.controller.destroy();
+      picker = undefined;
       releaseCanvas();
       for (const dialog of dialogs) dialog.close();
       dialogs = [];
