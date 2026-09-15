@@ -92,6 +92,37 @@ for (const tool of ["Pencil", "Eraser"]) {
   });
 }
 
+test("a middle-button Canvas gesture dismisses the menu before Canvas can start panning", async ({
+  page,
+}) => {
+  await create(page);
+  const { cell } = await fitCoordinates(page, 50, 50);
+  const point = cell(10, 10);
+  const canvas = page.locator(".pattern-canvas");
+  await canvas.evaluate((node) => {
+    node.setAttribute("data-received-downs", "0");
+    node.addEventListener("pointerdown", () => {
+      node.setAttribute(
+        "data-received-downs",
+        String(Number(node.getAttribute("data-received-downs")) + 1),
+      );
+    });
+  });
+  const trigger = page.getByRole("combobox", { name: "Appearance" });
+  await trigger.click();
+  await page.mouse.move(point.x, point.y);
+  await page.mouse.down({ button: "middle" });
+  await page.mouse.move(point.x + 25, point.y + 20);
+  await page.mouse.up({ button: "middle" });
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  await expect(canvas).toHaveAttribute("data-received-downs", "0");
+  await expect(trigger).toBeFocused();
+  await page.mouse.down({ button: "middle" });
+  await page.mouse.up({ button: "middle" });
+  await expect(canvas).toHaveAttribute("data-received-downs", "1");
+  await expect(canvas).toBeFocused();
+});
+
 test("outside controls retain their actions and navigation removes open menus", async ({
   page,
 }) => {

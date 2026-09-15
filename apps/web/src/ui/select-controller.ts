@@ -124,7 +124,7 @@ export function mountSelects(host: HTMLElement) {
   }
 
   function pointerdown(event: PointerEvent) {
-    if (!menu || event.button !== 0 || !(event.target instanceof Element)) return;
+    if (!menu || !(event.target instanceof Element)) return;
     if (menu.root.contains(event.target)) return;
     const canvasOrBackdrop =
       event.target.closest(".canvas-container") || event.target.matches("dialog");
