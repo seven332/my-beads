@@ -317,32 +317,32 @@ it("coalesces numeric drafts, keeps the old preview and refreshes checkbox chang
 });
 
 it("does not carry scheduled settings across canceled, replaced or destroyed image sessions", async () => {
-  vi.useFakeTimers();
-  try {
-    const read = async () => ({ width: 1, height: 1, data: new Uint8ClampedArray([0, 0, 0, 255]) });
-    const signal = new AbortController().signal;
-    await app.store.set(loadImage$, { name: "Old.png", read }, signal);
-    input('dialog [name="columns"]', "7");
-    click(".image-footer button");
-    expect(app.store.get(imageSession$)).toBeNull();
-    await app.store.set(loadImage$, { name: "Next.png", read }, signal);
-    input('dialog [name="columns"]', "9");
-    await app.store.set(loadImage$, { name: "Final.png", read }, signal);
-    const initial = app.store.get(imageSession$);
-    await vi.advanceTimersByTimeAsync(200);
-    expect(app.store.get(imageSession$)).toEqual(initial);
-    input('dialog [name="columns"]', "3");
-    input('dialog [name="rows"]', "1");
-    await vi.advanceTimersByTimeAsync(200);
-    expect(app.store.get(imageSession$)?.preview?.mapped.grid).toEqual([["H7", "H7", "H7"]]);
-    expect(app.store.get(imageSession$)?.name).toBe("Final.png");
-    input('dialog [name="columns"]', "8");
-    const pending = app.store.get(imageSession$);
-    app.destroy();
-    await vi.advanceTimersByTimeAsync(200);
-    expect(host.childElementCount).toBe(0);
-    expect(app.store.get(imageSession$)).toEqual(pending);
-  } finally {
-    vi.useRealTimers();
-  }
+  const read = async () => ({ width: 1, height: 1, data: new Uint8ClampedArray([0, 0, 0, 255]) });
+  const signal = new AbortController().signal;
+  await app.store.set(loadImage$, { name: "Old.png", read }, signal);
+  input('dialog [name="columns"]', "7");
+  click(".image-footer button");
+  expect(app.store.get(imageSession$)).toBeNull();
+  await app.store.set(loadImage$, { name: "Next.png", read }, signal);
+  input('dialog [name="columns"]', "9");
+  await app.store.set(loadImage$, { name: "Final.png", read }, signal);
+  input('dialog [name="columns"]', "3");
+  input('dialog [name="rows"]', "1");
+  await vi.waitFor(() =>
+    expect(app.store.get(imageSession$)?.preview?.mapped.grid).toEqual([["H7", "H7", "H7"]]),
+  );
+  expect(app.store.get(imageSession$)?.name).toBe("Final.png");
+  input('dialog [name="columns"]', "8");
+  const previous = app;
+  const pending = previous.store.get(imageSession$);
+  previous.destroy();
+  expect(host.childElementCount).toBe(0);
+  app = mountApp(host, { storage: () => undefined });
+  await app.store.set(loadImage$, { name: "Remounted.png", read }, signal);
+  input('dialog [name="columns"]', "2");
+  input('dialog [name="rows"]', "1");
+  await vi.waitFor(() =>
+    expect(app.store.get(imageSession$)?.preview?.mapped.grid).toEqual([["H7", "H7"]]),
+  );
+  expect(previous.store.get(imageSession$)).toEqual(pending);
 });
