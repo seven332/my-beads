@@ -47,16 +47,29 @@ labels. The view compares the source swatch and explained suggestions. Only expl
 color selection dispatches the existing color command; search does not change the
 document, selected color or history. No search results are persisted.
 
-`color-picker-view.ts` shares the text search with an expandable Figma-inspired
-target-color picker inside the existing floating palette. The swatch opens a
+`color-picker-view.ts` separates the text search/trigger from a Figma-inspired
+target-color picker outside the floating palette's clipping ancestor. The swatch opens a
 saturation/brightness area, a native hue range and a format menu for HEX (default),
 RGB, HSL and HSB. HEX accepts three/six digits with an optional hash; RGB accepts
 integer channels from 0 to 255. HSL/HSB use degrees and percentages. The native
-select and value fields provide keyboard access alongside the pointer-only area. Opening and
-closing focus the hue control and swatch respectively, scrolling them into view;
-Escape closes the picker before the mobile palette. Switching views or navigating
-away closes it. An expanded picker and its results share the panel's contained
-scroll area, including narrow and short viewports.
+select and value fields provide keyboard access alongside the pointer-only area.
+`color-picker-overlay.ts` owns a native dialog: non-modal on desktop, positioned
+to the left of the palette and clamped to the viewport; modal as a bottom sheet
+in the existing compact layout (width <=900px or height <=600px). A mount-owned
+media query updates transient presentation state. The same picker controls survive
+modality changes. Only compact mode renders results inside the sheet, with the
+background palette/dock hidden. Desktop results retain their bounds and scroll
+position when the picker toggles. Sheet contents scroll under a stable heading;
+visual viewport changes update available space without changing Canvas pan/zoom.
+
+Opening focuses hue without scrolling. Explicit close/Escape restores the swatch;
+on compact screens it first restores the palette. Selecting a MARD result closes
+the picker and focuses Canvas; compact selection also closes the palette. Desktop
+palette interactions remain available while outside controls dismiss without
+stealing their focus. A dismissing Canvas pointerdown is consumed before it can
+begin a stroke; a modal backdrop dismisses back to the palette. Switching palette
+views, navigating, opening export/help or explicitly fitting closes the picker.
+The app suspends editor shortcuts during the picker task.
 
 `color-picker.ts` converts sRGB HEX, RGB, HSV (HSB) and HSL. Keep HSV intent separately
 from the rounded search HEX: neutral colors preserve hue and black preserves
@@ -73,6 +86,10 @@ Starting a color-area gesture focuses its native hue control without scrolling,
 so subsequent keys cannot edit a previously focused Canvas or activate its tools.
 Field blur commits carry their originating format; closed pickers and replaced
 formats ignore stale blur events to avoid nested rendering during removal in Chrome.
+Native modality changes can move focus during close/show, so the presentation
+controller marks that transition and field blur preserves unfinished values then.
+The lifecycle cancels active color-area capture before switching modality and
+disposes dialog observers/listeners on removal or app teardown.
 The format menu binds selection on its options so a newly mounted picker restores
 the current mode after its options are inserted.
 The existing view lifecycle retains this area across updates and disposes it on

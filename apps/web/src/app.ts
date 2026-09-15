@@ -23,6 +23,7 @@ import {
   pickColor$,
   editColorChannel$,
   commitColorChannel$,
+  setPickerCompact$,
 } from "./palette-state.js";
 
 /** One mount owns the store, watcher, imports, Canvas resources and download URLs. */
@@ -55,6 +56,11 @@ export function mountApp(
     ),
   );
   const lifetime = new AbortController();
+  const pickerMedia = window.matchMedia("(max-width: 900px), (max-height: 600px)");
+  store.set(setPickerCompact$, pickerMedia.matches);
+  pickerMedia.addEventListener("change", () => store.set(setPickerCompact$, pickerMedia.matches), {
+    signal: lifetime.signal,
+  });
   let importController: AbortController | undefined;
   let exportController: AbortController | undefined;
   let helpInvoker: HTMLElement | null = null;
@@ -87,6 +93,7 @@ export function mountApp(
     drafts.flush();
   }
   function fit() {
+    store.set(showColorPicker$, false);
     if (paletteIsOverlay(host)) store.set(state.showPalette$, false);
     const area = editingArea(host);
     if (area) store.set(state.fitViewport$, area.width, area.height, area);
@@ -107,6 +114,13 @@ export function mountApp(
   function focusPage(selector: string) {
     host.scrollIntoView({ block: "start", behavior: "instant" });
     host.querySelector<HTMLElement>(selector)?.focus({ preventScroll: true });
+  }
+  function dismissColorPicker(restoreFocus: boolean) {
+    const picker = store.get(state.editor$).colorPicker;
+    if (restoreFocus && picker.compact) store.set(state.showPalette$, true);
+    store.set(showColorPicker$, false);
+    if (restoreFocus)
+      host.querySelector<HTMLElement>(".color-picker-toggle")?.focus({ preventScroll: true });
   }
   function created() {
     fit();
@@ -136,6 +150,7 @@ export function mountApp(
         host.querySelector<HTMLCanvasElement>(".pattern-canvas")?.focus({ preventScroll: true });
     },
     fitHighlight: () => {
+      store.set(showColorPicker$, false);
       if (paletteIsOverlay(host)) store.set(state.showPalette$, false);
       const area = editingArea(host);
       if (area) store.set(state.fitHighlightedColor$, area);
@@ -144,6 +159,7 @@ export function mountApp(
       if (store.get(state.workflow$).page !== "edit") return;
       helpInvoker =
         invoker ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+      store.set(showColorPicker$, false);
       store.set(state.showKeyboardHelp$, true);
     },
     closeKeyboardHelp: () => {
@@ -166,7 +182,10 @@ export function mountApp(
       store.set(state.showEditor$);
       focusPage(".title-input");
     },
-    openExport: () => store.set(exports.openExport$),
+    openExport: () => {
+      store.set(showColorPicker$, false);
+      store.set(exports.openExport$);
+    },
     closeExport,
     exportFormat: (format) => store.set(exports.selectExportFormat$, format),
     exportSize: (field, value) => store.set(exports.changeExportSize$, field, value),
@@ -179,11 +198,20 @@ export function mountApp(
       }
     },
     tool: (tool) => store.set(state.chooseTool$, tool),
-    color: (code) => store.set(state.chooseColor$, code),
+    color: (code) => {
+      const picker = store.get(state.editor$).colorPicker;
+      store.set(state.chooseColor$, code);
+      if (picker.open) {
+        dismissColorPicker(false);
+        if (picker.compact) store.set(state.showPalette$, false);
+        host.querySelector<HTMLElement>(".pattern-canvas")?.focus({ preventScroll: true });
+      }
+    },
     search: (value) => store.set(state.searchPalette$, value),
     colorPicker: (open) => {
-      store.set(showColorPicker$, open, defaultPalette.colors[store.get(state.editor$).color]);
-      host.querySelector<HTMLElement>(open ? ".color-hue" : ".color-picker-toggle")?.focus();
+      if (open)
+        store.set(showColorPicker$, true, defaultPalette.colors[store.get(state.editor$).color]);
+      else dismissColorPicker(true);
     },
     pickColor: (update) => store.set(pickColor$, update),
     colorFormat: (format) => store.set(selectColorFormat$, format),
@@ -288,13 +316,15 @@ export function mountApp(
       zoom: (factor, anchor) => store.set(state.zoom$, factor, anchor),
     },
     (saturation, brightness) => store.set(pickColor$, { saturation, brightness }),
+    dismissColorPicker,
   );
   const keyboard = mountKeyboard(root, {
     enabled: () =>
       store.get(state.workflow$).page === "edit" &&
       !store.get(exports.exportSettings$).open &&
       !store.get(images.imageSession$) &&
-      !store.get(state.editor$).keyboardHelpOpen,
+      !store.get(state.editor$).keyboardHelpOpen &&
+      !store.get(state.editor$).colorPicker.open,
     interacting: lifecycle.interacting,
     pan: lifecycle.holdPan,
     run: {
@@ -365,11 +395,7 @@ export function mountApp(
       store.get(images.imageSession$)
     )
       return;
-    if (
-      event.key === "Escape" &&
-      store.get(state.editor$).colorPicker.open &&
-      (paletteEscape || target.closest(".palette-panel"))
-    ) {
+    if (event.key === "Escape" && store.get(state.editor$).colorPicker.open) {
       event.preventDefault();
       actions.colorPicker(false);
       return;

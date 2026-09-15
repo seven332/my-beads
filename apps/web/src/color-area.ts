@@ -47,6 +47,7 @@ export function mountColorArea(
   window.addEventListener("blur", cancel);
   document.addEventListener("visibilitychange", visibility);
   return {
+    cancel,
     destroy() {
       cancel();
       element.removeEventListener("pointerdown", down);

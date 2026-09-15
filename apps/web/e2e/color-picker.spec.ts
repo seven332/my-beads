@@ -1,10 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
 import { openPalette } from "./helpers.js";
 
-async function scene(page: Page) {
+async function scene(page: Page, target?: string) {
   await page.goto("/");
   await page.getByRole("button", { name: "Create blank grid" }).click();
   await openPalette(page);
+  if (target) await page.locator(".palette-search").fill(target);
   await page.getByRole("button", { name: "Open color picker" }).click();
   await expect(page.getByRole("slider", { name: "Adjust hue" })).toBeFocused();
   await expect(page.getByRole("slider", { name: "Adjust hue" })).toBeInViewport({ ratio: 1 });
@@ -153,6 +154,8 @@ test("visual values use the existing explained MARD search and require an explic
   );
   await chroma.click();
   await expect(page.locator(".selected-color strong")).toHaveText("B23");
+  await expect(page.locator(".color-picker")).toHaveCount(0);
+  await page.getByRole("button", { name: "Open color picker" }).click();
   await page.getByLabel("Search colors", { exact: true }).fill("#fff");
   await expect(page.getByRole("spinbutton", { name: "Hue (degrees)", exact: true })).toHaveValue(
     "60",
@@ -281,11 +284,13 @@ for (const [width, height, locale] of [
     await page.getByLabel("Language").selectOption(locale);
     await page.locator(".blank-form button").click();
     await openPalette(page);
-    await page.locator(".color-picker-toggle").click();
     await page.locator(".palette-search").fill("#4c4c40");
     await page
       .getByLabel(locale === "en-US" ? "Appearance" : "外观", { exact: true })
       .selectOption("dark");
+    await page.locator(".color-picker-toggle").click();
+    await expect(page.locator(".palette-panel")).toBeHidden();
+    await expect(page.locator(".editor-dock")).toBeHidden();
     for (const format of ["hex", "rgb", "hsl", "hsb"]) {
       await page.locator(".color-format select").selectOption(format);
       for (const field of await page.locator(".color-channels input").all()) {
@@ -311,7 +316,11 @@ for (const [width, height, locale] of [
       }),
     ).toBe(true);
     await match.click();
-    await expect(match).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".color-picker")).toHaveCount(0);
+    await expect(page.locator(".palette-toggle")).toContainText("B23");
+    await expect(page.locator(".pattern-canvas")).toBeFocused();
+    await openPalette(page);
+    await page.locator(".color-picker-toggle").click();
     await page.locator(".color-picker-close").click();
     await expect(page.locator(".color-picker")).toHaveCount(0);
     await expect(page.locator(".color-picker-toggle")).toBeFocused();
@@ -327,12 +336,22 @@ for (const [width, height, locale] of [
 test.describe("touch color selection", () => {
   test.use({ hasTouch: true, viewport: { width: 390, height: 844 } });
   test("taps pick a target without painting the Canvas", async ({ page }) => {
-    const area = await scene(page);
-    await page.locator(".palette-search").fill("#00ff00");
+    const area = await scene(page, "#00ff00");
     await area.scrollIntoViewIfNeeded();
     const box = (await area.boundingBox())!;
     await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
-    await expect(page.locator(".palette-search")).toHaveValue("#408040");
+    // Touch coordinates are rounded to device pixels; the sheet may have a fractional origin.
+    for (const [name, span] of [
+      ["Saturation (%)", box.width],
+      ["Brightness (%)", box.height],
+    ] as const)
+      await expect
+        .poll(async () =>
+          Math.abs(
+            Number(await page.getByRole("spinbutton", { name, exact: true }).inputValue()) - 50,
+          ),
+        )
+        .toBeLessThanOrEqual(100 / span + 0.05);
     await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
     await expect(page.locator(".palette-toggle")).toContainText("H7");
   });

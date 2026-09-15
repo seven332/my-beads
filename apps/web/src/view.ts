@@ -16,6 +16,7 @@ import { keyboardHelp } from "./keyboard-help.js";
 import { themePicker } from "./theme-view.js";
 import type { ThemePreference } from "./theme-preference.js";
 import type { Hsv, ColorChannel, ColorFormat } from "./color-picker.js";
+import { colorPicker } from "./color-picker-view.js";
 
 export interface Actions extends ImageActions, CreateActions, ExportActions {
   tool(tool: Tool): void;
@@ -116,6 +117,7 @@ export function view(
           </footer>
         `
       : editorView(model, actions, refs, t, brand, preferences, status, exports.open)}
+    ${flow.page === "edit" ? colorPicker(model, actions, refs, t) : nothing}
     ${imageView(image, actions, t, refs)}${exportView(
       model,
       exports,

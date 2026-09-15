@@ -23,6 +23,10 @@ function pickerColor(hsv: Hsv, format: ColorFormat, whiteSaturation = 100) {
 }
 const searchState$ = state("");
 const pickerOpenState$ = state(false);
+const pickerCompactState$ = state(false);
+export const setPickerCompact$ = command(({ set }, compact: boolean) => {
+  set(pickerCompactState$, compact);
+});
 const pickerFormatState$ = state<ColorFormat>("hex");
 const pickerColorState$ = state<ReturnType<typeof pickerColor> | null>(null);
 export const paletteQuery$ = computed((get) => get(searchState$));
@@ -31,6 +35,7 @@ export const colorPicker$ = computed((get) => {
   const color = get(pickerColorState$);
   return {
     open: get(pickerOpenState$),
+    compact: get(pickerCompactState$),
     format: get(pickerFormatState$),
     color: color
       ? {
