@@ -34,7 +34,7 @@ export function mountColorPickerOverlay(
     dialog.style.top = `${Math.max(top + 12, y)}px`;
   }
   function outside(event: PointerEvent) {
-    if (!event.isPrimary || event.button !== 0 || !dialog.open) return;
+    if (event.button !== 0 || !dialog.open) return;
     const target = event.target;
     if (!(target instanceof Element)) return;
     const bounds = dialog.getBoundingClientRect();
@@ -50,8 +50,9 @@ export function mountColorPickerOverlay(
     if (backdrop || target.closest(".canvas-container")) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      dismiss(true);
-    } else dismiss(false);
+      // A second touch must not reach Canvas or interrupt the active picker gesture.
+      if (event.isPrimary) dismiss(true);
+    } else if (event.isPrimary) dismiss(false);
   }
   const observer = new ResizeObserver(position);
   observer.observe(dialog);

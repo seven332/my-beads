@@ -83,6 +83,62 @@ for (const tool of ["Pencil", "Eraser"]) {
   });
 }
 
+test.describe("simultaneous touches", () => {
+  test.use({ hasTouch: true });
+  for (const tool of ["Pencil", "Eraser"]) {
+    test(`a secondary Canvas touch cannot use ${tool} or interrupt the picker drag`, async ({
+      page,
+      context,
+      browserName,
+    }) => {
+      test.skip(browserName !== "chromium", "Native multi-touch injection requires Chromium CDP.");
+      await create(page);
+      const coordinates = await fitCoordinates(page, 50, 50);
+      const point = coordinates.cell(10, 10);
+      const second = { x: Math.round(point.x), y: Math.round(point.y), id: 2 };
+      if (tool === "Eraser") await page.touchscreen.tap(second.x, second.y);
+      await page.getByRole("button", { name: tool, exact: true }).click();
+      const before = await page.getByTestId("counts").textContent();
+      await open(page);
+      await page.getByLabel("Hex color", { exact: true }).fill("00ff00");
+      const area = (await page.locator(".color-area").boundingBox())!;
+      const first = {
+        x: Math.round(area.x + area.width / 2),
+        y: Math.round(area.y + area.height / 2),
+        id: 1,
+      };
+      const session = await context.newCDPSession(page);
+      try {
+        await session.send("Input.dispatchTouchEvent", {
+          type: "touchStart",
+          touchPoints: [first],
+        });
+        const target = await page.locator(".palette-search").inputValue();
+        await session.send("Input.dispatchTouchEvent", {
+          type: "touchStart",
+          touchPoints: [first, second],
+        });
+        await expect(page.getByTestId("counts")).toHaveText(before!);
+        await expect(page.locator(".color-picker")).toBeVisible();
+        await session.send("Input.dispatchTouchEvent", {
+          type: "touchMove",
+          touchPoints: [{ ...first, x: Math.round(area.x + area.width - 1) }, second],
+        });
+        await expect(page.locator(".palette-search")).not.toHaveValue(target);
+        await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        await expect(page.getByTestId("counts")).toHaveText(before!);
+        await page.keyboard.press("Escape");
+        await page.touchscreen.tap(second.x, second.y);
+        await expect(page.getByTestId("counts")).toHaveText(
+          tool === "Pencil" ? "1 bead · 1 color" : "0 beads · 0 colors",
+        );
+      } finally {
+        await session.detach();
+      }
+    });
+  }
+});
+
 test("outside control keeps its focus and action, while explicit Fit closes without focus theft", async ({
   page,
 }) => {
