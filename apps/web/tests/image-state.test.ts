@@ -17,7 +17,7 @@ import {
   importCsv$,
   rename$,
 } from "../src/state.js";
-import type { RgbaImage } from "@my-beads/core";
+import { defaultPalette, type RgbaImage } from "@my-beads/core";
 
 const pixels: RgbaImage = {
   width: 2,
@@ -40,20 +40,30 @@ it("keeps Apply disabled when settings change during decoding", async () => {
   store.set(updateImage$, { columns: 2, rows: 1, alpha: 128 });
   expect(store.set(applyImage$)).toBe(true);
 });
-it("previews and overrides without changing the document until Apply", async () => {
+it("uses the full palette for previews and cross-prefix overrides without editing until Apply", async () => {
   const store = createStore(),
     signal = new AbortController().signal;
   store.set(newDocument$, 2, 1);
   await store.set(loadImage$, { name: "Beads.png", read: async () => pixels }, signal);
   expect(store.get(editor$).beads).toBe(0);
   expect(store.get(imageSession$)?.mapped?.grid).toEqual([["H7", "H2"]]);
+  expect(store.get(imageSession$)?.mapped?.candidates).toEqual(
+    Object.entries(defaultPalette.colors),
+  );
   store.set(changeImageSettings$);
   expect(store.set(applyImage$)).toBe(false);
   store.set(updateImage$, { columns: 2, rows: 1, alpha: 128 });
-  store.set(overrideImage$, "#FFFFFF", "H5");
+  expect(store.get(imageSession$)?.mapped?.candidates).toEqual(
+    Object.entries(defaultPalette.colors),
+  );
+  store.set(overrideImage$, "#FFFFFF", "B15");
+  expect(store.get(imageSession$)?.mapped?.grid).toEqual([["H7", "B15"]]);
+  store.set(overrideImage$, "#FFFFFF", "");
+  expect(store.get(imageSession$)?.mapped?.grid).toEqual([["H7", "H2"]]);
+  store.set(overrideImage$, "#FFFFFF", "B15");
   expect(store.get(editor$).beads).toBe(0);
   expect(store.set(applyImage$)).toBe(true);
-  expect(store.get(editor$).document.grid).toEqual([["H7", "H5"]]);
+  expect(store.get(editor$).document.grid).toEqual([["H7", "B15"]]);
   expect(store.get(editor$).title).toBe("Beads");
   expect(store.get(editor$).canUndo).toBe(false);
   expect(store.get(imageSession$)).toBeNull();

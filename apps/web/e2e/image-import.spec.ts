@@ -69,6 +69,7 @@ test("imports enlarged PNG with explicit sampling, override, edit, exports and d
     .setInputFiles({ name: "Pixel design.png", mimeType: "image/png", buffer: enlargedImage() });
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
+  await expect(dialog.getByLabel("MARD series", { exact: true })).toHaveCount(0);
   await expect(page.getByTestId("counts")).toHaveText("1 bead · 1 color");
   await dialog.getByLabel("Target columns").fill("50");
   await dialog.getByLabel("Target rows").fill("50");
@@ -77,10 +78,15 @@ test("imports enlarged PNG with explicit sampling, override, edit, exports and d
   await expect(
     dialog.getByText("MARD 221 · 50 × 50 cells · 1,750 beads", { exact: true }),
   ).toBeVisible();
+  expect(
+    await dialog
+      .locator("#image-mard-codes option")
+      .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value)),
+  ).toEqual(Object.keys(defaultPalette.colors));
   const white = dialog.getByLabel("Map #FFFFFF", { exact: true });
-  await white.fill("H5");
+  await white.fill("B15");
   await white.press("Tab");
-  await expect(white).toHaveValue("H5");
+  await expect(white).toHaveValue("B15");
   await dialog.getByRole("button", { name: "Apply image" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByTestId("counts")).toHaveText("1,750 beads · 2 colors");
@@ -89,7 +95,7 @@ test("imports enlarged PNG with explicit sampling, override, edit, exports and d
   await page.getByRole("img", { name: "Pattern canvas" }).press("Enter");
   await expect(page.getByTestId("counts")).toHaveText("1,749 beads · 2 colors");
   const expected = Array.from({ length: 50 }, () =>
-    Array.from({ length: 50 }, (_, x) => (x < 20 ? "H7" : x < 35 ? "H5" : null)),
+    Array.from({ length: 50 }, (_, x) => (x < 20 ? "H7" : x < 35 ? "B15" : null)),
   );
   expected[0][0] = null;
   expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual(expected);
@@ -147,9 +153,7 @@ test("cancel and invalid PNG preserve the active document; WebP applies through 
   expect(grid.flat().filter(Boolean).length).toBeGreaterThan(0);
 });
 
-test("invalid settings preserve work and mappings honor series and distinct choices", async ({
-  page,
-}) => {
+test("invalid settings preserve work and mappings honor distinct choices", async ({ page }) => {
   await page.goto("/");
   await csv(page, "H7");
   await startNew(page);
@@ -163,7 +167,6 @@ test("invalid settings preserve work and mappings honor series and distinct choi
   await expect(dialog.getByRole("alert")).toContainText("dimensions");
   await expect(dialog.getByRole("button", { name: "Apply image" })).toBeDisabled();
   await dialog.getByLabel("Target columns").fill("50");
-  await dialog.getByLabel("MARD series").fill("H");
   await dialog.getByLabel("Distinct assignments").check();
   await dialog.getByLabel("Preserve chroma").uncheck();
   await dialog.getByRole("button", { name: "Update preview" }).click();
