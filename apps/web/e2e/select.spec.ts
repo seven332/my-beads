@@ -14,15 +14,38 @@ async function expectAlignedMenu(trigger: Locator, iconOnly = false) {
   const menu = (await popup.boundingBox())!;
   expect(menu.y >= button.y + button.height || menu.y + menu.height <= button.y).toBe(true);
   const icon = (await trigger.locator(".icon").boundingBox())!;
+  if (iconOnly) {
+    expect(button.width).toBe(button.height);
+    expect(menu.width).toBeGreaterThan(button.width * 2);
+    expect(menu.x).toBeLessThanOrEqual(button.x + 1);
+    expect(menu.x + menu.width).toBeGreaterThanOrEqual(button.x + button.width);
+  }
   for (const option of await popup.getByRole("option").all()) {
-    const marker = (await option
-      .locator(iconOnly ? ".icon:first-child" : ".icon:last-child")
-      .boundingBox())!;
-    expect(Math.abs(marker.x + marker.width / 2 - icon.x - icon.width / 2)).toBeLessThan(1);
+    const row = (await option.boundingBox())!;
+    const shape = (element: Element) => {
+      const style = getComputedStyle(element);
+      return [
+        style.borderWidth,
+        style.borderRadius,
+        style.fontSize,
+        style.fontWeight,
+        style.lineHeight,
+      ];
+    };
+    expect(Math.abs(row.height - button.height)).toBeLessThan(1);
+    expect(await option.evaluate(shape)).toEqual(await trigger.evaluate(shape));
     if (!iconOnly) {
+      expect(Math.abs(row.x - button.x)).toBeLessThan(1);
+      expect(Math.abs(row.width - button.width)).toBeLessThan(1);
+      const marker = (await option.locator(".icon:last-child").boundingBox())!;
+      expect(Math.abs(marker.x + marker.width / 2 - icon.x - icon.width / 2)).toBeLessThan(1);
+      expect(Math.abs(marker.y - row.y - (icon.y - button.y))).toBeLessThan(1);
       const label = (await trigger.locator(".select-value").boundingBox())!;
       const text = option.locator(":scope > span");
       expect(Math.abs((await text.boundingBox())!.x - label.x)).toBeLessThan(1);
+      expect(Math.abs((await text.boundingBox())!.y - row.y - (label.y - button.y))).toBeLessThan(
+        1,
+      );
       expect(await text.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
       expect(
         await text.evaluate((node) => {
@@ -31,8 +54,24 @@ async function expectAlignedMenu(trigger: Locator, iconOnly = false) {
           return range.getClientRects().length;
         }),
       ).toBe(1);
+    } else {
+      const leading = (await option.locator(".icon:first-child").boundingBox())!;
+      const label = (await option.locator(":scope > span").boundingBox())!;
+      const check = (await option.locator(".icon:last-child").boundingBox())!;
+      expect(leading.width).toBe(icon.width);
+      expect(label.x).toBeGreaterThan(leading.x + leading.width);
+      expect(check.x).toBeGreaterThan(label.x);
     }
   }
+  const active = popup.locator("[data-active]");
+  await expect(active).toHaveCSS(
+    "border-color",
+    await trigger.evaluate((node) => getComputedStyle(node).borderColor),
+  );
+  await expect(active).toHaveCSS(
+    "background-color",
+    await trigger.evaluate((node) => getComputedStyle(node).backgroundColor),
+  );
   await trigger.press("Escape");
 }
 

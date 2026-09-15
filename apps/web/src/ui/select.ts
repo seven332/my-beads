@@ -18,7 +18,7 @@ export function select<T extends string>(
   change: (value: T) => void,
   options: { name?: string; content?: TemplateResult; title?: string } = {},
 ) {
-  return html`<span class="select-control">
+  return html`<span class="select-control" ?data-icon-only=${!!options.content}>
     <button
       class="select-trigger"
       type="button"

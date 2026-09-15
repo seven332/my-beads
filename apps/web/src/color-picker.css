@@ -116,6 +116,7 @@
 }
 .color-values {
   --select-padding-inline: 6px;
+  --select-padding-block: 6px;
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
   gap: 8px;
@@ -134,11 +135,10 @@
   color: var(--ui-label);
   font-size: 10px;
 }
-.color-values input,
-.color-values .select-trigger {
+.color-values input {
   width: 100%;
   min-width: 0;
-  height: 34px;
+  height: var(--select-size);
   padding: 6px var(--select-padding-inline);
   font-size: 12px;
   color: var(--ui-foreground);

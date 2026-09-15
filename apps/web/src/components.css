@@ -68,7 +68,6 @@ button:hover {
 }
 .language-picker .select-trigger {
   width: auto;
-  padding: 8px var(--select-padding-inline);
 }
 .preferences {
   display: flex;
@@ -77,14 +76,13 @@ button:hover {
   margin-left: auto;
 }
 .appearance-picker {
-  --select-padding-inline: 9px;
   flex-shrink: 0;
 }
 .appearance-picker .select-trigger {
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: var(--select-padding-inline);
+  width: var(--select-size);
+  height: var(--select-size);
+  padding: 8px;
 }
 .appearance-picker .select-trigger > .icon {
   width: 16px;

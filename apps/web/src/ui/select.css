@@ -1,24 +1,40 @@
+.select-control,
+.color-values {
+  --select-size: 36px;
+}
 .select-control {
   display: inline-flex;
   min-width: 0;
   max-width: 100%;
 }
-.select-trigger {
-  display: inline-flex;
+.select-trigger,
+.select-option {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   width: 100%;
   min-width: 0;
-  min-height: 36px;
-  padding-inline: var(--select-padding-inline, 12px);
+  min-height: var(--select-size);
+  padding: var(--select-padding-block, 8px) var(--select-padding-inline, 12px);
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: var(--ui-foreground);
   text-align: left;
+  font-size: 12px;
   font-weight: 500;
+  line-height: 1.4;
 }
-.select-trigger:hover,
-.select-trigger[aria-expanded="true"] {
+.select-trigger {
+  border-color: var(--ui-control-border);
+}
+.select-trigger:hover {
   background: var(--ui-control-hover);
   border-color: var(--ui-control-hover-border);
+}
+.select-trigger[aria-expanded="true"] {
+  background: var(--ui-selection);
+  border-color: var(--ui-selection-border);
 }
 .select-trigger > .icon {
   flex-shrink: 0;
@@ -62,15 +78,14 @@
   white-space: normal;
 }
 .select-option {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 38px;
-  padding: 8px var(--select-padding-inline, 12px);
-  border-radius: 5px;
   cursor: pointer;
   overflow-wrap: anywhere;
+}
+.select-control[data-icon-only] .select-menu {
+  width: 160px;
+}
+.select-control[data-icon-only] .select-option {
+  padding-inline: 12px;
 }
 .select-option > span {
   flex: 1;
@@ -82,8 +97,7 @@
   background: var(--ui-selection);
 }
 .select-option[data-active] {
-  outline: 1px solid var(--ui-selection-border);
-  outline-offset: -1px;
+  border-color: var(--ui-selection-border);
 }
 .select-option > .icon:last-child {
   flex-shrink: 0;
@@ -95,7 +109,8 @@
   visibility: visible;
 }
 @media (pointer: coarse), (max-width: 900px), (max-height: 600px) {
-  .select-option {
-    min-height: 44px;
+  .select-control,
+  .color-values {
+    --select-size: 44px;
   }
 }

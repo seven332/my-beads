@@ -174,10 +174,12 @@ Combobox focus is excluded from editor shortcuts. Preventing option `mousedown`
 keeps focus stable without suppressing WebKit's touch-generated click.
 
 Text controls reserve the widest choice's label width without exposing duplicate
-labels to assistive technology. Menu rows share the trigger's horizontal padding
-and icon columns; the popup's outer padding extends around those columns. Appearance
-choices use matching leading icons, and the icon-only trigger exposes its selected
-label to assistive technology. Viewport clamping takes priority at screen edges.
+labels to assistive technology. Triggers and menu rows share border width, radius,
+height, typography, padding and active colors. Each text row's border box aligns
+with the trigger; the popup's border and padding surround it. Both use larger touch
+targets on compact screens. Icon-only appearance buttons remain square and anchor
+a wider menu with separate icon, label and checkmark columns. They expose the
+selected label to assistive technology. Viewport clamping takes priority at screen edges.
 The adapter clamps and flips fixed menus within the visual viewport, with scrolling
 and larger touch rows on compact screens. Resize/scroll observers exist only while
 open. Post-render sync assigns stable relationships and closes disabled or removed
