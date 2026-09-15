@@ -96,7 +96,6 @@ export function colorSearch(
               <span>${t(($) => $.picker.format)}</span>
               <select
                 aria-label=${t(($) => $.picker.format)}
-                .value=${live(format)}
                 @change=${(event: Event) => {
                   const value = (event.target as HTMLSelectElement).value;
                   const selected = colorFormats.find((item) => item === value);
@@ -105,7 +104,9 @@ export function colorSearch(
               >
                 ${colorFormats.map(
                   (item) =>
-                    html`<option value=${item}>${t(($) => $.picker.formats[item])}</option>`,
+                    html`<option value=${item} .selected=${item === format}>
+                      ${t(($) => $.picker.formats[item])}
+                    </option>`,
                 )}
               </select>
             </label>

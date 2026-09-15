@@ -73,6 +73,8 @@ Starting a color-area gesture focuses its native hue control without scrolling,
 so subsequent keys cannot edit a previously focused Canvas or activate its tools.
 Field blur commits carry their originating format; closed pickers and replaced
 formats ignore stale blur events to avoid nested rendering during removal in Chrome.
+The format menu binds selection on its options so a newly mounted picker restores
+the current mode after its options are inserted.
 The existing view lifecycle retains this area across updates and disposes it on
 removal. Picker changes never call the brush/history commands or affect exports.
 Tests cover known color boundaries, data isolation, native controls, real pointer

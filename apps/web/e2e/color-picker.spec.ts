@@ -62,6 +62,42 @@ test("HEX, RGB, HSL and HSB edit the same target without changing the brush or C
   expect(await area!.evaluate((node) => node === document.querySelector(".color-area"))).toBe(true);
 });
 
+test("reopening the picker restores its format and fields without changing the target", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Create blank grid" }).click();
+  const toggle = page.getByRole("button", { name: "Open color picker" });
+  await toggle.click();
+  const format = page.getByLabel("Color format", { exact: true });
+  const search = page.getByLabel("Search colors", { exact: true });
+  await search.fill("#336699");
+  for (const [mode, values] of [
+    ["rgb", ["51", "102", "153"]],
+    ["hsl", ["210", "50", "40"]],
+    ["hsb", ["210", "66.7", "60"]],
+    ["hex", ["#336699"]],
+  ] as const) {
+    await format.selectOption(mode);
+    for (const close of ["button", "escape"]) {
+      if (close === "button")
+        await page.getByRole("button", { name: "Close color picker" }).click();
+      else await page.keyboard.press("Escape");
+      await expect(page.locator(".color-picker")).toHaveCount(0);
+      await toggle.click();
+      await expect(format).toHaveValue(mode);
+      await expect(page.locator(".color-channels")).toHaveAttribute("data-format", mode);
+      const fields = page.locator(".color-channels input");
+      await expect(fields).toHaveCount(values.length);
+      for (const [index, value] of values.entries())
+        await expect(fields.nth(index)).toHaveValue(value);
+      await expect(search).toHaveValue("#336699");
+    }
+  }
+  await expect(page.locator(".selected-color strong")).toHaveText("H7");
+  await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
+});
+
 test("partial HEX survives renders and the format select retains native keyboard behavior", async ({
   page,
 }) => {
