@@ -3,6 +3,7 @@ import { keyed } from "lit-html/directives/keyed.js";
 import { live } from "lit-html/directives/live.js";
 import { ref } from "lit-html/directives/ref.js";
 import { repeat } from "lit-html/directives/repeat.js";
+import { defaultPalette } from "@my-beads/core";
 import type { Translate } from "./i18n/index.js";
 import type { ImageSession, ImageOptions } from "./image-state.js";
 import type { ViewRefs } from "./view-lifecycle.js";
@@ -12,12 +13,12 @@ import { modal } from "./ui/dialog.js";
 
 export interface ImageActions {
   importImage(file: File): void;
-  updateImage(options: ImageOptions): void;
-  changeImageSettings(): void;
+  changeImageSettings(options: ImageOptions, immediate: boolean): void;
   overrideImage(source: string, code: string): void;
   cancelImage(): void;
   applyImage(): void;
 }
+const imageColors = Object.entries(defaultPalette.colors);
 export function imagePicker(label: string, name: string, action: (file: File) => void) {
   return html`<label class="import-button"
     ><span>${label}</span>
@@ -42,7 +43,27 @@ export function imageView(
   refs: ViewRefs,
 ) {
   if (!session) return nothing;
-  const { options, mapped, sample } = session;
+  const { options, preview, sample } = session;
+  const previousMappings = new Map(
+    preview?.mapped.mappings.map((mapping) => [mapping.source, mapping]),
+  );
+  const changeSettings = (form: HTMLFormElement, immediate: boolean) => {
+    const data = new FormData(form);
+    const value = (name: string) => {
+      const raw = data.get(name);
+      return raw === null || raw === "" ? NaN : Number(raw);
+    };
+    actions.changeImageSettings(
+      {
+        columns: value("columns"),
+        rows: value("rows"),
+        alpha: value("alpha"),
+        includeNeutral: !data.has("chroma"),
+        unique: data.has("unique"),
+      },
+      immediate,
+    );
+  };
   const number = (label: string, name: string, value: number, max: number) =>
     field(
       label,
@@ -82,17 +103,20 @@ export function imageView(
         <form
           class="image-options"
           novalidate
-          @input=${actions.changeImageSettings}
+          @input=${(event: Event) =>
+            changeSettings(
+              event.currentTarget as HTMLFormElement,
+              (event.target as HTMLInputElement).type === "checkbox",
+            )}
+          @keydown=${(event: KeyboardEvent) => {
+            if (event.key === "Enter" && !event.isComposing) {
+              event.preventDefault();
+              changeSettings(event.currentTarget as HTMLFormElement, true);
+            }
+          }}
           @submit=${(event: Event) => {
             event.preventDefault();
-            const data = new FormData(event.target as HTMLFormElement);
-            actions.updateImage({
-              columns: Number(data.get("columns")),
-              rows: Number(data.get("rows")),
-              alpha: Number(data.get("alpha")),
-              includeNeutral: !data.has("chroma"),
-              unique: data.has("unique"),
-            });
+            changeSettings(event.currentTarget as HTMLFormElement, true);
           }}
         >
           <div class="grid grid-cols-3 gap-4 mobile:gap-2">
@@ -126,20 +150,19 @@ export function imageView(
                 ($) => $.image.unique,
               )}</label
             >
-            ${button(
-              t(($) => $.image.update),
-              { type: "submit", disabled: !session.pixels },
-            )}
           </div>
           <p class="muted">${t(($) => $.image.settingsHelp)}</p>
         </form>
         ${session.loading ? html`<p role="status">${t(($) => $.image.reading)}</p>` : nothing}
         ${session.error ? html`<p class="error" role="alert">${session.error}</p>` : nothing}
-        ${session.settingsDirty && !session.error
-          ? html`<p class="muted">${t(($) => $.image.dirty)}</p>`
+        ${session.settingsDirty && !session.loading
+          ? html`<p class="muted" role="status">${t(($) => $.image.updating)}</p>`
           : nothing}
-        ${sample && mapped
-          ? html`<div>
+        ${preview
+          ? html`<div aria-busy=${String(session.settingsDirty)}>
+              ${session.settingsDirty || session.error
+                ? html`<p class="muted">${t(($) => $.image.stale)}</p>`
+                : nothing}
               <div class="image-previews my-5 grid grid-cols-2 gap-5 mobile:gap-2.5">
                 <figure class="m-0 min-w-0 text-center">
                   <canvas
@@ -164,62 +187,73 @@ export function imageView(
                   ></canvas>
                   <figcaption class="mt-[9px] text-caption">
                     MARD 221 ·
-                    ${t(($) => $.app.dimensions, { columns: options.columns, rows: options.rows })}
+                    ${t(($) => $.app.dimensions, {
+                      columns: preview.mapped.grid[0].length,
+                      rows: preview.mapped.grid.length,
+                    })}
                     ·
                     ${t(($) => $.beads, {
-                      count: sample.colors.reduce((sum, c) => sum + c.count, 0),
+                      count: preview.sample.colors.reduce((sum, c) => sum + c.count, 0),
                     })}
                   </figcaption>
                 </figure>
               </div>
+            </div>`
+          : nothing}
+        ${sample
+          ? html`<div>
               <div class="flex items-center justify-between gap-4">
                 <h3 class="text-[15px]">${t(($) => $.image.mapping)}</h3>
                 <span class="muted"
-                  >${t(($) => $.image.sourceColors, { count: mapped.mappings.length })}</span
+                  >${t(($) => $.image.sourceColors, { count: sample.colors.length })}</span
                 >
               </div>
               <p class="muted">${t(($) => $.image.mappingHelp)}</p>
               <datalist id="image-mard-codes">
-                ${mapped.candidates.map(
-                  ([code, hex]) => html`<option value=${code}>${hex}</option>`,
-                )}
+                ${imageColors.map(([code, hex]) => html`<option value=${code}>${hex}</option>`)}
               </datalist>
               <div
                 class="mapping-list max-h-[260px] overflow-auto rounded-lg border border-solid border-border"
                 aria-label=${t(($) => $.image.mappings)}
               >
                 ${repeat(
-                  mapped.mappings,
-                  (mapping) => mapping.source,
-                  (mapping) =>
-                    html`<div class="mapping-row">
-                      <span class="mapping-swatch" style=${`background:${mapping.source}`}></span>
+                  sample.colors,
+                  (color) => color.hex,
+                  ({ hex: source, count }) => {
+                    const mapping = previousMappings.get(source);
+                    const color = defaultPalette.colors[session.overrides[source]] ?? mapping?.hex;
+                    return html`<div class="mapping-row">
+                      <span class="mapping-swatch" style=${`background:${source}`}></span>
                       <span
-                        ><strong>${mapping.source}</strong
-                        ><small>${t(($) => $.cells, { count: mapping.count })}</small></span
+                        ><strong>${source}</strong
+                        ><small>${t(($) => $.cells, { count })}</small></span
                       >
                       <span>→</span
-                      ><span class="mapping-swatch" style=${`background:${mapping.hex}`}></span>
+                      ><span
+                        class="mapping-swatch"
+                        style=${`background:${color ?? "transparent"}`}
+                      ></span>
                       <label
-                        ><span class="sr-only"
-                          >${t(($) => $.image.map, { source: mapping.source })}</span
-                        >
+                        ><span class="sr-only">${t(($) => $.image.map, { source })}</span>
                         <input
                           list="image-mard-codes"
-                          placeholder=${t(($) => $.image.auto, { code: mapping.code })}
+                          placeholder=${mapping
+                            ? t(($) => $.image.auto, { code: mapping.code })
+                            : t(($) => $.image.automatic)}
                           autocomplete="off"
-                          .value=${live(session.overrides[mapping.source] ?? "")}
-                          @change=${(event: Event) =>
+                          .value=${live(session.overrides[source] ?? "")}
+                          @input=${(event: Event) =>
                             actions.overrideImage(
-                              mapping.source,
+                              source,
                               (event.target as HTMLInputElement).value.trim().toUpperCase(),
                             )}
                         />
                       </label>
-                      ${mapping.neutralFallback
+                      ${mapping?.neutralFallback && !session.settingsDirty && !session.error
                         ? html`<small>${t(($) => $.image.neutralFallback)}</small>`
                         : nothing}
-                    </div>`,
+                    </div>`;
+                  },
                 )}
               </div>
             </div>`
@@ -233,7 +267,7 @@ export function imageView(
             t(($) => $.image.apply),
             {
               variant: "primary",
-              disabled: !mapped || session.loading || session.settingsDirty || !!session.error,
+              disabled: !preview || session.loading || session.settingsDirty || !!session.error,
               onClick: actions.applyImage,
             },
           )}

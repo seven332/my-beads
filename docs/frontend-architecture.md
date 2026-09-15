@@ -455,6 +455,17 @@ Its async command accepts an image-source IO boundary and an AbortSignal. A new
 CSV/image import or grid cancels the mount's previous import owner. Apply also
 checks the revision and live-stroke state; canceled or stale work never replaces
 the document. Changed form settings disable Apply until the preview is refreshed.
+Numeric settings refresh automatically after a 200 ms input pause; checkbox changes
+and Enter refresh immediately. The mount owns the timer and cancels it on replacement,
+navigation, cancellation and teardown. Delayed work is bound to its image session.
+Decoding uses the latest requested settings, including changes made before it finishes.
+Current options and sampled source colors are separate from the last successful
+source/MARD preview snapshot. Pending or invalid settings keep that snapshot and its
+original dimensions visible, with a stale notice and Apply disabled. Manual mappings
+are retained for source colors still present; only absent sampled colors are pruned.
+Mapping inputs record drafts on input so automatic renders cannot erase unfinished
+codes. Invalid codes or distinct-assignment conflicts leave current source rows editable
+and preserve the previous preview until corrected. Preview settings remain transient.
 The native dialog owns focus and Escape. Editor undo/redo shortcuts are suspended
 while an image session is open; native text editing inside its controls remains available.
 Preview Canvases are independent of the stable editor Canvas. Shared MARD

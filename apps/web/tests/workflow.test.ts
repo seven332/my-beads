@@ -11,7 +11,7 @@ import {
 } from "../src/state.js";
 import { DRAFT_KEY, decodeDraft } from "../src/drafts.js";
 import * as exporter from "../src/exports.js";
-import { loadImage$ } from "../src/image-state.js";
+import { loadImage$, imageSession$, applyImage$ } from "../src/image-state.js";
 import { selectLocale$ } from "../src/locale.js";
 
 let host: HTMLElement;
@@ -280,4 +280,69 @@ it("preserves image form drafts within a session and closes and replaces native 
   app.destroy();
   expect(second.open).toBe(false);
   expect(close).toHaveBeenCalledTimes(2);
+});
+
+it("coalesces numeric drafts, keeps the old preview and refreshes checkbox changes immediately", async () => {
+  const read = async () => ({
+    width: 2,
+    height: 1,
+    data: new Uint8ClampedArray([0, 0, 0, 255, 255, 255, 255, 255]),
+  });
+  await app.store.set(loadImage$, { name: "Colors.png", read }, new AbortController().signal);
+  const initial = app.store.get(imageSession$)?.preview;
+  const columns = host.querySelector<HTMLInputElement>('dialog [name="columns"]')!;
+  columns.focus();
+  input('dialog [name="columns"]', "3");
+  input('dialog [name="columns"]', "4");
+  input('dialog [name="rows"]', "1");
+  expect(app.store.get(imageSession$)?.preview).toBe(initial);
+  expect(app.store.set(applyImage$)).toBe(false);
+  await vi.waitFor(() =>
+    expect(app.store.get(imageSession$)?.preview?.mapped.grid).toEqual([["H7", "H7", "H2", "H2"]]),
+  );
+  expect(document.activeElement).toBe(columns);
+  input('dialog [name="alpha"]', "");
+  await vi.waitFor(() => expect(app.store.get(imageSession$)?.error).toContain("Alpha threshold"));
+  expect(app.store.set(applyImage$)).toBe(false);
+  input('dialog [name="alpha"]', "128");
+  click('dialog [name="unique"]');
+  expect(app.store.get(imageSession$)?.settingsDirty).toBe(false);
+  expect(app.store.get(imageSession$)?.error).toBe("");
+  expect(app.store.get(imageSession$)?.options.unique).toBe(true);
+  input('dialog [name="columns"]', "6");
+  columns.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  expect(app.store.get(imageSession$)?.settingsDirty).toBe(false);
+  expect(app.store.set(applyImage$)).toBe(true);
+  expect(app.store.get(editor$).document.grid).toEqual([["H7", "H7", "H7", "H2", "H2", "H2"]]);
+});
+
+it("does not carry scheduled settings across canceled, replaced or destroyed image sessions", async () => {
+  vi.useFakeTimers();
+  try {
+    const read = async () => ({ width: 1, height: 1, data: new Uint8ClampedArray([0, 0, 0, 255]) });
+    const signal = new AbortController().signal;
+    await app.store.set(loadImage$, { name: "Old.png", read }, signal);
+    input('dialog [name="columns"]', "7");
+    click(".image-footer button");
+    expect(app.store.get(imageSession$)).toBeNull();
+    await app.store.set(loadImage$, { name: "Next.png", read }, signal);
+    input('dialog [name="columns"]', "9");
+    await app.store.set(loadImage$, { name: "Final.png", read }, signal);
+    const initial = app.store.get(imageSession$);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(app.store.get(imageSession$)).toEqual(initial);
+    input('dialog [name="columns"]', "3");
+    input('dialog [name="rows"]', "1");
+    await vi.advanceTimersByTimeAsync(200);
+    expect(app.store.get(imageSession$)?.preview?.mapped.grid).toEqual([["H7", "H7", "H7"]]);
+    expect(app.store.get(imageSession$)?.name).toBe("Final.png");
+    input('dialog [name="columns"]', "8");
+    const pending = app.store.get(imageSession$);
+    app.destroy();
+    await vi.advanceTimersByTimeAsync(200);
+    expect(host.childElementCount).toBe(0);
+    expect(app.store.get(imageSession$)).toEqual(pending);
+  } finally {
+    vi.useRealTimers();
+  }
 });

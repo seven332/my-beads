@@ -82,11 +82,11 @@ test("imports images with Chinese controls and validation, then exports the mapp
   await expect(dialog.getByText("导入像素图", { exact: true })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "应用图片" })).toBeEnabled();
   await dialog.getByLabel("目标列数").fill("0");
-  await dialog.getByRole("button", { name: "更新预览" }).click();
+  await expect(dialog.getByRole("button", { name: "更新预览" })).toHaveCount(0);
   await expect(dialog.getByRole("alert")).toHaveText("目标网格行列数必须是 1 到 256 的整数。");
   await dialog.getByLabel("目标列数").fill("2");
   await dialog.getByLabel("目标行数").fill("1");
-  await dialog.getByRole("button", { name: "更新预览" }).click();
+  await expect(dialog.getByText("MARD 221 · 2 × 1 格 · 2 颗", { exact: true })).toBeVisible();
   await expect(dialog.getByRole("img", { name: "MARD 配色预览" })).toBeVisible();
   await expect(dialog.getByText("2 种原图颜色", { exact: true })).toBeVisible();
   await dialog.getByRole("button", { name: "应用图片" }).click();
