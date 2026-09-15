@@ -21,39 +21,61 @@ test("a fitted solid pattern has no seams after fractional zoom and pan", async 
   const grid = page.getByRole("button", { name: "Grid", exact: true });
   await expect(grid).toHaveAttribute("aria-pressed", "true");
   await grid.click();
-  const { center, box } = await fitCoordinates(page, 50, 50);
-  const colors = () =>
-    canvas.evaluate(
-      async (node, center) => {
-        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-        const canvas = node as HTMLCanvasElement;
-        const rect = canvas.getBoundingClientRect();
-        const sx = canvas.width / rect.width,
-          sy = canvas.height / rect.height;
-        const data = canvas
-          .getContext("2d")!
-          .getImageData(
-            Math.floor((center.x - 100) * sx),
-            Math.floor((center.y - 100) * sy),
-            Math.floor(200 * sx),
-            Math.floor(200 * sy),
-          ).data;
-        let unexpected = 0;
-        for (let i = 0; i < data.length; i += 4)
+  const { center } = await fitCoordinates(page, 50, 50);
+  const raster = () =>
+    canvas.evaluate((node) => {
+      const canvas = node as HTMLCanvasElement;
+      const data = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height).data;
+      let left = canvas.width,
+        top = canvas.height,
+        right = -1,
+        bottom = -1;
+      let painted = 0,
+        unexpected = 0;
+      for (let y = 0; y < canvas.height; y++)
+        for (let x = 0; x < canvas.width; x++) {
+          const i = (y * canvas.width + x) * 4;
+          if (!data[i + 3]) continue;
+          painted++;
+          left = Math.min(left, x);
+          right = Math.max(right, x);
+          top = Math.min(top, y);
+          bottom = Math.max(bottom, y);
           if (data[i] !== 0 || data[i + 1] !== 0 || data[i + 2] !== 0 || data[i + 3] !== 255)
             unexpected++;
-        return unexpected;
-      },
-      { x: center.x - box.x, y: center.y - box.y },
-    );
-  await expect.poll(colors).toBe(0);
+        }
+      const width = right - left + 1,
+        height = bottom - top + 1;
+      return {
+        // Include fully transparent holes inside the otherwise solid rectangle.
+        unexpected: painted ? unexpected + width * height - painted : 1,
+        bounds: { left, top, width, height },
+      };
+    });
+  await expect.poll(async () => (await raster()).unexpected).toBe(0);
+  const beforePan = (await raster()).bounds;
   await page.mouse.move(center.x, center.y);
   await page.mouse.wheel(11.25, 7.5);
-  await expect.poll(colors).toBe(0);
+  // Require the new raster in the same observation as the seam assertion. A black
+  // crop alone could pass before the wheel event, or even if navigation were broken.
+  await expect
+    .poll(async () => {
+      const { bounds, unexpected } = await raster();
+      return unexpected === 0 && bounds.left < beforePan.left && bounds.top < beforePan.top;
+    })
+    .toBe(true);
+  const beforeZoom = (await raster()).bounds;
   await page.keyboard.down("Control");
   await page.mouse.wheel(0, -27);
   await page.keyboard.up("Control");
-  await expect.poll(colors).toBe(0);
+  await expect
+    .poll(async () => {
+      const { bounds, unexpected } = await raster();
+      return (
+        unexpected === 0 && bounds.width > beforeZoom.width && bounds.height > beforeZoom.height
+      );
+    })
+    .toBe(true);
   await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
 });
 
