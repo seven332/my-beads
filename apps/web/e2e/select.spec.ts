@@ -41,6 +41,11 @@ async function expectAlignedMenu(trigger: Locator, iconOnly = false) {
       expect(Math.abs(marker.x + marker.width / 2 - icon.x - icon.width / 2)).toBeLessThan(1);
       expect(Math.abs(marker.y - row.y - (icon.y - button.y))).toBeLessThan(1);
       const label = (await trigger.locator(".select-value").boundingBox())!;
+      expect(
+        await trigger
+          .locator(".select-value > span:first-child")
+          .evaluate((node) => node.scrollWidth <= node.clientWidth),
+      ).toBe(true);
       const text = option.locator(":scope > span");
       expect(Math.abs((await text.boundingBox())!.x - label.x)).toBeLessThan(1);
       expect(Math.abs((await text.boundingBox())!.y - row.y - (label.y - button.y))).toBeLessThan(
@@ -59,6 +64,11 @@ async function expectAlignedMenu(trigger: Locator, iconOnly = false) {
       const label = (await option.locator(":scope > span").boundingBox())!;
       const check = (await option.locator(".icon:last-child").boundingBox())!;
       expect(leading.width).toBe(icon.width);
+      const delta = leading.x - icon.x;
+      if (delta > 1) expect(menu.x).toBeCloseTo(8, 0);
+      else if (delta < -1)
+        expect(menu.x + menu.width).toBeCloseTo(trigger.page().viewportSize()!.width - 8, 0);
+      else expect(Math.abs(delta)).toBeLessThan(1);
       expect(label.x).toBeGreaterThan(leading.x + leading.width);
       expect(check.x).toBeGreaterThan(label.x);
     }
@@ -81,13 +91,13 @@ for (const locale of ["en-US", "zh-CN"]) {
   }) => {
     await page.goto("/");
     await selectChoice(page.getByRole("combobox", { name: "Language" }), locale);
-    for (const width of [1440, 390]) {
+    for (const width of [1440, 390, 320]) {
       await page.setViewportSize({ width, height: 1000 });
       await expectAlignedMenu(page.locator(".appearance-picker .select-trigger"), true);
       await expectAlignedMenu(page.locator(".language-picker .select-trigger"));
     }
     await page.locator(".blank-form button").click();
-    for (const width of [1440, 390]) {
+    for (const width of [1440, 390, 320]) {
       await page.setViewportSize({ width, height: 1000 });
       await expectAlignedMenu(page.locator(".appearance-picker .select-trigger"), true);
       await expectAlignedMenu(page.locator(".language-picker .select-trigger"));

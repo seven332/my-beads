@@ -60,7 +60,16 @@ export function mountSelects(host: HTMLElement) {
     const upward = below < naturalHeight && above > below;
     popup.style.maxHeight = `${Math.max(1, Math.min(280, upward ? above : below))}px`;
     const bounds = popup.getBoundingClientRect();
-    popup.style.left = `${Math.max(left, Math.min(anchor.left - (iconOnly ? 0 : inset), left + width - bounds.width))}px`;
+    let alignedLeft = anchor.left - (iconOnly ? 0 : inset);
+    if (iconOnly) {
+      const triggerIcon = trigger.querySelector(":scope > .icon");
+      const optionIcon = popup.querySelector(".select-option > .icon:first-child");
+      if (triggerIcon && optionIcon)
+        alignedLeft =
+          triggerIcon.getBoundingClientRect().left -
+          (optionIcon.getBoundingClientRect().left - bounds.left);
+    }
+    popup.style.left = `${Math.max(left, Math.min(alignedLeft, left + width - bounds.width))}px`;
     popup.style.top = `${Math.max(top, Math.min(upward ? anchor.top - bounds.height - 5 : anchor.bottom + 5, bottom - bounds.height))}px`;
   }
 

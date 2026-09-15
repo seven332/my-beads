@@ -144,6 +144,9 @@
 .editor-actions {
   flex-shrink: 0;
 }
+.editor-actions .preferences {
+  flex-shrink: 0;
+}
 .editor-actions .language-picker,
 .editor-actions .preferences {
   margin: 0;
@@ -659,6 +662,9 @@
 @media (max-width: 460px) {
   .editor-actions {
     gap: 8px;
+  }
+  .editor-actions .document-actions button {
+    padding-inline: 8px;
   }
   .editor-actions .document-actions .primary {
     padding-inline: 10px;

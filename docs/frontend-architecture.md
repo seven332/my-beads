@@ -178,7 +178,8 @@ labels to assistive technology. Triggers and menu rows share border width, radiu
 height, typography, padding and active colors. Each text row's border box aligns
 with the trigger; the popup's border and padding surround it. Both use larger touch
 targets on compact screens. Icon-only appearance buttons remain square and anchor
-a wider menu with separate icon, label and checkmark columns. They expose the
+a wider menu with separate icon, label and checkmark columns. The leading menu icons
+align horizontally with the trigger icon. They expose the
 selected label to assistive technology. Viewport clamping takes priority at screen edges.
 The adapter clamps and flips fixed menus within the visual viewport, with scrolling
 and larger touch rows on compact screens. Resize/scroll observers exist only while
