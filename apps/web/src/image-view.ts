@@ -217,7 +217,7 @@ export function imageView(
                 aria-label=${t(($) => $.image.mappings)}
               >
                 ${repeat(
-                  sample.colors,
+                  [...sample.colors].sort((a, b) => a.hex.localeCompare(b.hex)),
                   (color) => color.hex,
                   ({ hex: source, count }) => {
                     const mapping = previousMappings.get(source);

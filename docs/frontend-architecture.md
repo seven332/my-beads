@@ -464,7 +464,9 @@ source/MARD preview snapshot. Pending or invalid settings keep that snapshot and
 original dimensions visible, with a stale notice and Apply disabled. Manual mappings
 are retained for source colors still present; only absent sampled colors are pruned.
 Mapping inputs record drafts on input so automatic renders cannot erase unfinished
-codes. Invalid codes or distinct-assignment conflicts leave current source rows editable
+codes. The table uses stable source-hex order, so count changes do not move a focused
+input; the sampler's frequency order remains unchanged for color matching.
+Invalid codes or distinct-assignment conflicts leave current source rows editable
 and preserve the previous preview until corrected. Preview settings remain transient.
 The native dialog owns focus and Escape. Editor undo/redo shortcuts are suspended
 while an image session is open; native text editing inside its controls remains available.

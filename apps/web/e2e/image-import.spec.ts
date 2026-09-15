@@ -165,6 +165,41 @@ test("automatically refreshes settings while retaining valid previews and manual
   ]);
 });
 
+test("keeps manual color input focused when resampling changes source color counts", async ({
+  page,
+}) => {
+  const source = new PNG({ width: 5, height: 1 });
+  source.data.set([
+    255, 255, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255, 255,
+  ]);
+  await page.goto("/");
+  await page
+    .getByLabel("Open image", { exact: true })
+    .setInputFiles({ name: "Focus.png", mimeType: "image/png", buffer: PNG.sync.write(source) });
+  const dialog = page.getByRole("dialog");
+  const black = dialog.getByLabel("Map #000000", { exact: true });
+  await expect(black).toBeVisible();
+  // Queue both native field edits and focus before the debounce can finish.
+  await black.evaluate((field) => {
+    const form = field.closest("dialog")!.querySelector("form")!;
+    for (const [name, value] of [
+      ["columns", "3"],
+      ["rows", "1"],
+    ]) {
+      const input = form.querySelector<HTMLInputElement>(`[name="${name}"]`)!;
+      input.value = value;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    field.focus();
+  });
+  await page.keyboard.type("B15");
+  await expect(black).toHaveValue("B15");
+  await expect(black).toBeFocused();
+  await expect(dialog.getByText("MARD 221 · 3 × 1 cells · 3 beads", { exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "Apply image" }).click();
+  expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual([["H2", "B15", "H2"]]);
+});
+
 test("cancel and invalid PNG preserve the active document; WebP applies through the same dialog", async ({
   page,
 }) => {
