@@ -13,6 +13,10 @@ import {
 import { documentRevision$, editor$, replaceIfCurrent$ } from "./state.js";
 
 export interface ImageOptions extends SamplingOptions, Omit<MatchOptions, "series"> {}
+export interface ImagePreview {
+  sample: SampledImage;
+  mapped: MappedImage;
+}
 export interface ImageSession {
   id: number;
   name: string;
@@ -23,7 +27,7 @@ export interface ImageSession {
   pixels: RgbaImage | null;
   options: ImageOptions;
   sample: SampledImage | null;
-  mapped: MappedImage | null;
+  preview: ImagePreview | null;
   overrides: Readonly<Record<string, string>>;
 }
 type ImageSessionState = Omit<ImageSession, "error"> & { error: Error | "" };
@@ -37,33 +41,41 @@ export const cancelImage$ = command(({ get, set }) => {
   set(imageTokenState$, get(imageTokenState$) + 1);
   set(sessionState$, null);
 });
-export const changeImageSettings$ = command(({ get, set }) => {
+export const changeImageSettings$ = command(({ get, set }, options: ImageOptions) => {
   const session = get(sessionState$);
-  if (session && !session.settingsDirty) set(sessionState$, { ...session, settingsDirty: true });
+  if (session && (session.loading || session.pixels))
+    set(sessionState$, { ...session, options, settingsDirty: true, error: "" });
 });
-export const updateImage$ = command(({ get, set }, options: ImageOptions) => {
+export const updateImage$ = command(({ get, set }) => {
   const session = get(sessionState$);
   if (!session?.pixels) return;
+  let sample: SampledImage;
   try {
-    const sample = sampleImage(session.pixels, options);
-    const mapped = mapImage(sample, options);
+    sample = sampleImage(session.pixels, session.options);
+  } catch (error) {
+    set(sessionState$, { ...session, settingsDirty: false, error: captureError(error) });
+    return;
+  }
+  const sources = new Set(sample.colors.map((color) => color.hex));
+  const overrides = Object.fromEntries(
+    Object.entries(session.overrides).filter(([source]) => sources.has(source)),
+  );
+  try {
+    const mapped = mapImage(sample, session.options, overrides);
     set(sessionState$, {
       ...session,
-      options,
       sample,
-      mapped,
+      preview: { sample, mapped },
       settingsDirty: false,
-      overrides: {},
+      overrides,
       error: "",
     });
   } catch (error) {
     set(sessionState$, {
       ...session,
-      options,
-      sample: null,
-      mapped: null,
-      settingsDirty: true,
-      overrides: {},
+      sample,
+      settingsDirty: false,
+      overrides,
       error: captureError(error),
     });
   }
@@ -96,7 +108,7 @@ export const loadImage$ = command(
       pixels: null,
       options,
       sample: null,
-      mapped: null,
+      preview: null,
       overrides: {},
     });
     try {
@@ -108,18 +120,23 @@ export const loadImage$ = command(
         set(sessionState$, {
           ...session,
           loading: false,
+          settingsDirty: false,
           error: new UiError("imageChangedLoading"),
         });
         return;
       }
       set(sessionState$, { ...session, loading: false, pixels });
-      set(updateImage$, options);
-      if (session.settingsDirty) set(changeImageSettings$);
+      set(updateImage$);
     } catch (error) {
       signal.throwIfAborted();
       if (get(imageTokenState$) === token) {
         const session = get(sessionState$)!;
-        set(sessionState$, { ...session, loading: false, error: captureError(error) });
+        set(sessionState$, {
+          ...session,
+          loading: false,
+          settingsDirty: false,
+          error: captureError(error),
+        });
       }
     }
   },
@@ -130,20 +147,16 @@ export const overrideImage$ = command(({ get, set }, source: string, code: strin
   const overrides = { ...session.overrides };
   if (code) overrides[source] = code;
   else delete overrides[source];
-  try {
-    const mapped = mapImage(session.sample, session.options, overrides);
-    set(sessionState$, { ...session, overrides, mapped, error: "" });
-  } catch (error) {
-    set(sessionState$, { ...session, overrides, error: captureError(error) });
-  }
+  set(sessionState$, { ...session, overrides });
+  set(updateImage$);
 });
 export const applyImage$ = command(({ get, set }) => {
   const session = get(sessionState$);
-  if (!session?.mapped || session.loading || session.settingsDirty || session.error) return false;
+  if (!session?.preview || session.loading || session.settingsDirty || session.error) return false;
   const applied = set(
     replaceIfCurrent$,
     session.revision,
-    session.mapped.grid,
+    session.preview.mapped.grid,
     session.name.replace(/\.(png|webp)$/i, ""),
   );
   if (!applied) {

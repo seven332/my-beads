@@ -63,6 +63,7 @@ export function mountApp(
   });
   let importController: AbortController | undefined;
   let exportController: AbortController | undefined;
+  let imagePreviewTimer: ReturnType<typeof setTimeout> | undefined;
   let helpInvoker: HTMLElement | null = null;
   const downloads = new Map<string, ReturnType<typeof setTimeout>>();
   const root = document.createElement("div");
@@ -74,7 +75,12 @@ export function mountApp(
   const drafts = createDrafts(storage, (status) => store.set(state.reportDraft$, status));
   const recovered = drafts.load();
   if (recovered) store.set(state.restoreDocument$, recovered.grid, recovered.title);
+  function cancelImagePreview() {
+    clearTimeout(imagePreviewTimer);
+    imagePreviewTimer = undefined;
+  }
   function cancelImport() {
+    cancelImagePreview();
     importController?.abort();
     store.set(images.cancelImage$);
     store.set(state.cancelCsv$);
@@ -250,12 +256,27 @@ export function mountApp(
           if (!signal.aborted) fail(error);
         });
     },
-    updateImage: (options) => store.set(images.updateImage$, options),
-    changeImageSettings: () => store.set(images.changeImageSettings$),
-    overrideImage: (source, code) => store.set(images.overrideImage$, source, code),
+    changeImageSettings: (options, immediate) => {
+      cancelImagePreview();
+      store.set(images.changeImageSettings$, options);
+      const session = store.get(images.imageSession$);
+      if (!session?.pixels) return;
+      if (immediate) store.set(images.updateImage$);
+      else
+        imagePreviewTimer = setTimeout(() => {
+          imagePreviewTimer = undefined;
+          if (!lifetime.signal.aborted && store.get(images.imageSession$)?.id === session.id)
+            store.set(images.updateImage$);
+        }, 200);
+    },
+    overrideImage: (source, code) => {
+      cancelImagePreview();
+      store.set(images.overrideImage$, source, code);
+    },
     cancelImage: cancelImport,
     applyImage: () => {
       if (store.set(images.applyImage$)) {
+        cancelImagePreview();
         importController?.abort();
         created();
       }
@@ -418,6 +439,7 @@ export function mountApp(
       window.removeEventListener("pagehide", flushDraft);
       lifetime.abort();
       appearance.destroy();
+      cancelImagePreview();
       importController?.abort();
       exportController?.abort();
       window.removeEventListener("keydown", shortcut);

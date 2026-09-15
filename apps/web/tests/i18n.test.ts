@@ -14,7 +14,12 @@ import {
   undo$,
   zoom$,
 } from "../src/state.js";
-import { loadImage$, imageSession$, updateImage$ } from "../src/image-state.js";
+import {
+  loadImage$,
+  imageSession$,
+  updateImage$,
+  changeImageSettings$,
+} from "../src/image-state.js";
 import { DRAFT_KEY, type DraftStorage } from "../src/drafts.js";
 import {
   openExport$,
@@ -222,9 +227,10 @@ it("updates an open image dialog without discarding its preview or unfinished se
   await vi.waitFor(() => expect(dialog!.textContent).toContain("导入像素图"));
   expect(host.querySelector("dialog")).toBe(dialog);
   expect(columns.value).toBe("7");
-  expect(app.store.get(imageSession$)?.mapped).toBe(before?.mapped);
+  expect(app.store.get(imageSession$)?.preview).toBe(before?.preview);
   expect(app.store.get(imageSession$)?.settingsDirty).toBe(true);
-  app.store.set(updateImage$, { ...before!.options, columns: 0 });
+  app.store.set(changeImageSettings$, { ...before!.options, columns: 0 });
+  app.store.set(updateImage$);
   expect(app.store.get(imageSession$)?.error).toContain("目标网格行列数");
   app.store.set(selectLocale$, "en-US");
   expect(app.store.get(imageSession$)?.error).toContain("Target grid dimensions");

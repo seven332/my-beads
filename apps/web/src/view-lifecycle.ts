@@ -155,8 +155,8 @@ export function createViewLifecycle(
       for (const element of previews.keys())
         if (element !== refs.sourcePreview.value && element !== refs.mappedPreview.value)
           previews.delete(element);
-      paint(refs.sourcePreview.value, image?.sample?.grid, false);
-      paint(refs.mappedPreview.value, image?.mapped?.grid, true);
+      paint(refs.sourcePreview.value, image?.preview?.sample.grid, false);
+      paint(refs.mappedPreview.value, image?.preview?.mapped.grid, true);
     },
     destroy() {
       selects.destroy();

@@ -73,8 +73,7 @@ test("imports enlarged PNG with explicit sampling, override, edit, exports and d
   await expect(page.getByTestId("counts")).toHaveText("1 bead · 1 color");
   await dialog.getByLabel("Target columns").fill("50");
   await dialog.getByLabel("Target rows").fill("50");
-  await expect(dialog.getByRole("button", { name: "Apply image" })).toBeDisabled();
-  await dialog.getByRole("button", { name: "Update preview" }).click();
+  await expect(dialog.getByRole("button", { name: "Update preview" })).toHaveCount(0);
   await expect(
     dialog.getByText("MARD 221 · 50 × 50 cells · 1,750 beads", { exact: true }),
   ).toBeVisible();
@@ -107,6 +106,100 @@ test("imports enlarged PNG with explicit sampling, override, edit, exports and d
   expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual(expected);
 });
 
+test("automatically refreshes settings while retaining valid previews and manual color choices", async ({
+  page,
+}) => {
+  const source = new PNG({ width: 2, height: 1 });
+  source.data.set([0, 0, 0, 255, 255, 255, 255, 255]);
+  await page.goto("/");
+  await page
+    .getByLabel("Open image", { exact: true })
+    .setInputFiles({
+      name: "Automatic.png",
+      mimeType: "image/png",
+      buffer: PNG.sync.write(source),
+    });
+  const dialog = page.getByRole("dialog");
+  const apply = dialog.getByRole("button", { name: "Apply image" });
+  const preview = dialog.getByRole("img", { name: "MARD preview" });
+  await expect(preview).toBeVisible();
+  await dialog.getByLabel("Target columns").fill("4");
+  await dialog.getByLabel("Target rows").fill("1");
+  await expect(dialog.getByText("MARD 221 · 4 × 1 cells · 4 beads", { exact: true })).toBeVisible();
+  const black = dialog.getByLabel("Map #000000", { exact: true });
+  const white = dialog.getByLabel("Map #FFFFFF", { exact: true });
+  await black.fill("B15");
+  await white.fill("B15");
+  const beforeConflict = await preview.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL());
+  await dialog.getByLabel("Distinct assignments").check();
+  await expect(dialog.getByRole("alert")).toContainText("cannot reuse");
+  await expect(apply).toBeDisabled();
+  await expect(black).toHaveValue("B15");
+  await expect(white).toHaveValue("B15");
+  expect(await preview.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL())).toBe(
+    beforeConflict,
+  );
+  await dialog.getByLabel("Target columns").fill("6");
+  await expect(dialog.getByRole("status")).toHaveCount(0);
+  await expect(dialog.getByRole("alert")).toContainText("cannot reuse");
+  await expect(dialog.getByText("MARD 221 · 4 × 1 cells · 4 beads", { exact: true })).toBeVisible();
+  await white.fill("G14");
+  await expect(dialog.getByText("MARD 221 · 6 × 1 cells · 6 beads", { exact: true })).toBeVisible();
+  const valid = await preview.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL());
+  await dialog.getByLabel("Alpha threshold").fill("");
+  await expect(dialog.getByRole("alert")).toContainText("Alpha threshold");
+  await expect(apply).toBeDisabled();
+  expect(await preview.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL())).toBe(valid);
+  await dialog.getByLabel("Alpha threshold").fill("128");
+  await dialog.getByLabel("Target columns").fill("8");
+  await dialog.getByLabel("Target columns").fill("10");
+  await expect(
+    dialog.getByText("MARD 221 · 10 × 1 cells · 10 beads", { exact: true }),
+  ).toBeVisible();
+  await expect(dialog.getByLabel("Target columns")).toBeFocused();
+  await expect(black).toHaveValue("B15");
+  await expect(white).toHaveValue("G14");
+  await apply.click();
+  expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual([
+    ["B15", "B15", "B15", "B15", "B15", "G14", "G14", "G14", "G14", "G14"],
+  ]);
+});
+
+test("keeps manual color input focused when resampling changes source color counts", async ({
+  page,
+}) => {
+  const source = new PNG({ width: 5, height: 1 });
+  source.data.set([
+    255, 255, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255, 255,
+  ]);
+  await page.goto("/");
+  await page
+    .getByLabel("Open image", { exact: true })
+    .setInputFiles({ name: "Focus.png", mimeType: "image/png", buffer: PNG.sync.write(source) });
+  const dialog = page.getByRole("dialog");
+  const black = dialog.getByLabel("Map #000000", { exact: true });
+  await expect(black).toBeVisible();
+  // Queue both native field edits and focus before the debounce can finish.
+  await black.evaluate((field) => {
+    const form = field.closest("dialog")!.querySelector("form")!;
+    for (const [name, value] of [
+      ["columns", "3"],
+      ["rows", "1"],
+    ]) {
+      const input = form.querySelector<HTMLInputElement>(`[name="${name}"]`)!;
+      input.value = value;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    field.focus();
+  });
+  await page.keyboard.type("B15");
+  await expect(black).toHaveValue("B15");
+  await expect(black).toBeFocused();
+  await expect(dialog.getByText("MARD 221 · 3 × 1 cells · 3 beads", { exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "Apply image" }).click();
+  expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual([["H2", "B15", "H2"]]);
+});
+
 test("cancel and invalid PNG preserve the active document; WebP applies through the same dialog", async ({
   page,
 }) => {
@@ -132,6 +225,9 @@ test("cancel and invalid PNG preserve the active document; WebP applies through 
       buffer: Buffer.from("not an image"),
     });
   await expect(page.getByRole("dialog").getByRole("alert")).toContainText("could not be decoded");
+  await page.getByRole("dialog").getByLabel("Target columns").fill("3");
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText("could not be decoded");
+  await expect(page.getByRole("dialog").getByRole("status")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Apply image" })).toBeDisabled();
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual(before);
@@ -163,13 +259,11 @@ test("invalid settings preserve work and mappings honor distinct choices", async
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
   await dialog.getByLabel("Target columns").fill("0");
-  await dialog.getByRole("button", { name: "Update preview" }).click();
   await expect(dialog.getByRole("alert")).toContainText("dimensions");
   await expect(dialog.getByRole("button", { name: "Apply image" })).toBeDisabled();
   await dialog.getByLabel("Target columns").fill("50");
   await dialog.getByLabel("Distinct assignments").check();
   await dialog.getByLabel("Preserve chroma").uncheck();
-  await dialog.getByRole("button", { name: "Update preview" }).click();
   await expect(dialog.getByLabel("Map #000000")).toHaveAttribute("placeholder", "Auto · H7");
   await expect(dialog.getByLabel("Map #FFFFFF")).toHaveAttribute("placeholder", "Auto · H2");
   await dialog.getByLabel("Map #000000").fill("H2");
@@ -191,7 +285,6 @@ test("invalid mappings block Apply across edits to other rows until corrected", 
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
   await dialog.getByLabel("Target columns").fill("50");
-  await dialog.getByRole("button", { name: "Update preview" }).click();
   const black = dialog.getByLabel("Map #000000", { exact: true });
   const white = dialog.getByLabel("Map #FFFFFF", { exact: true });
   await black.fill("BAD");
@@ -237,7 +330,7 @@ test("image dialog isolates undo and redo from the pattern and saved draft", asy
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
   for (const key of ["Control+z", "Control+Shift+z", "Meta+z", "Meta+Shift+z"]) {
-    await dialog.getByRole("button", { name: "Update preview" }).press(key);
+    await dialog.getByLabel("Distinct assignments").press(key);
     await expect(page.getByTestId("counts")).toHaveText("2 beads · 2 colors");
     expect(await page.evaluate(() => localStorage.getItem("my-beads.draft"))).toBe(saved);
   }
@@ -251,7 +344,7 @@ test("image dialog isolates undo and redo from the pattern and saved draft", asy
   await startNew(page);
   await page.getByLabel("Open image", { exact: true }).setInputFiles(file);
   await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
-  await dialog.getByRole("button", { name: "Update preview" }).press("Control+z");
+  await dialog.getByLabel("Distinct assignments").press("Control+z");
   await dialog.getByRole("button", { name: "Apply image" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByLabel("Pattern title")).toHaveValue("Preview");
