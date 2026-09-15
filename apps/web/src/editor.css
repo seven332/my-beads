@@ -523,7 +523,7 @@
   .tools {
     flex: 1;
     flex-direction: row;
-    justify-content: space-around;
+    justify-content: flex-start;
     gap: 2px;
   }
   .tools .tool {
@@ -605,7 +605,7 @@
   }
   .editor-dock .editor-navigation {
     align-self: stretch;
-    justify-content: space-between;
+    justify-content: flex-start;
     padding: 6px 0 0;
     gap: 6px;
     border-top: 1px solid var(--ui-divider);
@@ -615,6 +615,7 @@
     padding: 7px 6px;
   }
   .zoom-controls {
+    margin-left: auto;
     padding-left: 4px;
     gap: 1px;
   }
