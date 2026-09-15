@@ -237,3 +237,34 @@ it("enforces the rule through the repository's real ESLint configuration without
     );
   }
 });
+
+it("checks text passed through shared native UI helpers using the repository configuration", async () => {
+  const eslint = new ESLint({ cwd: fileURLToPath(new URL("../../../", import.meta.url)) });
+  for (const [imports, expression] of [
+    ['import { button } from "./ui/button.js";', 'button("Save")'],
+    ['import { iconButton as action } from "./ui/button.js";', 'action("Close", X)'],
+    ['import { field as formField } from "./ui/field.js";', 'formField("Width", control)'],
+    ['import * as ui from "./ui/button.js";', 'ui.button("Save", { title: "Save file" })'],
+    ['import { button } from "./ui/button.js";', 'button(t($ => $.save), { label: "Save file" })'],
+  ]) {
+    const [result] = await eslint.lintText(imports + expression, {
+      filePath: "apps/web/src/lint-probe.ts",
+    });
+    assert.ok(
+      result.messages.some((message) => message.ruleId === "ccstate/no-hardcoded-ui-text"),
+      expression,
+    );
+  }
+  const [translated] = await eslint.lintText(
+    `
+    import { html } from "lit-html";
+    import { button, iconButton } from "./ui/button.js";
+    import { field } from "./ui/field.js";
+    button(t($ => $.save), { variant: "primary", className: "with-icon", title: t($ => $.saveHint) });
+    iconButton(t($ => $.close), X, { controls: "image-dialog" });
+    field(t($ => $.width), html\`<input name="columns" .defaultValue=\${"50"} />\`);
+  `,
+    { filePath: "apps/web/src/lint-probe.ts" },
+  );
+  assert.deepEqual(translated.messages, []);
+});

@@ -52,7 +52,12 @@ export default [
             "Cmd",
             ...Object.keys(mard.colors),
           ],
-          textFunctions: [{ module: "./image-view.js", name: "imagePicker", arguments: [0, 1] }],
+          textFunctions: [
+            { module: "./image-view.js", name: "imagePicker", arguments: [0, 1] },
+            { module: "./ui/button.js", name: "button", arguments: [0] },
+            { module: "./ui/button.js", name: "iconButton", arguments: [0] },
+            { module: "./ui/field.js", name: "field", arguments: [0] },
+          ],
         },
       ],
     },

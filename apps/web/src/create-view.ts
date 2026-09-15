@@ -4,6 +4,8 @@ import type { Translate } from "./i18n/index.js";
 import { imagePicker } from "./image-view.js";
 import { FileSpreadsheet, Grid3x3, ImagePlus } from "@lucide/icons";
 import { icon } from "./icon.js";
+import { button } from "./ui/button.js";
+import { field } from "./ui/field.js";
 
 export interface CreateActions {
   create(width: number, height: number): void;
@@ -23,9 +25,9 @@ export function createView(
       : nothing;
   }
   function dimension(name: "columns" | "rows") {
-    return html`<label class="mb-[13px] grid gap-1.5 text-ui text-label"
-      ><span>${t(($) => $.newPattern[name])}</span>
-      <input
+    return field(
+      t(($) => $.newPattern[name]),
+      html`<input
         class="w-full text-ui"
         type="number"
         name=${name}
@@ -33,8 +35,9 @@ export function createView(
         max="256"
         required
         .defaultValue=${"50"}
-      />
-    </label>`;
+      />`,
+      "ui",
+    );
   }
   return html`<main
     class="create-page mx-auto mt-16 mb-8 w-[min(1120px,calc(100%_-_64px))] tablet:mt-10 tablet:w-[calc(100%_-_40px)] mobile:mt-8 mobile:w-[calc(100%_-_32px)]"
@@ -66,9 +69,10 @@ export function createView(
               ${t(($) => $.create.keepCurrent)}
             </p>
           </div>
-          <button class="shrink-0" type="button" @click=${actions.resume}>
-            ${t(($) => $.create.resume)}
-          </button>
+          ${button(
+            t(($) => $.create.resume),
+            { className: "shrink-0", onClick: actions.resume },
+          )}
         </div>`
       : nothing}
     <div class="creation-options grid grid-cols-3 gap-5 tablet:gap-3 stack:grid-cols-1 stack:gap-4">
@@ -95,7 +99,10 @@ export function createView(
           <div class="grid grid-cols-2 gap-3">${dimension("columns")}${dimension("rows")}</div>
           <p class="muted mt-0 mb-[18px]">${t(($) => $.create.sizeHelp)}</p>
           ${error("blank")}
-          <button class="primary" type="submit">${t(($) => $.newPattern.create)}</button>
+          ${button(
+            t(($) => $.newPattern.create),
+            { variant: "primary", type: "submit" },
+          )}
         </form>
       </section>
       <section

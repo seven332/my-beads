@@ -24,6 +24,7 @@ import {
 } from "@lucide/icons";
 import { icon } from "./icon.js";
 import { shortcutHint, shortcuts } from "./shortcuts.js";
+import { button, iconButton } from "./ui/button.js";
 
 export function editorView(
   model: EditorModel,
@@ -61,29 +62,30 @@ export function editorView(
           .value=${live(model.title)}
           @input=${(event: Event) => actions.rename((event.target as HTMLInputElement).value)}
         />
-        <button
-          class="keyboard-help-button icon-button"
-          type="button"
-          aria-label=${t(($) => $.keyboard.heading)}
-          title=${shortcutHint(t, "help")}
-          aria-keyshortcuts=${shortcuts.help.aria}
-          @click=${(event: Event) => actions.openKeyboardHelp(event.currentTarget as HTMLElement)}
-        >
-          ${icon(Keyboard)}
-        </button>
+        ${iconButton(
+          t(($) => $.keyboard.heading),
+          Keyboard,
+          {
+            className: "keyboard-help-button icon-button",
+            title: shortcutHint(t, "help"),
+            shortcut: shortcuts.help.aria,
+            onClick: (event) => actions.openKeyboardHelp(event.currentTarget as HTMLElement),
+          },
+        )}
       </div>
       <div class="editor-actions floating-panel" data-canvas-panel>
         ${language}
         <div class="document-actions">
-          <button type="button" @click=${actions.startNew}>${t(($) => $.create.new)}</button>
-          <button
-            type="button"
-            class="primary with-icon"
-            aria-label=${t(($) => $.export.open)}
-            @click=${actions.openExport}
-          >
-            ${icon(Download)}<span>${t(($) => $.export.open)}</span>
-          </button>
+          ${button(
+            t(($) => $.create.new),
+            { onClick: actions.startNew },
+          )}
+          ${button(html`${icon(Download)}<span>${t(($) => $.export.open)}</span>`, {
+            variant: "primary",
+            className: "with-icon",
+            label: t(($) => $.export.open),
+            onClick: actions.openExport,
+          })}
         </div>
       </div>
     </header>
@@ -105,109 +107,109 @@ export function editorView(
                 : tool === "eyedropper"
                   ? t(($) => $.tools.eyedropperLabel)
                   : t(($) => $.tools[tool]);
-            return html`<button
-              class="tool"
-              type="button"
-              aria-label=${label}
-              title=${shortcutHint(t, tool)}
-              aria-keyshortcuts=${shortcuts[tool].aria}
-              aria-pressed=${String(model.tool === tool)}
-              @click=${() => actions.tool(tool)}
-            >
-              <span class="tool-icon">${icon(graphic)}</span
-              ><span class="tool-label">${t(($) => $.tools[tool])}</span>
-            </button>`;
+            return button(
+              html`<span class="tool-icon">${icon(graphic)}</span
+                ><span class="tool-label">${t(($) => $.tools[tool])}</span>`,
+              {
+                className: "tool",
+                label,
+                title: shortcutHint(t, tool),
+                shortcut: shortcuts[tool].aria,
+                pressed: model.tool === tool,
+                onClick: () => actions.tool(tool),
+              },
+            );
           })}
         </div>
         <div class="history-controls">
-          <button
-            type="button"
-            ?disabled=${!model.canUndo}
-            aria-label=${t(($) => $.app.undo)}
-            title=${shortcutHint(t, "undo")}
-            aria-keyshortcuts=${shortcuts.undo.aria}
-            @click=${actions.undo}
-          >
-            ${icon(Undo2)}
-          </button>
-          <button
-            type="button"
-            ?disabled=${!model.canRedo}
-            aria-label=${t(($) => $.app.redo)}
-            title=${shortcutHint(t, "redo")}
-            aria-keyshortcuts=${shortcuts.redo.aria}
-            @click=${actions.redo}
-          >
-            ${icon(Redo2)}
-          </button>
+          ${iconButton(
+            t(($) => $.app.undo),
+            Undo2,
+            {
+              disabled: !model.canUndo,
+              title: shortcutHint(t, "undo"),
+              shortcut: shortcuts.undo.aria,
+              onClick: actions.undo,
+            },
+          )}
+          ${iconButton(
+            t(($) => $.app.redo),
+            Redo2,
+            {
+              disabled: !model.canRedo,
+              title: shortcutHint(t, "redo"),
+              shortcut: shortcuts.redo.aria,
+              onClick: actions.redo,
+            },
+          )}
         </div>
       </div>
       <div class="editor-navigation floating-panel" data-canvas-panel>
-        <button
-          class="palette-toggle"
-          type="button"
-          aria-label=${t(($) => $.palette.open)}
-          aria-controls="editor-palette"
-          aria-expanded=${String(model.paletteOpen)}
-          @click=${() => actions.palette(!model.paletteOpen)}
-        >
-          <span
-            class="color-swatch"
-            style=${`background:${defaultPalette.colors[model.color]}`}
-          ></span
-          ><span>${model.color}</span>
-        </button>
+        ${button(
+          html`<span
+              class="color-swatch"
+              style=${`background:${defaultPalette.colors[model.color]}`}
+            ></span
+            ><span>${model.color}</span>`,
+          {
+            className: "palette-toggle",
+            label: t(($) => $.palette.open),
+            controls: "editor-palette",
+            expanded: model.paletteOpen,
+            onClick: () => actions.palette(!model.paletteOpen),
+          },
+        )}
         <div class="display-controls">
-          <button
-            type="button"
-            title=${shortcutHint(t, "grid")}
-            aria-keyshortcuts=${shortcuts.grid.aria}
-            aria-pressed=${String(model.gridVisible)}
-            @click=${actions.grid}
-          >
-            ${t(($) => $.app.grid)}
-          </button>
-          <button
-            type="button"
-            title=${shortcutHint(t, "codes")}
-            aria-keyshortcuts=${shortcuts.codes.aria}
-            aria-pressed=${String(model.codesVisible)}
-            @click=${actions.codes}
-          >
-            ${t(($) => $.app.codes)}
-          </button>
+          ${button(
+            t(($) => $.app.grid),
+            {
+              title: shortcutHint(t, "grid"),
+              shortcut: shortcuts.grid.aria,
+              pressed: model.gridVisible,
+              onClick: actions.grid,
+            },
+          )}
+          ${button(
+            t(($) => $.app.codes),
+            {
+              title: shortcutHint(t, "codes"),
+              shortcut: shortcuts.codes.aria,
+              pressed: model.codesVisible,
+              onClick: actions.codes,
+            },
+          )}
         </div>
         <div class="zoom-controls">
-          <button
-            type="button"
-            aria-label=${t(($) => $.app.zoomOut)}
-            title=${shortcutHint(t, "zoomOut")}
-            aria-keyshortcuts=${shortcuts.zoomOut.aria}
-            @click=${() => actions.zoom(1 / 1.25)}
-          >
-            ${icon(Minus)}
-          </button>
+          ${iconButton(
+            t(($) => $.app.zoomOut),
+            Minus,
+            {
+              title: shortcutHint(t, "zoomOut"),
+              shortcut: shortcuts.zoomOut.aria,
+              onClick: () => actions.zoom(1 / 1.25),
+            },
+          )}
           <output aria-label=${t(($) => $.app.zoomLevel)}
             >${Math.round((model.viewport.zoom / 12) * 100)}%</output
           >
-          <button
-            type="button"
-            aria-label=${t(($) => $.app.zoomIn)}
-            title=${shortcutHint(t, "zoomIn")}
-            aria-keyshortcuts=${shortcuts.zoomIn.aria}
-            @click=${() => actions.zoom(1.25)}
-          >
-            ${icon(Plus)}
-          </button>
-          <button
-            type="button"
-            aria-label=${t(($) => $.app.fitWindow)}
-            title=${shortcutHint(t, "fit")}
-            aria-keyshortcuts=${shortcuts.fit.aria}
-            @click=${actions.fit}
-          >
-            ${t(($) => $.app.fit)}
-          </button>
+          ${iconButton(
+            t(($) => $.app.zoomIn),
+            Plus,
+            {
+              title: shortcutHint(t, "zoomIn"),
+              shortcut: shortcuts.zoomIn.aria,
+              onClick: () => actions.zoom(1.25),
+            },
+          )}
+          ${button(
+            t(($) => $.app.fit),
+            {
+              label: t(($) => $.app.fitWindow),
+              title: shortcutHint(t, "fit"),
+              shortcut: shortcuts.fit.aria,
+              onClick: actions.fit,
+            },
+          )}
         </div>
       </div>
     </div>
@@ -221,14 +223,11 @@ export function editorView(
       <div class="section-heading">
         <h2>${t(($) => $.palette.heading)}</h2>
         <span class="tag">MARD 221</span>
-        <button
-          type="button"
-          class="palette-close icon-button"
-          aria-label=${t(($) => $.palette.close)}
-          @click=${() => actions.palette(false)}
-        >
-          ${icon(X)}
-        </button>
+        ${iconButton(
+          t(($) => $.palette.close),
+          X,
+          { className: "palette-close icon-button", onClick: () => actions.palette(false) },
+        )}
       </div>
       <div class="selected-color">
         <span
@@ -241,20 +240,14 @@ export function editorView(
         >
       </div>
       <div class="palette-view" role="group" aria-label=${t(($) => $.palette.view)}>
-        <button
-          type="button"
-          aria-pressed=${String(model.paletteView === "used")}
-          @click=${() => actions.paletteView("used")}
-        >
-          ${t(($) => $.palette.used)}
-        </button>
-        <button
-          type="button"
-          aria-pressed=${String(model.paletteView === "all")}
-          @click=${() => actions.paletteView("all")}
-        >
-          ${t(($) => $.palette.all)}
-        </button>
+        ${button(
+          t(($) => $.palette.used),
+          { pressed: model.paletteView === "used", onClick: () => actions.paletteView("used") },
+        )}
+        ${button(
+          t(($) => $.palette.all),
+          { pressed: model.paletteView === "all", onClick: () => actions.paletteView("all") },
+        )}
       </div>
       ${model.paletteView === "all"
         ? colorSearch(model, actions, refs.colorArea, refs.colorHue, t)
@@ -285,24 +278,24 @@ export function editorView(
                 })}</span
               >
             </span>
-            <button
-              type="button"
-              ?disabled=${!model.document.counts.has(model.highlightedColor)}
-              title=${shortcutHint(t, "fitHighlight")}
-              aria-keyshortcuts=${shortcuts.fitHighlight.aria}
-              @click=${actions.fitHighlight}
-            >
-              ${t(($) => $.palette.showLocations)}
-            </button>
-            <button
-              type="button"
-              class="highlight-clear"
-              aria-label=${t(($) => $.palette.clearHighlight)}
-              title=${t(($) => $.palette.clearHighlight)}
-              @click=${() => actions.highlight(null)}
-            >
-              ${icon(X)}
-            </button>
+            ${button(
+              t(($) => $.palette.showLocations),
+              {
+                disabled: !model.document.counts.has(model.highlightedColor),
+                title: shortcutHint(t, "fitHighlight"),
+                shortcut: shortcuts.fitHighlight.aria,
+                onClick: actions.fitHighlight,
+              },
+            )}
+            ${iconButton(
+              t(($) => $.palette.clearHighlight),
+              X,
+              {
+                className: "highlight-clear",
+                title: t(($) => $.palette.clearHighlight),
+                onClick: () => actions.highlight(null),
+              },
+            )}
           </div>`
         : nothing}
       ${draft}

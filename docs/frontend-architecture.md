@@ -116,6 +116,39 @@ canvas rows, with its close button beside the view switch, leaving room for colo
 Closing the panel reveals the status again. Existing export adapters still read
 only document data.
 
+## Shared native UI controls
+
+`src/ui` contains small, stateless lit-html template helpers. They follow the
+composition and explicit-variant ideas illustrated by [shadcn/ui](https://ui.shadcn.com/docs)
+and [mini-lit](https://github.com/badlogic/mini-lit); [Web Awesome](https://webawesome.com/docs/)
+and [Spectrum](https://opensource.adobe.com/spectrum-web-components/) provide further
+control-design references. These projects are references only: the helpers are
+original app-local code with no new UI dependency, custom elements or state system.
+
+- `button(content, options)` owns native activation, default/primary variants and
+  optional disabled, toggle, disclosure, label and shortcut attributes. Actions
+  default to `type="button"`; form submissions explicitly choose `type="submit"`.
+  `iconButton(label, graphic, options)` requires an accessible name and uses the
+  existing decorative Lucide adapter. Layout-specific classes remain with callers.
+- `field(label, control, size)` composes a native label around the supplied input
+  or select. Views own control names, constraints, bindings and keys. Preserve
+  `live` for controlled strings, `defaultValue` for unfinished form edits, and
+  `keyed` boundaries for explicit resets.
+- `modal(options, content)` supplies the native dialog, ref, accessible heading
+  relationship and cancel dispatch. Views decide whether it exists; the existing
+  lifecycle owns `showModal` and cleanup, and commands retain focus restoration.
+
+Supply translated text to these helpers. The ESLint `textFunctions` configuration
+registers their text arguments, including aliased imports; register new text-taking
+helpers or import paths there as well. `label` and `title` options also retain the
+existing literal checks. These helpers do not accept arbitrary attribute bags or
+own stores, subscriptions or event listeners outside their templates.
+
+Use them for repeated native-control contracts. Keep specialized palette swatches,
+color-area gestures, file inputs and workspace geometry in their own views rather
+than expanding a generic helper for every control. Existing semantic theme tokens
+and contextual CSS still determine appearance.
+
 ## Lifecycle and asynchronous work
 
 The application mount owns its root cancellation lifetime and a dedicated render
