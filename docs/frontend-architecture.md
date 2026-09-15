@@ -400,8 +400,10 @@ page. The edit workspace is fixed to the dynamic viewport; an absolute Canvas fi
 it behind a CSS Grid of stationary floating controls. Grid rows account for actual
 header and status heights, including draft warnings. On narrow or short windows,
 one bottom dock groups drawing/history and navigation, and statistics sit below
-the header as plain text. The dock sizes to its content and wraps these groups only
-when their combined width exceeds the available space. The dock uses `display: contents` on desktop to retain
+the header as plain text. `editor-dock.ts` observes the layout and intrinsic row widths
+to choose one or two rows. CSS sizes the dock to the combined row width or the wider
+of the two rows, with spacing between tool groups. The mount-owned
+observer disconnects when the editor unmounts. The dock uses `display: contents` on desktop to retain
 the separate tool and navigation placements without duplicate controls. Transparent space between
 panels passes pointer events through to the Canvas. Palette content uses contained
 scrolling, including its recommendations and the whole panel in short windows.

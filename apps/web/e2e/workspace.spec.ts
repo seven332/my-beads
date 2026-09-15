@@ -140,6 +140,73 @@ for (const [width, height] of [
   });
 }
 
+test("compact dock uses the minimum width for one row or its widest wrapped row", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await importGrid(page, "M12,M12");
+  await openPalette(page);
+  await page.locator('.palette-grid button[aria-label^="M12 "]').click();
+  await page.keyboard.press("Escape");
+  const dock = page.locator(".editor-dock");
+  const geometry = () =>
+    dock.evaluate((element) => {
+      const style = getComputedStyle(element);
+      const row = (selector: string) => {
+        const node = element.querySelector(selector)!;
+        const rect = node.getBoundingClientRect();
+        return { width: rect.width, left: rect.left, right: rect.right };
+      };
+      const tools = row(".editor-tools");
+      const navigation = row(".editor-navigation");
+      const inset =
+        parseFloat(style.paddingLeft) +
+        parseFloat(style.paddingRight) +
+        parseFloat(style.borderLeftWidth) +
+        parseFloat(style.borderRightWidth);
+      const single = tools.width + navigation.width + parseFloat(style.columnGap) + inset;
+      const wrapped = element.hasAttribute("data-wrapped");
+      const box = element.getBoundingClientRect();
+      return {
+        wrapped,
+        single,
+        width: box.width,
+        expectedWidth: wrapped ? Math.max(tools.width, navigation.width) + inset : single,
+        inside: [tools, navigation].every((r) => r.left >= box.left && r.right <= box.right),
+        dividers: [".history-controls", ".display-controls", ".zoom-controls"].map(
+          (selector) => getComputedStyle(element.querySelector(selector)!).borderLeftWidth,
+        ),
+        rowDivider: getComputedStyle(element.querySelector(".editor-navigation")!, "::before")
+          .content,
+      };
+    });
+  for (const locale of ["en-US", "zh-CN"]) {
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await selectChoice(page.locator(".language-picker .select-trigger"), locale);
+    await expect(dock).not.toHaveAttribute("data-wrapped");
+    const minimum = (await geometry()).single + 24;
+    for (const [width, wrapped] of [
+      [Math.floor(minimum) - 1, true],
+      [Math.ceil(minimum) + 1, false],
+      [390, true],
+      [320, true],
+      [844, false],
+    ] as const) {
+      await page.setViewportSize({ width, height: width === 844 ? 390 : 1024 });
+      await expect.poll(async () => (await geometry()).wrapped).toBe(wrapped);
+      const actual = await geometry();
+      expect(Math.abs(actual.width - actual.expectedWidth), `${locale} at ${width}px`).toBeLessThan(
+        0.1,
+      );
+      expect(actual.inside).toBe(true);
+      expect(actual.dividers).toEqual(["0px", "0px", "0px"]);
+      expect(actual.rowDivider).toBe("none");
+      await fixedWorkspace(page);
+      await controlsReachable(page);
+    }
+  }
+});
+
 for (const [width, height] of [
   [1440, 900],
   [390, 844],
