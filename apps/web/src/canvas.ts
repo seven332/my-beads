@@ -1,4 +1,5 @@
-import { defaultPalette, type Point } from "@my-beads/core";
+import type { Point } from "@my-beads/core";
+import { paintCanvas } from "./canvas-renderer.js";
 import { canvasCursor } from "./canvas-cursor.js";
 import { composing } from "./shortcuts.js";
 import type { EditorModel } from "./state.js";
@@ -30,97 +31,7 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
   function paint() {
     frame = 0;
     if (!model || !context || destroyed) return;
-    const { width, height } = canvas.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = Math.max(1, Math.round(width * dpr)),
-      h = Math.max(1, Math.round(height * dpr));
-    if (canvas.width !== w || canvas.height !== h) {
-      canvas.width = w;
-      canvas.height = h;
-    }
-    context.setTransform(dpr, 0, 0, dpr, 0, 0);
-    context.clearRect(0, 0, width, height);
-    const { zoom, x: left, y: top } = model.viewport;
-    const grid = model.document.grid;
-    const startX = Math.max(0, Math.floor(-left / zoom)),
-      endX = Math.min(grid[0].length, Math.ceil((width - left) / zoom));
-    const startY = Math.max(0, Math.floor(-top / zoom)),
-      endY = Math.min(grid.length, Math.ceil((height - top) / zoom));
-    for (let y = startY; y < endY; y++)
-      for (let x = startX; x < endX; x++) {
-        const code = grid[y][x];
-        context.fillStyle = code
-          ? defaultPalette.colors[code]
-          : (x + y) % 2
-            ? theme.emptyB
-            : theme.emptyA;
-        context.fillRect(left + x * zoom, top + y * zoom, zoom, zoom);
-        if (model.gridVisible && zoom >= 6) {
-          context.strokeStyle = theme.grid;
-          context.lineWidth = 0.5;
-          context.strokeRect(left + x * zoom, top + y * zoom, zoom, zoom);
-        }
-        if (model.codesVisible && code && zoom >= 20) {
-          const hex = defaultPalette.colors[code];
-          const brightness = [1, 3, 5].reduce(
-            (sum, i) => sum + parseInt(hex.slice(i, i + 2), 16),
-            0,
-          );
-          context.fillStyle = brightness > 420 ? "#202420" : "#ffffff";
-          context.font = `600 ${Math.min(14, zoom * 0.3)}px -apple-system, BlinkMacSystemFont, sans-serif`;
-          context.textAlign = "center";
-          context.textBaseline = "middle";
-          context.fillText(code, left + (x + 0.5) * zoom, top + (y + 0.5) * zoom);
-        }
-        if (model.highlightedColor && code !== model.highlightedColor) {
-          context.fillStyle = theme.mask;
-          context.fillRect(left + x * zoom, top + y * zoom, zoom, zoom);
-        }
-      }
-    if (model.highlightedColor && zoom >= 3) {
-      context.save();
-      context.beginPath();
-      const code = model.highlightedColor;
-      // Read actual neighbors, even outside the viewport, so panning never invents edges.
-      for (let y = startY; y < endY; y++)
-        for (let x = startX; x < endX; x++) {
-          if (grid[y][x] !== code) continue;
-          const l = left + x * zoom,
-            t = top + y * zoom,
-            r = l + zoom,
-            b = t + zoom;
-          if (grid[y - 1]?.[x] !== code) {
-            context.moveTo(l, t);
-            context.lineTo(r, t);
-          }
-          if (grid[y + 1]?.[x] !== code) {
-            context.moveTo(l, b);
-            context.lineTo(r, b);
-          }
-          if (grid[y][x - 1] !== code) {
-            context.moveTo(l, t);
-            context.lineTo(l, b);
-          }
-          if (grid[y][x + 1] !== code) {
-            context.moveTo(r, t);
-            context.lineTo(r, b);
-          }
-        }
-      context.lineCap = "round";
-      context.lineJoin = "round";
-      context.strokeStyle = theme.outlineDark;
-      context.lineWidth = Math.min(3, zoom * 0.45);
-      context.stroke();
-      context.strokeStyle = theme.outlineLight;
-      context.lineWidth = Math.min(1, zoom * 0.15);
-      context.stroke();
-      context.restore();
-    }
-    if (focused && cursor) {
-      context.strokeStyle = theme.selection;
-      context.lineWidth = 2;
-      context.strokeRect(left + cursor.x * zoom + 1, top + cursor.y * zoom + 1, zoom - 2, zoom - 2);
-    }
+    paintCanvas(context, model, theme, focused ? cursor : null);
   }
   function schedule() {
     if (!frame && !destroyed) frame = requestAnimationFrame(paint);
@@ -257,6 +168,14 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
   }
   const observer = new ResizeObserver(schedule);
   observer.observe(canvas);
+  let resolution: MediaQueryList;
+  function watchResolution() {
+    resolution?.removeEventListener("change", watchResolution);
+    resolution = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+    resolution.addEventListener("change", watchResolution);
+    schedule();
+  }
+  watchResolution();
   canvas.addEventListener("pointerdown", down);
   canvas.addEventListener("pointermove", move);
   canvas.addEventListener("pointerup", end);
@@ -288,6 +207,7 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
       canvas.style.removeProperty("cursor");
       cancelAnimationFrame(frame);
       observer.disconnect();
+      resolution.removeEventListener("change", watchResolution);
       canvas.removeEventListener("pointerdown", down);
       canvas.removeEventListener("pointermove", move);
       canvas.removeEventListener("pointerup", end);

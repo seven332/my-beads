@@ -114,8 +114,15 @@ for (const code of ["H7", "H2"]) {
     await expect.poll(() => pixel(1, 1)).not.toEqual(background);
     // Two adjoining target cells stay seamless. An exposed outer edge and a hole edge get a contrasting stroke.
     await expect.poll(() => pixel(0, 0, zoom / 2)).toEqual(original);
-    await expect.poll(() => pixel(1, 0, 0, -zoom / 2 + 1)).not.toEqual(original);
-    await expect.poll(() => pixel(1, 0, 0, zoom / 2 - 1)).not.toEqual(original);
+    // A hard two-tone outline can match the bead at one sample. Inspect the edge band
+    // for its dark stroke rather than relying on a formerly antialiased pixel.
+    for (const edge of [-zoom / 2, zoom / 2])
+      await expect
+        .poll(async () => {
+          const band = await Promise.all([-2, -1, 0, 1, 2].map((dy) => pixel(1, 0, 0, edge + dy)));
+          return band.some((value) => value.join(",") === "23,41,31,255");
+        })
+        .toBe(true);
     // Panning shifts the rendered locations immediately, without editing.
     await page.getByRole("button", { name: "Pan", exact: true }).click();
     await page.locator(".pattern-canvas").press("Shift+ArrowRight");

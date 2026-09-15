@@ -9,6 +9,54 @@ const black = [0, 0, 0, 255],
 const emptyLight = [245, 246, 242, 255],
   emptyDark = [228, 230, 227, 255];
 
+test("a fitted solid pattern has no seams after fractional zoom and pan", async ({ page }) => {
+  await page.setViewportSize({ width: 1011, height: 733 });
+  await page.goto("/");
+  const csv = Array.from({ length: 50 }, () => Array(50).fill("H7").join(",")).join("\n");
+  await page
+    .getByLabel("Open CSV")
+    .setInputFiles({ name: "Solid.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+  const canvas = page.getByRole("img", { name: "Pattern canvas" });
+  await expect(canvas).toBeVisible();
+  const grid = page.getByRole("button", { name: "Grid", exact: true });
+  await expect(grid).toHaveAttribute("aria-pressed", "true");
+  await grid.click();
+  const { center, box } = await fitCoordinates(page, 50, 50);
+  const colors = () =>
+    canvas.evaluate(
+      async (node, center) => {
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        const canvas = node as HTMLCanvasElement;
+        const rect = canvas.getBoundingClientRect();
+        const sx = canvas.width / rect.width,
+          sy = canvas.height / rect.height;
+        const data = canvas
+          .getContext("2d")!
+          .getImageData(
+            Math.floor((center.x - 100) * sx),
+            Math.floor((center.y - 100) * sy),
+            Math.floor(200 * sx),
+            Math.floor(200 * sy),
+          ).data;
+        let unexpected = 0;
+        for (let i = 0; i < data.length; i += 4)
+          if (data[i] !== 0 || data[i + 1] !== 0 || data[i + 2] !== 0 || data[i + 3] !== 255)
+            unexpected++;
+        return unexpected;
+      },
+      { x: center.x - box.x, y: center.y - box.y },
+    );
+  await expect.poll(colors).toBe(0);
+  await page.mouse.move(center.x, center.y);
+  await page.mouse.wheel(11.25, 7.5);
+  await expect.poll(colors).toBe(0);
+  await page.keyboard.down("Control");
+  await page.mouse.wheel(0, -27);
+  await page.keyboard.up("Control");
+  await expect.poll(colors).toBe(0);
+  await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
+});
+
 async function scene(page: Page, csv: string) {
   await page.goto("/");
   await page
@@ -332,7 +380,7 @@ test("keyboard focus, grid and code overlays and resizing redraw without editing
       canvas.evaluate(
         (node) =>
           (node as HTMLCanvasElement).width ===
-          Math.round(node.getBoundingClientRect().width * Math.min(devicePixelRatio, 2)),
+          Math.round(node.getBoundingClientRect().width * devicePixelRatio),
       ),
     )
     .toBe(true);
