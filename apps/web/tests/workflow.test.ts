@@ -337,7 +337,14 @@ it("does not carry scheduled settings across canceled, replaced or destroyed ima
   const pending = previous.store.get(imageSession$);
   previous.destroy();
   expect(host.childElementCount).toBe(0);
-  app = mountApp(host, { storage: () => undefined });
+  app = mountApp(host, {
+    storage: () => ({
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => {
+        values.set(key, value);
+      },
+    }),
+  });
   await app.store.set(loadImage$, { name: "Remounted.png", read }, signal);
   input('dialog [name="columns"]', "2");
   input('dialog [name="rows"]', "1");
