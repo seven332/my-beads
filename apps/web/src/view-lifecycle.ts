@@ -8,6 +8,7 @@ import type { Theme } from "./theme-preference.js";
 import { mountColorArea } from "./color-area.js";
 import { mountColorPickerOverlay } from "./color-picker-overlay.js";
 import { mountSelects } from "./ui/select-controller.js";
+import { mountEditorDock } from "./editor-dock.js";
 
 export type ViewRefs = ReturnType<typeof createViewLifecycle>["refs"];
 
@@ -21,6 +22,7 @@ export function createViewLifecycle(
   const selects = mountSelects(host);
   const refs = {
     canvas: createRef<HTMLCanvasElement>(),
+    dock: createRef<HTMLElement>(),
     imageDialog: createRef<HTMLDialogElement>(),
     exportDialog: createRef<HTMLDialogElement>(),
     keyboardDialog: createRef<HTMLDialogElement>(),
@@ -40,6 +42,7 @@ export function createViewLifecycle(
       }
     | undefined;
   let dialogs: HTMLDialogElement[] = [];
+  let dock: { element: HTMLElement; controller: ReturnType<typeof mountEditorDock> } | undefined;
   let picker:
     | {
         element: HTMLDialogElement;
@@ -85,6 +88,12 @@ export function createViewLifecycle(
       canvas?.controller.holdPan(held);
     },
     sync(model: EditorModel, image: ImageSession | null, theme: Theme) {
+      if (dock?.element !== refs.dock.value) {
+        dock?.controller.destroy();
+        dock = refs.dock.value
+          ? { element: refs.dock.value, controller: mountEditorDock(refs.dock.value) }
+          : undefined;
+      }
       if (picker?.element !== refs.colorDialog.value) {
         picker?.controller.destroy();
         picker =
@@ -151,6 +160,8 @@ export function createViewLifecycle(
     },
     destroy() {
       selects.destroy();
+      dock?.controller.destroy();
+      dock = undefined;
       colorArea?.controller.destroy();
       colorArea = undefined;
       picker?.controller.destroy();

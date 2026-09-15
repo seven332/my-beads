@@ -167,13 +167,14 @@ it("keeps controlled text and keyed color buttons synchronized without losing fo
   expect(black.querySelector(".used-count")?.textContent).toBe("1 bead");
 });
 
-it("releases removed Canvas listeners and cancels an unfinished stroke on app teardown", () => {
+it("releases editor observers and Canvas listeners and cancels a stroke on app teardown", () => {
   const first = host.querySelector<HTMLCanvasElement>(".pattern-canvas")!;
   expect(first.style.cursor).toContain("data:image/svg+xml,");
   const disconnectedBefore = disconnect.mock.calls.length;
   app.store.set(showCreate$);
   expect(first.style.cursor).toBe("");
-  expect(disconnect.mock.calls.length).toBe(disconnectedBefore + 1);
+  // Both the Canvas and the intrinsic dock layout release their observers.
+  expect(disconnect.mock.calls.length).toBe(disconnectedBefore + 2);
   app.store.set(showEditor$);
   const second = host.querySelector<HTMLCanvasElement>(".pattern-canvas")!;
   expect(second.style.cursor).toContain("data:image/svg+xml,");
@@ -191,7 +192,7 @@ it("releases removed Canvas listeners and cancels an unfinished stroke on app te
   app.destroy();
   expect(second.style.cursor).toBe("");
   expect(app.store.get(editor$).beads).toBe(1);
-  expect(disconnect.mock.calls.length).toBe(disconnectedBefore + 2);
+  expect(disconnect.mock.calls.length).toBe(disconnectedBefore + 4);
   expect(host.children).toHaveLength(1);
   expect(host.firstElementChild).toBe(sibling);
   second.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));

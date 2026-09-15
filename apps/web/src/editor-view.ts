@@ -90,7 +90,7 @@ export function editorView(
         </div>
       </div>
     </header>
-    <div class="editor-dock" data-canvas-panel>
+    <div class="editor-dock" data-canvas-panel ${ref(refs.dock)}>
       <div class="editor-tools floating-panel" data-canvas-panel>
         <div class="tools" role="group" aria-label=${t(($) => $.app.tools)}>
           ${(
