@@ -496,8 +496,11 @@
     grid-area: 4 / 1;
     justify-self: center;
     display: flex;
-    flex-direction: column;
-    width: min(380px, 100%);
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 16px;
+    width: max-content;
+    max-width: 100%;
     padding: 6px;
     pointer-events: auto;
     background: var(--ui-floating);
@@ -516,9 +519,11 @@
   .editor-tools {
     --canvas-edge: bottom;
     display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
     align-self: stretch;
     gap: 6px;
-    padding: 0 0 6px;
+    padding: 0;
   }
   .tools {
     flex: 1;
@@ -603,11 +608,12 @@
     max-height: 60px;
   }
   .editor-dock .editor-navigation {
+    flex: 1 1 auto;
+    min-width: 0;
     align-self: stretch;
     justify-content: space-between;
-    padding: 6px 0 0;
+    padding: 0;
     gap: 8px;
-    border-top: 1px solid var(--ui-divider);
   }
   .editor-navigation button {
     font-size: 11px;
