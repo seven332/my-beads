@@ -40,6 +40,25 @@ it("uses the latest settings when decoding finishes", async () => {
   expect(store.get(imageSession$)?.preview?.mapped.grid).toEqual([["H7", "H2", "H2"]]);
   expect(store.set(applyImage$)).toBe(true);
 });
+it("retains read failures when settings change before or after decoding fails", async () => {
+  const store = createStore();
+  const pending = Promise.withResolvers<RgbaImage>();
+  const loading = store.set(
+    loadImage$,
+    { name: "Broken.png", read: () => pending.promise },
+    new AbortController().signal,
+  );
+  store.set(changeImageSettings$, { columns: 3, rows: 1, alpha: 128 });
+  pending.reject(new Error("Unable to decode image"));
+  await loading;
+  expect(store.get(imageSession$)?.settingsDirty).toBe(false);
+  expect(store.get(imageSession$)?.error).toContain("Unable to decode image");
+  store.set(changeImageSettings$, { columns: 4, rows: 1, alpha: 128 });
+  expect(store.get(imageSession$)?.error).toContain("Unable to decode image");
+  expect(store.get(imageSession$)?.settingsDirty).toBe(false);
+  expect(store.get(imageSession$)?.preview).toBeNull();
+  expect(store.set(applyImage$)).toBe(false);
+});
 it("uses the full palette for previews and cross-prefix overrides without editing until Apply", async () => {
   const store = createStore(),
     signal = new AbortController().signal;

@@ -43,7 +43,8 @@ export const cancelImage$ = command(({ get, set }) => {
 });
 export const changeImageSettings$ = command(({ get, set }, options: ImageOptions) => {
   const session = get(sessionState$);
-  if (session) set(sessionState$, { ...session, options, settingsDirty: true, error: "" });
+  if (session && (session.loading || session.pixels))
+    set(sessionState$, { ...session, options, settingsDirty: true, error: "" });
 });
 export const updateImage$ = command(({ get, set }) => {
   const session = get(sessionState$);
@@ -119,6 +120,7 @@ export const loadImage$ = command(
         set(sessionState$, {
           ...session,
           loading: false,
+          settingsDirty: false,
           error: new UiError("imageChangedLoading"),
         });
         return;
@@ -129,7 +131,12 @@ export const loadImage$ = command(
       signal.throwIfAborted();
       if (get(imageTokenState$) === token) {
         const session = get(sessionState$)!;
-        set(sessionState$, { ...session, loading: false, error: captureError(error) });
+        set(sessionState$, {
+          ...session,
+          loading: false,
+          settingsDirty: false,
+          error: captureError(error),
+        });
       }
     }
   },

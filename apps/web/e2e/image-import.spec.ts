@@ -190,6 +190,9 @@ test("cancel and invalid PNG preserve the active document; WebP applies through 
       buffer: Buffer.from("not an image"),
     });
   await expect(page.getByRole("dialog").getByRole("alert")).toContainText("could not be decoded");
+  await page.getByRole("dialog").getByLabel("Target columns").fill("3");
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText("could not be decoded");
+  await expect(page.getByRole("dialog").getByRole("status")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Apply image" })).toBeDisabled();
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual(before);
