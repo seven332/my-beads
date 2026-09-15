@@ -1,34 +1,29 @@
 import { html } from "lit-html";
-import { live } from "lit-html/directives/live.js";
+import { select } from "./ui/select.js";
 import { Monitor, Moon, Sun } from "@lucide/icons";
 import { icon } from "./icon.js";
-import { isThemePreference, type ThemePreference } from "./theme-preference.js";
+import { type ThemePreference } from "./theme-preference.js";
 import type { Translate } from "./i18n/index.js";
 
 export function themePicker(
   preference: ThemePreference,
-  select: (value: ThemePreference) => void,
+  change: (value: ThemePreference) => void,
   t: Translate,
 ) {
-  return html`<label
-    class="appearance-picker"
-    title=${t(($) => $.appearance.current, { mode: t(($) => $.appearance[preference]) })}
-  >
-    ${icon(preference === "system" ? Monitor : preference === "dark" ? Moon : Sun)}
-    <select
-      aria-label=${t(($) => $.appearance.label)}
-      .value=${live(preference)}
-      @change=${(event: Event) => {
-        const value = (event.target as HTMLSelectElement).value;
-        if (isThemePreference(value)) select(value);
-      }}
-    >
-      ${(["system", "light", "dark"] as const).map(
-        (mode) =>
-          html`<option value=${mode} .selected=${mode === preference}>
-            ${t(($) => $.appearance[mode])}
-          </option>`,
-      )}
-    </select>
-  </label>`;
+  return html`<span class="appearance-picker"
+    >${select(
+      t(($) => $.appearance.label),
+      preference,
+      (["system", "light", "dark"] as const).map((value) => ({
+        value,
+        label: t(($) => $.appearance[value]),
+        graphic: icon(value === "system" ? Monitor : value === "dark" ? Moon : Sun),
+      })),
+      change,
+      {
+        content: icon(preference === "system" ? Monitor : preference === "dark" ? Moon : Sun),
+        title: t(($) => $.appearance.current, { mode: t(($) => $.appearance[preference]) }),
+      },
+    )}</span
+  >`;
 }

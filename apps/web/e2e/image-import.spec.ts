@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
 import { parsePatternCsv, defaultPalette, type PatternGrid } from "@my-beads/core";
-import { startNew, openExport, closeExport, fitCoordinates } from "./helpers.js";
+import { selectChoice, startNew, openExport, closeExport, fitCoordinates } from "./helpers.js";
 
 function enlargedImage() {
   const png = new PNG({ width: 1000, height: 1000 });
@@ -26,7 +26,7 @@ async function csv(page: Page, content: string, name = "Before.csv") {
 }
 async function download(page: Page, format: string) {
   await openExport(page);
-  await page.getByLabel("Export format").selectOption(format);
+  await selectChoice(page.getByRole("combobox", { name: "Export format", exact: true }), format);
   if (format === "pixel") await page.getByLabel("Pixel scale").fill("1");
   const pending = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download" }).click();

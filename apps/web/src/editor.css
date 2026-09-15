@@ -144,18 +144,21 @@
 .editor-actions {
   flex-shrink: 0;
 }
+.editor-actions .preferences {
+  flex-shrink: 0;
+}
 .editor-actions .language-picker,
 .editor-actions .preferences {
   margin: 0;
 }
-.editor-actions .language-picker > span {
+.editor-actions .language-picker > span:first-child {
   position: absolute;
   width: 1px;
   height: 1px;
   overflow: hidden;
   clip-path: inset(50%);
 }
-.editor-actions select {
+.editor-actions .language-picker .select-trigger:not([aria-expanded="true"]) {
   font-size: 12px;
   background: transparent;
   border-color: transparent;
@@ -644,9 +647,12 @@
   .editor-actions .document-actions button {
     font-size: 11px;
   }
-  .editor-actions .language-picker select {
-    padding: 5px;
+  .editor-actions .language-picker .select-trigger {
     max-width: 108px;
+  }
+  .editor-actions .language-picker {
+    --select-padding-inline: 5px;
+    --select-padding-block: 5px;
   }
 
   .editor-error {
@@ -656,6 +662,9 @@
 @media (max-width: 460px) {
   .editor-actions {
     gap: 8px;
+  }
+  .editor-actions .document-actions button {
+    padding-inline: 8px;
   }
   .editor-actions .document-actions .primary {
     padding-inline: 10px;

@@ -205,7 +205,7 @@ it("opens export inside the editor, preserves the Canvas and isolates history sh
   expect(host.querySelector<HTMLDialogElement>(".export-dialog")!.open).toBe(true);
   expect(host.querySelector('[name="scale"]')).toBeNull();
   expect(host.querySelector('[name="width"]')).toBeNull();
-  const format = host.querySelector<HTMLSelectElement>('[name="format"]')!;
+  const format = host.querySelector<HTMLButtonElement>('[name="format"]')!;
   format.value = "pixel";
   format.dispatchEvent(new Event("change", { bubbles: true }));
   input('[name="scale"]', "7");
@@ -231,12 +231,12 @@ it("cancels a closing export, ignores its late result and revokes only completed
   const download = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
   click(".blank-form button");
   click('.document-actions [aria-label="Export"]');
-  click(".export-form button");
+  click('.export-form button[type="submit"]');
   expect(host.querySelector<HTMLFieldSetElement>(".export-form fieldset")!.disabled).toBe(true);
   click(".export-heading button");
   expect(pending.mock.calls[0][3].aborted).toBe(true);
   click('.document-actions [aria-label="Export"]');
-  click(".export-form button");
+  click('.export-form button[type="submit"]');
   first.resolve({ blob: new Blob(["old"]), filename: "old.csv" });
   await first.promise;
   await Promise.resolve();

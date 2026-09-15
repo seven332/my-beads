@@ -11,6 +11,7 @@ import type { Actions } from "./view.js";
 import type { Translate } from "./i18n/index.js";
 import type { ViewRefs } from "./view-lifecycle.js";
 import { paletteResults } from "./palette-view.js";
+import { select } from "./ui/select.js";
 
 export function colorSearch(model: EditorModel, actions: Actions, refs: ViewRefs, t: Translate) {
   const { open, color } = model.colorPicker;
@@ -97,21 +98,12 @@ export function colorPicker(model: EditorModel, actions: Actions, refs: ViewRefs
       <div class="color-values">
         <label class="color-format">
           <span>${t(($) => $.picker.format)}</span>
-          <select
-            aria-label=${t(($) => $.picker.format)}
-            @change=${(event: Event) => {
-              const value = (event.target as HTMLSelectElement).value;
-              const selected = colorFormats.find((item) => item === value);
-              if (selected) actions.colorFormat(selected);
-            }}
-          >
-            ${colorFormats.map(
-              (item) =>
-                html`<option value=${item} .selected=${item === format}>
-                  ${t(($) => $.picker.formats[item])}
-                </option>`,
-            )}
-          </select>
+          ${select(
+            t(($) => $.picker.format),
+            format,
+            colorFormats.map((value) => ({ value, label: t(($) => $.picker.formats[value]) })),
+            actions.colorFormat,
+          )}
         </label>
         <div class="color-channels" data-format=${format}>
           ${keyed(

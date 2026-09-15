@@ -157,18 +157,26 @@ it("persists translated selections and preserves Canvas, draft, history and unfi
   expect(node.querySelector<HTMLInputElement>('[name="scale"]')!.value).toBe("7");
   expect(values.get(DRAFT_KEY)).toBe(draft);
   app.store.set(selectLocale$, "zh-CN");
-  const select = node.querySelector<HTMLSelectElement>('[aria-label="外观"]')!;
-  expect([...select.options].map((option) => option.text)).toEqual(["跟随系统", "浅色", "深色"]);
+  const select = node.querySelector<HTMLButtonElement>('[aria-label="外观"]')!;
+  expect(
+    [...select.parentElement!.querySelectorAll("[role=option] > span")].map(
+      (option) => option.textContent,
+    ),
+  ).toEqual(["跟随系统", "浅色", "深色"]);
   select.value = "light";
   select.dispatchEvent(new Event("change", { bubbles: true }));
   expect(values.get(THEME_KEY)).toBe("light");
   expect(node.dataset.theme).toBe("light");
-  expect(node.querySelector(".appearance-picker")?.getAttribute("title")).toBe("外观：浅色");
+  expect(node.querySelector(".appearance-picker .select-trigger")?.getAttribute("title")).toBe(
+    "外观：浅色",
+  );
   const other = host(),
     reloaded = mountApp(other, { storage });
   mounts.push(reloaded);
   expect(other.dataset.theme).toBe("light");
-  expect(other.querySelector<HTMLSelectElement>(".appearance-picker select")!.value).toBe("light");
+  expect(other.querySelector<HTMLButtonElement>(".appearance-picker .select-trigger")!.value).toBe(
+    "light",
+  );
   app.store.set(selectTheme$, "dark");
   expect(node.dataset.theme).toBe("dark");
   expect(other.dataset.theme).toBe("light");
@@ -186,7 +194,7 @@ it("keeps theme switching and editing usable when storage reads and writes are d
   });
   mounts.push(app);
   expect(node.dataset.theme).toBe("dark");
-  const select = node.querySelector<HTMLSelectElement>('[aria-label="Appearance"]')!;
+  const select = node.querySelector<HTMLButtonElement>('[aria-label="Appearance"]')!;
   select.value = "light";
   select.dispatchEvent(new Event("change", { bubbles: true }));
   expect(node.dataset.theme).toBe("light");

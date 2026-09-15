@@ -6,6 +6,7 @@
 @import "./components.css" layer(components);
 @import "./editor.css" layer(components);
 @import "./color-picker.css" layer(components);
+@import "./ui/select.css" layer(components);
 @import "tailwindcss/utilities.css" layer(utilities) source(none);
 
 /* Keep builds independent of the workspace command's current directory. */

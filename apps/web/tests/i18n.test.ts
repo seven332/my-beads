@@ -32,7 +32,7 @@ function mount(storage: () => DraftStorage) {
   return { app, host };
 }
 async function switchLanguage(host: HTMLElement, locale: Locale) {
-  const select = host.querySelector<HTMLSelectElement>(".language-picker select")!;
+  const select = host.querySelector<HTMLButtonElement>(".language-picker .select-trigger")!;
   select.value = locale;
   select.dispatchEvent(new Event("change", { bubbles: true }));
   await vi.waitFor(() =>
@@ -149,7 +149,7 @@ it("switches the mounted UI and remembers the choice without changing the draft,
   expect(host.querySelector("canvas")).toBe(canvas);
   expect(app.store.get(editor$)).toEqual(before);
   expect(host.querySelector<HTMLInputElement>('[name="scale"]')!.value).toBe("7");
-  expect(host.querySelector<HTMLSelectElement>('[name="format"]')!.value).toBe("pixel");
+  expect(host.querySelector<HTMLButtonElement>('[name="format"]')!.value).toBe("pixel");
   expect(app.store.get(exportSettings$).scale).toBe("7");
   expect(values.get(DRAFT_KEY)).toBe(saved);
   expect(values.get(LOCALE_KEY)).toBe("zh-CN");
@@ -157,9 +157,9 @@ it("switches the mounted UI and remembers the choice without changing the draft,
   expect(app.store.get(editor$).beads).toBe(0);
   const reloaded = mount(storage);
   expect(reloaded.app.store.get(locale$)).toBe("zh-CN");
-  expect(reloaded.host.querySelector<HTMLSelectElement>(".language-picker select")!.value).toBe(
-    "zh-CN",
-  );
+  expect(
+    reloaded.host.querySelector<HTMLButtonElement>(".language-picker .select-trigger")!.value,
+  ).toBe("zh-CN");
   await switchLanguage(host, "en-US");
   expect(reloaded.app.store.get(locale$)).toBe("zh-CN");
 });
@@ -170,7 +170,9 @@ it("uses the browser language and keeps editing usable when preference storage i
     throw new Error("Denied");
   });
   expect(app.store.get(locale$)).toBe("zh-CN");
-  expect(host.querySelector<HTMLSelectElement>(".language-picker select")!.value).toBe("zh-CN");
+  expect(host.querySelector<HTMLButtonElement>(".language-picker .select-trigger")!.value).toBe(
+    "zh-CN",
+  );
   await switchLanguage(host, "en-US");
   host.querySelector<HTMLButtonElement>(".blank-form button")!.click();
   app.store.set(beginStroke$, { x: 0, y: 0 });

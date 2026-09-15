@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { parsePatternCsv } from "@my-beads/core";
-import { fitCoordinates, openExport, openPalette } from "./helpers.js";
+import { selectChoice, fitCoordinates, openExport, openPalette } from "./helpers.js";
 
 async function scene(page: Page, csv = "H2,H2,H2,H2") {
   await page.goto("/");
@@ -292,7 +292,7 @@ test("help is bilingual, modal and usable in narrow windows, restoring keyboard 
   await expect(dialog).toHaveCount(0);
   await expect(canvas).toBeFocused();
   for (const locale of ["en-US", "zh-CN"]) {
-    await page.locator(".language-picker select").selectOption(locale);
+    await selectChoice(page.locator(".language-picker .select-trigger"), locale);
     await page.setViewportSize({ width: 320, height: 390 });
     const help = page.locator(".keyboard-help-button");
     await help.click();

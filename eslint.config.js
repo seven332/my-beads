@@ -57,6 +57,7 @@ export default [
             { module: "./ui/button.js", name: "button", arguments: [0] },
             { module: "./ui/button.js", name: "iconButton", arguments: [0] },
             { module: "./ui/field.js", name: "field", arguments: [0] },
+            { module: "./ui/select.js", name: "select", arguments: [0] },
           ],
         },
       ],

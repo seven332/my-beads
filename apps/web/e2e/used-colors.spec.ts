@@ -2,12 +2,12 @@ import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { PNG } from "pngjs";
 import { parsePatternCsv } from "@my-beads/core";
-import { fitCoordinates, openExport } from "./helpers.js";
+import { selectChoice, fitCoordinates, openExport } from "./helpers.js";
 import { unobscuredArea, type CanvasEdge } from "../src/canvas-viewport.js";
 
 async function scene(page: Page, csv: string) {
   await page.goto("/");
-  await page.locator(".language-picker select").selectOption("en-US");
+  await selectChoice(page.locator(".language-picker .select-trigger"), "en-US");
   if (await page.getByRole("button", { name: "New pattern", exact: true }).isVisible())
     await page.getByRole("button", { name: "New pattern", exact: true }).click();
   await page
@@ -59,7 +59,7 @@ test("used counts, independent highlighting, zero-count undo and exports stay in
   await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
   for (const format of ["csv", "pixel", "svg"]) {
     await openExport(page);
-    await page.getByLabel("Export format").selectOption(format);
+    await selectChoice(page.getByRole("combobox", { name: "Export format", exact: true }), format);
     if (format === "pixel") await page.getByLabel("Pixel scale").fill("1");
     const pending = page.waitForEvent("download");
     await page.getByRole("button", { name: "Download", exact: true }).click();
@@ -142,7 +142,7 @@ test("location controls fit the target and remain usable in bilingual narrow and
     await page.setViewportSize({ width, height });
     const { canvas } = await scene(page, "H7,H2,H7");
     for (const locale of ["en-US", "zh-CN"]) {
-      await page.locator(".language-picker select").selectOption(locale);
+      await selectChoice(page.locator(".language-picker .select-trigger"), locale);
       const chinese = locale === "zh-CN";
       await page.locator(".palette-toggle").click();
       await expect(page.locator('.palette-view button[aria-pressed="true"]')).toBeFocused();

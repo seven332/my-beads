@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import en from "../src/i18n/locales/en-US.json" with { type: "json" };
 import zh from "../src/i18n/locales/zh-CN.json" with { type: "json" };
-import { fitCoordinates, openPalette } from "./helpers.js";
+import { selectChoice, fitCoordinates, openPalette } from "./helpers.js";
 
 for (const width of [1440, 320]) {
   test(`SVG controls keep their names, actions and Canvas through language updates at ${width}px`, async ({
@@ -18,7 +18,7 @@ for (const width of [1440, 320]) {
       ["en-US", en],
       ["zh-CN", zh],
     ] as const) {
-      await page.locator(".language-picker select").selectOption(locale);
+      await selectChoice(page.locator(".language-picker .select-trigger"), locale);
       for (const name of [
         copy.tools.pencil,
         copy.tools.eraser,

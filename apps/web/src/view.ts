@@ -1,5 +1,5 @@
 import { html, nothing } from "lit-html";
-import { live } from "lit-html/directives/live.js";
+import { select } from "./ui/select.js";
 import type { EditorModel, PaletteView, Tool, workflow$ } from "./state.js";
 import { imageView, type ImageActions } from "./image-view.js";
 import type { ImageSession } from "./image-state.js";
@@ -71,20 +71,14 @@ export function view(
     ><span class="brand-name">${t(($) => $.app.name)}</span></a
   >`;
   const language = html`<label class="language-picker"
-    ><span>${t(($) => $.app.language)}</span>
-    <select
-      aria-label=${t(($) => $.app.language)}
-      .value=${live(locale)}
-      @change=${(event: Event) => {
-        const selected = (event.target as HTMLSelectElement).value;
-        if (isLocale(selected)) actions.language(selected);
-      }}
-    >
-      ${Object.entries(localeNames).map(
-        ([code, name]) =>
-          html`<option value=${code} lang=${code} .selected=${code === locale}>${name}</option>`,
-      )}
-    </select></label
+    ><span>${t(($) => $.app.language)}</span> ${select(
+      t(($) => $.app.language),
+      locale,
+      Object.entries(localeNames).map(([value, label]) => ({ value, label, lang: value })),
+      (value) => {
+        if (isLocale(value)) actions.language(value);
+      },
+    )}</label
   >`;
   const preferences = html`<div class="preferences">
     ${themePicker(preference, actions.theme, t)}${language}

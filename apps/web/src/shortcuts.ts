@@ -117,6 +117,6 @@ export function composing(event: KeyboardEvent): boolean {
 export function editable(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
-    (!!target.closest("input, textarea, select") || target.isContentEditable)
+    (!!target.closest('input, textarea, select, [role="combobox"]') || target.isContentEditable)
   );
 }

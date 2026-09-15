@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { parsePatternCsv } from "@my-beads/core";
-import { startNew, continueEditing, openExport, closeExport } from "./helpers.js";
+import { selectChoice, startNew, continueEditing, openExport, closeExport } from "./helpers.js";
 
 test("creates only on request, returns to the current work, and exports without leaving the editor", async ({
   page,
@@ -114,7 +114,7 @@ test("creation, recreation and export remain usable in both languages on narrow 
 }) => {
   await page.goto("/");
   for (const locale of ["en-US", "zh-CN"]) {
-    await page.locator(".language-picker select").selectOption(locale);
+    await selectChoice(page.locator(".language-picker .select-trigger"), locale);
     for (const width of [320, 390, 600, 740, 900]) {
       await page.setViewportSize({ width, height: 844 });
       const layout = await page.evaluate(() => ({
@@ -128,7 +128,7 @@ test("creation, recreation and export remain usable in both languages on narrow 
       expect(layout.cards).toEqual([true, true, true]);
     }
   }
-  await page.locator(".language-picker select").selectOption("en-US");
+  await selectChoice(page.locator(".language-picker .select-trigger"), "en-US");
   await page.setViewportSize({ width: 320, height: 844 });
   await page.getByRole("button", { name: "Create blank grid" }).click();
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
@@ -139,7 +139,7 @@ test("creation, recreation and export remain usable in both languages on narrow 
     true,
   );
   await openExport(page);
-  await page.getByLabel("Export format").selectOption("pixel");
+  await selectChoice(page.getByRole("combobox", { name: "Export format", exact: true }), "pixel");
   await page.getByLabel("Pixel scale").fill("3");
   const dialog = page.getByRole("dialog");
   expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
