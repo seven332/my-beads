@@ -4,7 +4,7 @@ import { keyed } from "lit-html/directives/keyed.js";
 import { ref, type Ref } from "lit-html/directives/ref.js";
 import { defaultPalette } from "@my-beads/core";
 import { X } from "@lucide/icons";
-import { icon } from "./icon.js";
+import { button, iconButton } from "./ui/button.js";
 import { channelMax, colorFormats, formatChannels } from "./color-picker.js";
 import type { EditorModel } from "./state.js";
 import type { Actions } from "./view.js";
@@ -29,17 +29,14 @@ export function colorSearch(
     }}
   >
     <div class="color-search-input">
-      <button
-        class="color-picker-toggle"
-        type="button"
-        aria-label=${t(($) => $.picker.open)}
-        title=${t(($) => $.picker.open)}
-        aria-expanded=${String(open)}
-        aria-controls="color-picker"
-        @click=${() => actions.colorPicker(!open)}
-      >
-        <span class="color-swatch" style=${`background:${hex}`}></span>
-      </button>
+      ${button(html`<span class="color-swatch" style=${`background:${hex}`}></span>`, {
+        className: "color-picker-toggle",
+        label: t(($) => $.picker.open),
+        title: t(($) => $.picker.open),
+        expanded: open,
+        controls: "color-picker",
+        onClick: () => actions.colorPicker(!open),
+      })}
       <input
         class="palette-search"
         type="search"
@@ -57,15 +54,15 @@ export function colorSearch(
         >
           <div class="color-picker-heading">
             <strong>${t(($) => $.picker.heading)}</strong>
-            <button
-              class="icon-button color-picker-close"
-              type="button"
-              aria-label=${t(($) => $.picker.close)}
-              title=${t(($) => $.picker.close)}
-              @click=${() => actions.colorPicker(false)}
-            >
-              ${icon(X)}
-            </button>
+            ${iconButton(
+              t(($) => $.picker.close),
+              X,
+              {
+                className: "icon-button color-picker-close",
+                title: t(($) => $.picker.close),
+                onClick: () => actions.colorPicker(false),
+              },
+            )}
           </div>
           <div
             class="color-area"
