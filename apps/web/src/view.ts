@@ -15,11 +15,17 @@ import { icon } from "./icon.js";
 import { keyboardHelp } from "./keyboard-help.js";
 import { themePicker } from "./theme-view.js";
 import type { ThemePreference } from "./theme-preference.js";
+import type { Hsv, ColorChannel, ColorFormat } from "./color-picker.js";
 
 export interface Actions extends ImageActions, CreateActions, ExportActions {
   tool(tool: Tool): void;
   color(code: string): void;
   search(value: string): void;
+  colorPicker(open: boolean): void;
+  colorFormat(format: ColorFormat): void;
+  pickColor(update: Partial<Hsv>): void;
+  colorChannel(channel: ColorChannel, text: string): void;
+  commitColorChannel(channel: ColorChannel, format: ColorFormat): void;
   rename(value: string): void;
   palette(open: boolean): void;
   undo(): void;
@@ -109,7 +115,7 @@ export function view(
             <span>${t(($) => $.app.footer)}</span><span>${t(($) => $.app.localFiles)}</span>
           </footer>
         `
-      : editorView(model, actions, refs.canvas, t, brand, preferences, status, exports.open)}
+      : editorView(model, actions, refs, t, brand, preferences, status, exports.open)}
     ${imageView(image, actions, t, refs)}${exportView(
       model,
       exports,

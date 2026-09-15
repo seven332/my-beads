@@ -11,7 +11,8 @@ import {
 } from "@my-beads/core";
 import { translation$ } from "./locale.js";
 import { draftText, type DraftStatus } from "./drafts.js";
-import { findPaletteColors } from "./palette-search.js";
+import { paletteQuery$, paletteSearch$, colorPicker$, showColorPicker$ } from "./palette-state.js";
+export { searchPalette$ } from "./palette-state.js";
 import { colorBounds } from "./color-locations.js";
 import type { ViewArea } from "./canvas-viewport.js";
 
@@ -56,8 +57,6 @@ const historyState$ = state<History>({
 const titleState$ = state("Untitled pattern");
 const toolState$ = state<Tool>("pencil");
 const colorState$ = state("H7");
-const searchState$ = state("");
-const paletteSearch$ = computed((get) => findPaletteColors(get(searchState$)));
 const errorState$ = state<Error | "">("");
 const creationErrorSourceState$ = state<"blank" | "csv" | null>(null);
 const importState$ = state(0);
@@ -100,7 +99,7 @@ const usedColors$ = computed((get) =>
 export const editor$ = computed((get) => {
   const history = get(historyState$);
   const document = get(document$);
-  const search = get(searchState$);
+  const search = get(paletteQuery$);
   return {
     document,
     title: get(titleState$),
@@ -120,6 +119,7 @@ export const editor$ = computed((get) => {
     canRedo: history.future.length > 0 && !history.stroke,
     beads: [...document.counts.values()].reduce((sum, count) => sum + count, 0),
     paletteSearch: get(paletteSearch$),
+    colorPicker: get(colorPicker$),
   };
 });
 export type EditorModel = ReturnType<typeof editor$.read>;
@@ -153,6 +153,7 @@ export const chooseTool$ = command(({ set }, tool: Tool) => {
   set(toolState$, tool);
 });
 export const showCreate$ = command(({ set }) => {
+  set(showColorPicker$, false);
   set(keyboardHelpState$, false);
   set(finishStroke$);
   set(reportError$, "");
@@ -173,9 +174,6 @@ export const chooseColor$ = command(({ set }, code: string) => {
   set(finishStroke$);
   set(colorState$, code);
 });
-export const searchPalette$ = command(({ set }, search: string) => {
-  set(searchState$, search);
-});
 export const toggleGrid$ = command(({ get, set }) => {
   set(gridVisibleState$, !get(gridVisibleState$));
 });
@@ -186,9 +184,11 @@ export const showKeyboardHelp$ = command(({ set }, open: boolean) => {
   set(keyboardHelpState$, open);
 });
 export const showPalette$ = command(({ set }, open: boolean) => {
+  if (!open) set(showColorPicker$, false);
   set(paletteOpenState$, open);
 });
 export const selectPaletteView$ = command(({ set }, view: PaletteView) => {
+  set(showColorPicker$, false);
   set(paletteViewState$, view);
 });
 export const highlightColor$ = command(({ get, set }, code: string | null) => {
@@ -320,6 +320,7 @@ const replaceDocument$ = command(({ get, set }, grid: PatternGrid, title: string
   set(titleState$, title.slice(0, 100));
   set(reportError$, "");
   set(highlightedColorState$, null);
+  set(showColorPicker$, false);
   set(paletteViewState$, grid.some((row) => row.some((code) => code !== null)) ? "used" : "all");
   set(viewportState$, { zoom: 12, x: 32, y: 32 });
   set(hasDocumentState$, true);

@@ -37,7 +37,8 @@ introduce a dependency on that checkout or its private rule package.
   selections with computed values; avoid an additional mutable cache for derived data.
 - A view reads state and dispatches intent. It does not mutate the document directly.
 
-Palette search derives from its query in a separate computed unit, so drawing and
+`palette-state.ts` owns the search query and transient visual picker. Search derives
+from its query in a separate computed unit, so drawing and
 viewport updates reuse the current results. The pure browser search helper resolves
 exact codes before complete three/six-digit hex values, then falls back to partial
 text filtering. Exact palette hex matches bypass approximation; other complete hex
@@ -45,6 +46,39 @@ values reuse both core matching policies and combine duplicate codes with both r
 labels. The view compares the source swatch and explained suggestions. Only explicit
 color selection dispatches the existing color command; search does not change the
 document, selected color or history. No search results are persisted.
+
+`color-picker-view.ts` shares the text search with an expandable Figma-inspired
+target-color picker inside the existing floating palette. The swatch opens a
+saturation/brightness area, a native hue range and a format menu for HEX (default),
+RGB, HSL and HSB. HEX accepts three/six digits with an optional hash; RGB accepts
+integer channels from 0 to 255. HSL/HSB use degrees and percentages. The native
+select and value fields provide keyboard access alongside the pointer-only area. Opening and
+closing focus the hue control and swatch respectively, scrolling them into view;
+Escape closes the picker before the mobile palette. Switching views or navigating
+away closes it. An expanded picker and its results share the panel's contained
+scroll area, including narrow and short viewports.
+
+`color-picker.ts` converts sRGB HEX, RGB, HSV (HSB) and HSL. Keep HSV intent separately
+from the rounded search HEX: neutral colors preserve hue and black preserves
+saturation. HSL saturation at white has a separate remembered intent, because HSV
+cannot represent it; reducing HSL lightness restores the chosen saturation. Format
+switching regenerates displayed strings without writing the HEX query or converting
+rounded values back into coordinates. Fields retain unfinished strings until blur,
+while invalid values leave the last valid target intact. Exact MARD codes take
+precedence in the search box; the dedicated HEX field always interprets three-digit
+input as a color. Value fields are keyed by format while the pointer area stays
+mounted. `color-area.ts` owns one primary pointer capture, clamps outside
+coordinates and releases listeners/capture on cancellation, blur and teardown.
+Starting a color-area gesture focuses its native hue control without scrolling,
+so subsequent keys cannot edit a previously focused Canvas or activate its tools.
+Field blur commits carry their originating format; closed pickers and replaced
+formats ignore stale blur events to avoid nested rendering during removal in Chrome.
+The format menu binds selection on its options so a newly mounted picker restores
+the current mode after its options are inserted.
+The existing view lifecycle retains this area across updates and disposes it on
+removal. Picker changes never call the brush/history commands or affect exports.
+Tests cover known color boundaries, data isolation, native controls, real pointer
+and touch input, live matching, theme/locale updates and responsive hit targets.
 
 Used colors is a separate palette view derived from the live document counts in
 natural MARD code order. Nonempty replacements/recovery start in Used, blanks in
