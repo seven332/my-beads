@@ -14,7 +14,7 @@ My Beads uses the **MARD 221** palette and supports **English and Simplified Chi
 
 Search the palette by MARD code or hex color. When a hex color has no exact match, compare recommendations based on color difference and preserving chroma.
 
-To find a color visually, open **All colors** and click the swatch beside the search field. Drag in the color area, adjust the hue slider, or enter hue, saturation and brightness values. The search shows nearby MARD colors as you adjust it; click a result to use it as your drawing color.
+To find a color visually, open **All colors** and click the swatch beside the search field. Drag in the color area, adjust the hue slider, or choose **HEX**, **RGB**, **HSL**, or **HSB** from the color format menu to enter values. HEX is the default. Switching formats keeps the same color; the search shows nearby MARD colors as you adjust it. Click a result to use it as your drawing color.
 
 Files are processed locally in your browser. The editor keeps a local draft between visits; export a CSV to keep a separate copy or move your work to another device. Printable chart labels stay in English in either interface language.
 

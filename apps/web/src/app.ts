@@ -19,6 +19,7 @@ import { theme$, themePreference$, selectTheme$, systemThemeChanged$ } from "./t
 import { defaultPalette } from "@my-beads/core";
 import {
   showColorPicker$,
+  selectColorFormat$,
   pickColor$,
   editColorChannel$,
   commitColorChannel$,
@@ -185,8 +186,9 @@ export function mountApp(
       host.querySelector<HTMLElement>(open ? ".color-hue" : ".color-picker-toggle")?.focus();
     },
     pickColor: (update) => store.set(pickColor$, update),
+    colorFormat: (format) => store.set(selectColorFormat$, format),
     colorChannel: (channel, text) => store.set(editColorChannel$, channel, text),
-    commitColorChannel: (channel) => store.set(commitColorChannel$, channel),
+    commitColorChannel: (channel, format) => store.set(commitColorChannel$, channel, format),
     rename: (value) => store.set(state.rename$, value),
     create: (width, height) => {
       cancelImport();

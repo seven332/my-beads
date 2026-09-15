@@ -1,10 +1,11 @@
 import { html, nothing } from "lit-html";
 import { live } from "lit-html/directives/live.js";
+import { keyed } from "lit-html/directives/keyed.js";
 import { ref, type Ref } from "lit-html/directives/ref.js";
 import { defaultPalette } from "@my-beads/core";
 import { X } from "@lucide/icons";
 import { icon } from "./icon.js";
-import { channelMax, colorChannels } from "./color-picker.js";
+import { channelMax, colorFormats, formatChannels } from "./color-picker.js";
 import type { EditorModel } from "./state.js";
 import type { Actions } from "./view.js";
 import type { Translate } from "./i18n/index.js";
@@ -15,7 +16,7 @@ export function colorSearch(
   area: Ref<HTMLElement>,
   t: Translate,
 ) {
-  const { open, color } = model.colorPicker;
+  const { open, color, format } = model.colorPicker;
   const hex = color?.hex ?? defaultPalette.colors[model.color];
   return html`<div
     class="color-search"
@@ -88,25 +89,62 @@ export function colorSearch(
             @input=${(event: Event) =>
               actions.pickColor({ hue: (event.target as HTMLInputElement).valueAsNumber })}
           />
-          <div class="color-channels">
-            ${colorChannels.map(
-              (channel) =>
-                html`<label
-                  ><span>${t(($) => $.picker.short[channel])}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max=${channelMax(channel)}
-                    step="any"
-                    inputmode="decimal"
-                    aria-label=${t(($) => $.picker[channel])}
-                    .value=${live(color.fields[channel])}
-                    @input=${(event: Event) =>
-                      actions.colorChannel(channel, (event.target as HTMLInputElement).value)}
-                    @blur=${() => actions.commitColorChannel(channel)}
-                  />
-                </label>`,
-            )}
+          <div class="color-values">
+            <label class="color-format">
+              <span>${t(($) => $.picker.format)}</span>
+              <select
+                aria-label=${t(($) => $.picker.format)}
+                .value=${live(format)}
+                @change=${(event: Event) => {
+                  const value = (event.target as HTMLSelectElement).value;
+                  const selected = colorFormats.find((item) => item === value);
+                  if (selected) actions.colorFormat(selected);
+                }}
+              >
+                ${colorFormats.map(
+                  (item) =>
+                    html`<option value=${item}>${t(($) => $.picker.formats[item])}</option>`,
+                )}
+              </select>
+            </label>
+            <div class="color-channels" data-format=${format}>
+              ${keyed(
+                format,
+                formatChannels[format].map(
+                  (channel) =>
+                    html`<label
+                      ><span>${t(($) => $.picker.short[channel])}</span>
+                      ${channel === "hex"
+                        ? html`<input
+                            type="text"
+                            spellcheck="false"
+                            autocomplete="off"
+                            pattern="#?([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})"
+                            aria-label=${t(($) => $.picker.hex)}
+                            .value=${live(color.fields.hex)}
+                            @input=${(event: Event) =>
+                              actions.colorChannel("hex", (event.target as HTMLInputElement).value)}
+                            @blur=${() => actions.commitColorChannel("hex", format)}
+                          />`
+                        : html`<input
+                            type="number"
+                            min="0"
+                            max=${channelMax(channel)}
+                            step=${format === "rgb" ? "1" : "any"}
+                            inputmode="decimal"
+                            aria-label=${t(($) => $.picker[channel])}
+                            .value=${live(color.fields[channel])}
+                            @input=${(event: Event) =>
+                              actions.colorChannel(
+                                channel,
+                                (event.target as HTMLInputElement).value,
+                              )}
+                            @blur=${() => actions.commitColorChannel(channel, format)}
+                          />`}
+                    </label>`,
+                ),
+              )}
+            </div>
           </div>
           <p class="color-picker-help">${t(($) => $.picker.help)}</p>
         </section>`

@@ -49,20 +49,28 @@ document, selected color or history. No search results are persisted.
 
 `color-picker-view.ts` shares the text search with an expandable Figma-inspired
 target-color picker inside the existing floating palette. The swatch opens a
-saturation/brightness area, a native hue range and H/S/B number fields. The number
-fields provide full keyboard access alongside the pointer-only area. Opening and
+saturation/brightness area, a native hue range and a format menu for HEX (default),
+RGB, HSL and HSB. HEX accepts three/six digits with an optional hash; RGB accepts
+integer channels from 0 to 255. HSL/HSB use degrees and percentages. The native
+select and value fields provide keyboard access alongside the pointer-only area. Opening and
 closing focus the hue control and swatch respectively, scrolling them into view;
 Escape closes the picker before the mobile palette. Switching views or navigating
 away closes it. An expanded picker and its results share the panel's contained
 scroll area, including narrow and short viewports.
 
-`color-picker.ts` converts sRGB HEX and HSV (HSB). Keep HSV intent separately from
-the rounded search HEX: neutral colors preserve hue, black preserves saturation,
-and a hue change at zero brightness must not snap back after a render. Numeric
-fields retain unfinished strings until blur, while invalid values leave the last
-valid search target intact. Exact MARD codes still take precedence over ambiguous
-three-digit HEX. `color-area.ts` owns one primary pointer capture, clamps outside
+`color-picker.ts` converts sRGB HEX, RGB, HSV (HSB) and HSL. Keep HSV intent separately
+from the rounded search HEX: neutral colors preserve hue and black preserves
+saturation. HSL saturation at white has a separate remembered intent, because HSV
+cannot represent it; reducing HSL lightness restores the chosen saturation. Format
+switching regenerates displayed strings without writing the HEX query or converting
+rounded values back into coordinates. Fields retain unfinished strings until blur,
+while invalid values leave the last valid target intact. Exact MARD codes take
+precedence in the search box; the dedicated HEX field always interprets three-digit
+input as a color. Value fields are keyed by format while the pointer area stays
+mounted. `color-area.ts` owns one primary pointer capture, clamps outside
 coordinates and releases listeners/capture on cancellation, blur and teardown.
+Field blur commits carry their originating format; closed pickers and replaced
+formats ignore stale blur events to avoid nested rendering during removal in Chrome.
 The existing view lifecycle retains this area across updates and disposes it on
 removal. Picker changes never call the brush/history commands or affect exports.
 Tests cover known color boundaries, data isolation, native controls, real pointer

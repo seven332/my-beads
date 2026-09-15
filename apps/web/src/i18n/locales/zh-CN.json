@@ -8,7 +8,23 @@
     "hue": "色相（度）",
     "saturation": "饱和度（%）",
     "brightness": "明度（%）",
-    "short": { "hue": "色相", "saturation": "饱和度", "brightness": "明度" },
+    "format": "颜色格式",
+    "formats": { "hex": "HEX", "rgb": "RGB", "hsl": "HSL", "hsb": "HSB" },
+    "hex": "十六进制颜色",
+    "red": "红（0–255）",
+    "green": "绿（0–255）",
+    "blue": "蓝（0–255）",
+    "lightness": "亮度（%）",
+    "short": {
+      "hex": "HEX",
+      "red": "红",
+      "green": "绿",
+      "blue": "蓝",
+      "hue": "色相",
+      "saturation": "饱和度",
+      "brightness": "明度",
+      "lightness": "亮度"
+    },
     "help": "点击下方的 MARD 推荐色即可使用。"
   },
   "appearance": {

@@ -95,19 +95,29 @@
   background: transparent;
   box-shadow: 0 0 0 1px #0008;
 }
+.color-values {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px;
+}
 .color-channels {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
-.color-channels label {
+.color-channels[data-format="hex"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.color-values label {
   display: grid;
   gap: 5px;
   color: var(--ui-label);
   font-size: 10px;
 }
-.color-channels input {
+.color-values input,
+.color-values select {
   width: 100%;
+  min-width: 0;
   height: 34px;
   padding: 6px;
   font-size: 12px;

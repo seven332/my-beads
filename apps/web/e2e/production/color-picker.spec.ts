@@ -10,6 +10,7 @@ test("the production color picker is styled and maps visual input at the Pages s
   await expect(area).toHaveCSS("touch-action", "none");
   expect((await area.boundingBox())!.height).toBeGreaterThan(100);
   await expect(area).toHaveCSS("background-image", /linear-gradient/);
+  await page.getByLabel("Color format", { exact: true }).selectOption("hsb");
   await page.getByRole("spinbutton", { name: "Hue (degrees)", exact: true }).fill("60");
   await page.getByRole("spinbutton", { name: "Saturation (%)", exact: true }).fill("15.8");
   await page.getByRole("spinbutton", { name: "Brightness (%)", exact: true }).fill("29.8");

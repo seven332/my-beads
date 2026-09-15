@@ -8,8 +8,90 @@ async function scene(page: Page) {
   await page.getByRole("button", { name: "Open color picker" }).click();
   await expect(page.getByRole("slider", { name: "Adjust hue" })).toBeFocused();
   await expect(page.getByRole("slider", { name: "Adjust hue" })).toBeInViewport({ ratio: 1 });
+  await page.getByLabel("Color format", { exact: true }).selectOption("hsb");
   return page.locator(".color-area");
 }
+
+test("HEX, RGB, HSL and HSB edit the same target without changing the brush or Canvas", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Create blank grid" }).click();
+  await page.getByRole("button", { name: "Open color picker" }).click();
+  const format = page.getByLabel("Color format", { exact: true });
+  const search = page.getByLabel("Search colors", { exact: true });
+  const canvas = await page.locator(".pattern-canvas").elementHandle();
+  const area = await page.locator(".color-area").elementHandle();
+  await expect(format).toHaveValue("hex");
+  await page.getByLabel("Hex color", { exact: true }).fill("336699");
+  await expect(search).toHaveValue("#336699");
+  await format.selectOption("rgb");
+  await expect(page.getByLabel("Red (0–255)", { exact: true })).toHaveValue("51");
+  await expect(page.getByLabel("Green (0–255)", { exact: true })).toHaveValue("102");
+  await expect(page.getByLabel("Blue (0–255)", { exact: true })).toHaveValue("153");
+  await format.selectOption("hsl");
+  await expect(page.getByLabel("Hue (degrees)", { exact: true })).toHaveValue("210");
+  await expect(page.getByLabel("Saturation (%)", { exact: true })).toHaveValue("50");
+  await expect(page.getByLabel("Lightness (%)", { exact: true })).toHaveValue("40");
+  await format.selectOption("hsb");
+  await expect(page.getByLabel("Saturation (%)", { exact: true })).toHaveValue("66.7");
+  await expect(page.getByLabel("Brightness (%)", { exact: true })).toHaveValue("60");
+  await expect(search).toHaveValue("#336699");
+  await format.selectOption("rgb");
+  const red = page.getByLabel("Red (0–255)", { exact: true });
+  await red.fill("256");
+  await expect(search).toHaveValue("#336699");
+  await red.press("Tab");
+  await expect(red).toHaveValue("51");
+  await red.fill("255");
+  await expect(search).toHaveValue("#FF6699");
+  await format.selectOption("hsl");
+  await page.getByLabel("Hue (degrees)", { exact: true }).fill("240");
+  await page.getByLabel("Saturation (%)", { exact: true }).fill("100");
+  await page.getByLabel("Lightness (%)", { exact: true }).fill("50");
+  await expect(search).toHaveValue("#0000FF");
+  await page.getByLabel("Saturation (%)", { exact: true }).fill("");
+  await format.selectOption("hsb");
+  await expect(page.getByLabel("Saturation (%)", { exact: true })).toHaveValue("100");
+  await expect(page.getByLabel("Brightness (%)", { exact: true })).toHaveValue("100");
+  await expect(page.locator(".selected-color strong")).toHaveText("H7");
+  await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
+  expect(await canvas!.evaluate((node) => node === document.querySelector(".pattern-canvas"))).toBe(
+    true,
+  );
+  expect(await area!.evaluate((node) => node === document.querySelector(".color-area"))).toBe(true);
+});
+
+test("partial HEX survives renders and the format select retains native keyboard behavior", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Create blank grid" }).click();
+  await page.getByRole("button", { name: "Open color picker" }).click();
+  const hex = page.getByLabel("Hex color", { exact: true });
+  const search = page.getByLabel("Search colors", { exact: true });
+  await hex.fill("B23");
+  await expect(search).toHaveValue("#BB2233");
+  await hex.fill("#12");
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(hex).toHaveValue("#12");
+  await expect(hex).toBeFocused();
+  await expect(search).toHaveValue("#BB2233");
+  await hex.press("Tab");
+  await expect(hex).toHaveValue("#BB2233");
+  const format = page.getByLabel("Color format", { exact: true });
+  await format.focus();
+  await format.press("h");
+  await expect(format).toBeFocused();
+  await expect(page.getByRole("button", { name: "Pencil", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await format.selectOption("rgb");
+  await page.getByLabel("Language").selectOption("zh-CN");
+  await expect(page.getByLabel("颜色格式", { exact: true })).toHaveValue("rgb");
+  await expect(page.getByLabel("红（0–255）", { exact: true })).toHaveValue("187");
+});
 
 test("visual values use the existing explained MARD search and require an explicit brush choice", async ({
   page,
@@ -141,6 +223,17 @@ for (const [width, height, locale] of [
     await page
       .getByLabel(locale === "en-US" ? "Appearance" : "外观", { exact: true })
       .selectOption("dark");
+    for (const format of ["hex", "rgb", "hsl", "hsb"]) {
+      await page.locator(".color-format select").selectOption(format);
+      for (const field of await page.locator(".color-channels input").all()) {
+        await field.scrollIntoViewIfNeeded();
+        const bounds = (await field.boundingBox())!;
+        expect(bounds.x).toBeGreaterThanOrEqual(0);
+        expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+        await field.click();
+        await expect(field).toBeFocused();
+      }
+    }
     const match = page.getByRole("button", { name: "B23 #303921", exact: true });
     await match.scrollIntoViewIfNeeded();
     const box = (await match.boundingBox())!;

@@ -1,13 +1,14 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { createStore } from "ccstate";
 import { defaultPalette } from "@my-beads/core";
-import { hexToHsv, hsvToHex } from "../src/color-picker.js";
+import { hexToHsv, hsvToHex, hsvToHsl, hslToHsv } from "../src/color-picker.js";
 import {
   colorPicker$,
   paletteQuery$,
   paletteSearch$,
   searchPalette$,
   showColorPicker$,
+  selectColorFormat$,
   pickColor$,
   editColorChannel$,
   commitColorChannel$,
@@ -31,6 +32,12 @@ import { DRAFT_KEY } from "../src/drafts.js";
 
 it("round-trips every MARD color and known RGB/HSV boundaries", () => {
   for (const hex of Object.values(defaultPalette.colors)) expect(hsvToHex(hexToHsv(hex))).toBe(hex);
+  for (const hex of Object.values(defaultPalette.colors))
+    expect(hsvToHex(hslToHsv(hsvToHsl(hexToHsv(hex))))).toBe(hex);
+  const hsl = hsvToHsl(hexToHsv("#336699"));
+  expect(hsl.hue).toBe(210);
+  expect(hsl.saturation).toBeCloseTo(50, 10);
+  expect(hsl.lightness).toBe(40);
   for (const [hue, hex] of [
     [0, "#FF0000"],
     [60, "#FFFF00"],
@@ -95,6 +102,7 @@ it("keeps unfinished/invalid numeric text until commit and isolates independent 
   const store = createStore(),
     other = createStore();
   store.set(showColorPicker$, true, "#FF0000");
+  store.set(selectColorFormat$, "hsb");
   store.set(editColorChannel$, "hue", "120.0");
   expect(store.get(paletteQuery$)).toBe("#00FF00");
   expect(store.get(colorPicker$).color?.fields.hue).toBe("120.0");
@@ -102,11 +110,84 @@ it("keeps unfinished/invalid numeric text until commit and isolates independent 
     store.set(editColorChannel$, "hue", text);
     expect(store.get(colorPicker$).color?.fields.hue).toBe(text);
     expect(store.get(paletteQuery$)).toBe("#00FF00");
-    store.set(commitColorChannel$, "hue");
+    store.set(commitColorChannel$, "hue", "hsb");
     expect(store.get(colorPicker$).color?.fields.hue).toBe("120");
   }
-  expect(other.get(colorPicker$)).toEqual({ open: false, color: null });
+  expect(other.get(colorPicker$)).toEqual({ open: false, format: "hex", color: null });
   expect(other.get(paletteQuery$)).toBe("");
+});
+
+it("switches formats without changing the target, matching results or high-precision coordinates", () => {
+  const store = createStore();
+  store.set(showColorPicker$, true);
+  expect(store.get(colorPicker$).format).toBe("hex");
+  store.set(pickColor$, { hue: 210.123456, saturation: 66.654321, brightness: 59.987654 });
+  const before = store.get(colorPicker$).color!;
+  const query = store.get(paletteQuery$);
+  const results = store.get(paletteSearch$);
+  for (let i = 0; i < 10; i++) {
+    for (const format of ["rgb", "hsl", "hsb", "hex"] as const) {
+      store.set(selectColorFormat$, format);
+      expect(store.get(colorPicker$).color?.hsv).toBe(before.hsv);
+      expect(store.get(colorPicker$).color?.hex).toBe(before.hex);
+      expect(store.get(paletteQuery$)).toBe(query);
+      expect(store.get(paletteSearch$)).toBe(results);
+    }
+  }
+});
+
+it("treats HEX fields as colors and validates HEX/RGB edits before updating the target", () => {
+  const store = createStore();
+  store.set(showColorPicker$, true);
+  store.set(editColorChannel$, "hex", "B23");
+  expect(store.get(paletteQuery$)).toBe("#BB2233");
+  for (const text of ["", "#12", "#11223344", "red", "#GGGGGG"]) {
+    store.set(editColorChannel$, "hex", text);
+    expect(store.get(colorPicker$).color?.fields.hex).toBe(text);
+    expect(store.get(paletteQuery$)).toBe("#BB2233");
+    store.set(commitColorChannel$, "hex", "hex");
+    expect(store.get(colorPicker$).color?.fields.hex).toBe("#BB2233");
+  }
+  store.set(searchPalette$, "B23");
+  expect(store.get(colorPicker$).color?.hex).toBe("#303921");
+  store.set(searchPalette$, "#336699");
+  store.set(selectColorFormat$, "rgb");
+  expect(store.get(colorPicker$).color?.fields).toMatchObject({
+    red: "51",
+    green: "102",
+    blue: "153",
+  });
+  for (const text of ["", "-1", "256", "128.5", "NaN"]) {
+    store.set(editColorChannel$, "red", text);
+    expect(store.get(paletteQuery$)).toBe("#336699");
+    store.set(commitColorChannel$, "red", "rgb");
+    expect(store.get(colorPicker$).color?.fields.red).toBe("51");
+  }
+  store.set(editColorChannel$, "red", "255");
+  expect(store.get(paletteQuery$)).toBe("#FF6699");
+  store.set(editColorChannel$, "red", "0");
+  expect(store.get(paletteQuery$)).toBe("#006699");
+});
+
+it("preserves HSL saturation intent at white and black across mode changes", () => {
+  const store = createStore();
+  store.set(showColorPicker$, true, "#00FF00");
+  store.set(selectColorFormat$, "hsl");
+  store.set(editColorChannel$, "lightness", "100");
+  expect(store.get(paletteQuery$)).toBe("#FFFFFF");
+  store.set(editColorChannel$, "saturation", "60");
+  store.set(selectColorFormat$, "rgb");
+  store.set(selectColorFormat$, "hsl");
+  expect(store.get(colorPicker$).color?.fields.saturation).toBe("60");
+  store.set(editColorChannel$, "lightness", "50");
+  expect(store.get(paletteQuery$)).toBe("#33CC33");
+  store.set(editColorChannel$, "lightness", "0");
+  expect(store.get(paletteQuery$)).toBe("#000000");
+  store.set(selectColorFormat$, "hsb");
+  store.set(selectColorFormat$, "hsl");
+  expect(store.get(colorPicker$).color?.fields.saturation).toBe("60");
+  store.set(editColorChannel$, "lightness", "50");
+  expect(store.get(paletteQuery$)).toBe("#33CC33");
 });
 
 let app: ReturnType<typeof mountApp> | undefined;
@@ -179,6 +260,7 @@ it("preserves Canvas, data, history, draft and viewport while exploring; only a 
 it("preserves unfinished fields and the pointer area across theme/locale renders, then restores focus on Escape", () => {
   const { app, host } = mounted();
   host.querySelector<HTMLButtonElement>(".color-picker-toggle")!.click();
+  app.store.set(selectColorFormat$, "hsb");
   const area = host.querySelector(".color-area");
   const saturation = host.querySelector<HTMLInputElement>('[aria-label="Saturation (%)"]')!;
   saturation.focus();
