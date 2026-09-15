@@ -17,6 +17,7 @@ export function themePicker(
       (["system", "light", "dark"] as const).map((value) => ({
         value,
         label: t(($) => $.appearance[value]),
+        graphic: icon(value === "system" ? Monitor : value === "dark" ? Moon : Sun),
       })),
       change,
       {

@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 import { fitCoordinates, openExport, openPalette, selectChoice } from "./helpers.js";
 
 async function create(page: Page) {
@@ -6,11 +6,71 @@ async function create(page: Page) {
   await page.getByRole("button", { name: "Create blank grid" }).click();
 }
 
+async function expectAlignedMenu(trigger: Locator, iconOnly = false) {
+  await trigger.click();
+  const popup = trigger.page().locator(`#${await trigger.getAttribute("aria-controls")}`);
+  await expect(popup).toBeInViewport({ ratio: 1 });
+  const button = (await trigger.boundingBox())!;
+  const menu = (await popup.boundingBox())!;
+  expect(menu.y >= button.y + button.height || menu.y + menu.height <= button.y).toBe(true);
+  const icon = (await trigger.locator(".icon").boundingBox())!;
+  for (const option of await popup.getByRole("option").all()) {
+    const marker = (await option
+      .locator(iconOnly ? ".icon:first-child" : ".icon:last-child")
+      .boundingBox())!;
+    expect(Math.abs(marker.x + marker.width / 2 - icon.x - icon.width / 2)).toBeLessThan(1);
+    if (!iconOnly) {
+      const label = (await trigger.locator(".select-value").boundingBox())!;
+      const text = option.locator(":scope > span");
+      expect(Math.abs((await text.boundingBox())!.x - label.x)).toBeLessThan(1);
+      expect(await text.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+      expect(
+        await text.evaluate((node) => {
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          return range.getClientRects().length;
+        }),
+      ).toBe(1);
+    }
+  }
+  await trigger.press("Escape");
+}
+
+for (const locale of ["en-US", "zh-CN"]) {
+  test(`menus align their text and icon columns with the triggers in ${locale}`, async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await selectChoice(page.getByRole("combobox", { name: "Language" }), locale);
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await expectAlignedMenu(page.locator(".appearance-picker .select-trigger"), true);
+      await expectAlignedMenu(page.locator(".language-picker .select-trigger"));
+    }
+    await page.locator(".blank-form button").click();
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await expectAlignedMenu(page.locator(".appearance-picker .select-trigger"), true);
+      await expectAlignedMenu(page.locator(".language-picker .select-trigger"));
+      await page
+        .getByRole("button", { name: locale === "en-US" ? "Export" : "导出", exact: true })
+        .click();
+      await expectAlignedMenu(page.locator(".export-form .select-trigger"));
+      await page.keyboard.press("Escape");
+      await openPalette(page);
+      await page.locator(".color-picker-toggle").click();
+      await expectAlignedMenu(page.locator(".color-format .select-trigger"));
+      await page.keyboard.press("Escape");
+    }
+  });
+}
+
 test("keyboard navigation previews choices, cancels, commits with Enter/Space/Tab, and isolates shortcuts", async ({
   page,
 }) => {
   await create(page);
   const trigger = page.getByRole("combobox", { name: "Appearance" });
+  await expect(trigger).toMatchAriaSnapshot('- combobox "Appearance": System');
   await trigger.focus();
   await trigger.press("ArrowDown");
   await trigger.press("End");
@@ -30,6 +90,7 @@ test("keyboard navigation previews choices, cancels, commits with Enter/Space/Ta
   await trigger.press("d");
   await trigger.press("Enter");
   await expect(trigger).toHaveJSProperty("value", "dark");
+  await expect(trigger).toMatchAriaSnapshot('- combobox "Appearance": Dark');
   await trigger.press("Space");
   await trigger.press("Home");
   await trigger.press("ArrowDown");

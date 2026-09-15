@@ -645,8 +645,11 @@
     font-size: 11px;
   }
   .editor-actions .language-picker .select-trigger {
-    padding: 5px;
+    padding: 5px var(--select-padding-inline);
     max-width: 108px;
+  }
+  .editor-actions .language-picker {
+    --select-padding-inline: 5px;
   }
 
   .editor-error {

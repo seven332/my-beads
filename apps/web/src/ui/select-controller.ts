@@ -48,15 +48,18 @@ export function mountSelects(host: HTMLElement) {
     const width = Math.max(1, (viewport?.width ?? window.innerWidth) - 16);
     const bottom = top + Math.max(1, (viewport?.height ?? window.innerHeight) - 16);
     const anchor = trigger.getBoundingClientRect();
+    // The menu's extra outer padding surrounds the same text/icon columns as the trigger.
+    const inset = parseFloat(getComputedStyle(popup).paddingLeft) || 0;
+    const iconOnly = !trigger.querySelector(".select-value");
     popup.style.maxWidth = `${width}px`;
-    popup.style.minWidth = `${Math.min(width, anchor.width)}px`;
+    popup.style.width = iconOnly ? "max-content" : `${anchor.width + inset * 2}px`;
     const below = Math.max(0, bottom - anchor.bottom - 5);
     const above = Math.max(0, anchor.top - top - 5);
     const naturalHeight = Math.min(280, popup.scrollHeight + 2);
     const upward = below < naturalHeight && above > below;
     popup.style.maxHeight = `${Math.max(1, Math.min(280, upward ? above : below))}px`;
     const bounds = popup.getBoundingClientRect();
-    popup.style.left = `${Math.max(left, Math.min(anchor.left, left + width - bounds.width))}px`;
+    popup.style.left = `${Math.max(left, Math.min(anchor.left - inset, left + width - bounds.width))}px`;
     popup.style.top = `${Math.max(top, Math.min(upward ? anchor.top - bounds.height - 5 : anchor.bottom + 5, bottom - bounds.height))}px`;
   }
 

@@ -58,6 +58,7 @@ button:hover {
   color: var(--ui-tagline);
 }
 .language-picker {
+  --select-padding-inline: 8px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -67,7 +68,7 @@ button:hover {
 }
 .language-picker .select-trigger {
   width: auto;
-  padding: 8px;
+  padding: 8px var(--select-padding-inline);
 }
 .preferences {
   display: flex;
@@ -76,15 +77,21 @@ button:hover {
   margin-left: auto;
 }
 .appearance-picker {
+  --select-padding-inline: 9px;
   flex-shrink: 0;
 }
 .appearance-picker .select-trigger {
   justify-content: center;
   width: 36px;
   height: 36px;
-  padding: 8px;
+  padding: var(--select-padding-inline);
 }
 .appearance-picker .select-trigger > .icon {
+  width: 16px;
+  height: 16px;
+}
+.appearance-picker .select-option > .icon:first-child {
+  flex-shrink: 0;
   width: 16px;
   height: 16px;
 }

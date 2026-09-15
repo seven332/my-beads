@@ -173,6 +173,11 @@ are consumed before the picker or Canvas handlers, including secondary touches.
 Combobox focus is excluded from editor shortcuts. Preventing option `mousedown`
 keeps focus stable without suppressing WebKit's touch-generated click.
 
+Text controls reserve the widest choice's label width without exposing duplicate
+labels to assistive technology. Menu rows share the trigger's horizontal padding
+and icon columns; the popup's outer padding extends around those columns. Appearance
+choices use matching leading icons, and the icon-only trigger exposes its selected
+label to assistive technology. Viewport clamping takes priority at screen edges.
 The adapter clamps and flips fixed menus within the visual viewport, with scrolling
 and larger touch rows on compact screens. Resize/scroll observers exist only while
 open. Post-render sync assigns stable relationships and closes disabled or removed
@@ -337,8 +342,8 @@ ARIA/data variants for styling existing state when appropriate.
 
 Light and dark values share semantic names in `theme.css`. The appearance selector
 offers System (default), Light and Dark with translated labels and static Lucide
-icons. It uses a native select over a visible icon, retaining native menu/keyboard
-behavior; the wrapper supplies a visible focus outline and a current-choice tooltip.
+icons. It uses the shared themed selection menu with an icon-only trigger, a visible
+keyboard focus outline, an accessible selected value and a current-choice tooltip.
 
 `theme-preference.ts` owns strict preference parsing, the `my-beads.theme` storage
 key and effective-theme resolution. `theme-state.ts` holds preference and OS state

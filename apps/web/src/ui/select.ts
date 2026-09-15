@@ -7,6 +7,7 @@ interface Choice<T extends string> {
   value: T;
   label: string;
   lang?: string;
+  graphic?: TemplateResult;
 }
 
 /** Selection stays controlled by the caller; mountSelects owns transient menu interaction. */
@@ -36,10 +37,18 @@ export function select<T extends string>(
         if (next) change(next.value);
       }}
     >
-      ${options.content ??
-      html`<span class="select-value"
-          >${choices.find((choice) => choice.value === value)?.label}</span
-        >${icon(ChevronDown)}`}
+      ${options.content
+        ? html`${options.content}<span class="sr-only"
+              >${choices.find((choice) => choice.value === value)?.label}</span
+            >`
+        : html`<span class="select-value">
+              <span>${choices.find((choice) => choice.value === value)?.label}</span>
+              <span class="select-measure" aria-hidden="true"
+                >${choices.map(
+                  (choice) => html`<span lang=${choice.lang ?? nothing}>${choice.label}</span>`,
+                )}</span
+              > </span
+            >${icon(ChevronDown)}`}
     </button>
     <span class="select-menu" role="listbox" aria-label=${label} popover="manual">
       ${choices.map(
@@ -50,7 +59,7 @@ export function select<T extends string>(
             data-value=${choice.value}
             lang=${choice.lang ?? nothing}
             aria-selected=${String(choice.value === value)}
-            ><span>${choice.label}</span>${icon(Check)}</span
+            >${choice.graphic}<span>${choice.label}</span>${icon(Check)}</span
           >`,
       )}
     </span>
