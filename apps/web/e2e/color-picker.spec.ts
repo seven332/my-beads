@@ -175,6 +175,33 @@ test("capture loss stops the picker drag and a new drag remains usable", async (
   );
 });
 
+test("picking after Canvas use moves keyboard focus into the picker without scrolling", async ({
+  page,
+}) => {
+  const area = await scene(page);
+  await page.getByLabel("Search colors", { exact: true }).fill("#00ff00");
+  const canvas = page.locator(".pattern-canvas");
+  await canvas.focus();
+  await expect(canvas).toBeFocused();
+  const draft = await page.evaluate(() => localStorage.getItem("my-beads.draft"));
+  const before = (await area.boundingBox())!;
+  await area.click({ position: { x: before.width / 2, y: before.height / 2 } });
+  await expect(page.getByRole("slider", { name: "Adjust hue" })).toBeFocused();
+  expect(await area.boundingBox()).toEqual(before);
+  await expect(page.getByLabel("Search colors", { exact: true })).toHaveValue("#408040");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("counts")).toHaveText("0 beads · 0 colors");
+  await page.keyboard.press("e");
+  await expect(page.getByRole("button", { name: "Pencil", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  expect(await page.evaluate(() => localStorage.getItem("my-beads.draft"))).toBe(draft);
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".color-picker")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Open color picker" })).toBeFocused();
+});
+
 test("native keyboard controls preserve hue intent and partial values without invoking editor shortcuts", async ({
   page,
 }) => {

@@ -69,6 +69,8 @@ precedence in the search box; the dedicated HEX field always interprets three-di
 input as a color. Value fields are keyed by format while the pointer area stays
 mounted. `color-area.ts` owns one primary pointer capture, clamps outside
 coordinates and releases listeners/capture on cancellation, blur and teardown.
+Starting a color-area gesture focuses its native hue control without scrolling,
+so subsequent keys cannot edit a previously focused Canvas or activate its tools.
 Field blur commits carry their originating format; closed pickers and replaced
 formats ignore stale blur events to avoid nested rendering during removal in Chrome.
 The existing view lifecycle retains this area across updates and disposes it on

@@ -256,7 +256,9 @@ export function editorView(
           ${t(($) => $.palette.all)}
         </button>
       </div>
-      ${model.paletteView === "all" ? colorSearch(model, actions, refs.colorArea, t) : nothing}
+      ${model.paletteView === "all"
+        ? colorSearch(model, actions, refs.colorArea, refs.colorHue, t)
+        : nothing}
       ${model.paletteView === "all"
         ? paletteResults(model.paletteSearch, model.color, model.document.counts, actions.color, t)
         : usedColors(model, actions.color, actions.highlight, t)}

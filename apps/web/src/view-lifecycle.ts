@@ -22,6 +22,7 @@ export function createViewLifecycle(
     sourcePreview: createRef<HTMLCanvasElement>(),
     mappedPreview: createRef<HTMLCanvasElement>(),
     colorArea: createRef<HTMLElement>(),
+    colorHue: createRef<HTMLInputElement>(),
   };
   let canvas:
     | {
@@ -33,7 +34,7 @@ export function createViewLifecycle(
     | undefined;
   let dialogs: HTMLDialogElement[] = [];
   let colorArea:
-    | { element: HTMLElement; controller: ReturnType<typeof mountColorArea> }
+    | { element: HTMLElement; hue: HTMLInputElement; controller: ReturnType<typeof mountColorArea> }
     | undefined;
   const previews = new Map<HTMLCanvasElement, PatternGrid>();
   function releaseCanvas() {
@@ -70,14 +71,16 @@ export function createViewLifecycle(
       canvas?.controller.holdPan(held);
     },
     sync(model: EditorModel, image: ImageSession | null, theme: Theme) {
-      if (colorArea?.element !== refs.colorArea.value) {
+      if (colorArea?.element !== refs.colorArea.value || colorArea?.hue !== refs.colorHue.value) {
         colorArea?.controller.destroy();
-        colorArea = refs.colorArea.value
-          ? {
-              element: refs.colorArea.value,
-              controller: mountColorArea(refs.colorArea.value, pickColor),
-            }
-          : undefined;
+        colorArea =
+          refs.colorArea.value && refs.colorHue.value
+            ? {
+                element: refs.colorArea.value,
+                hue: refs.colorHue.value,
+                controller: mountColorArea(refs.colorArea.value, refs.colorHue.value, pickColor),
+              }
+            : undefined;
       }
       if (canvas?.element !== refs.canvas.value) {
         releaseCanvas();

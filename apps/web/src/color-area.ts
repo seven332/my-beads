@@ -1,6 +1,7 @@
 /** Own one saturation/brightness drag; native H/S/B fields provide keyboard input. */
 export function mountColorArea(
   element: HTMLElement,
+  hue: HTMLInputElement,
   pick: (saturation: number, brightness: number) => void,
 ) {
   let pointer: number | null = null;
@@ -15,6 +16,8 @@ export function mountColorArea(
   function down(event: PointerEvent) {
     if (!event.isPrimary || event.button !== 0 || pointer !== null) return;
     event.preventDefault();
+    // Keep keyboard input in the picker without moving the area under the pointer.
+    hue.focus({ preventScroll: true });
     pointer = event.pointerId;
     element.setPointerCapture(pointer);
     update(event);

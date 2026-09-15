@@ -14,6 +14,7 @@ export function colorSearch(
   model: EditorModel,
   actions: Actions,
   area: Ref<HTMLElement>,
+  hue: Ref<HTMLInputElement>,
   t: Translate,
 ) {
   const { open, color, format } = model.colorPicker;
@@ -80,6 +81,7 @@ export function colorSearch(
           </div>
           <input
             class="color-hue"
+            ${ref(hue)}
             type="range"
             min="0"
             max="360"
