@@ -9,6 +9,76 @@ const black = [0, 0, 0, 255],
 const emptyLight = [245, 246, 242, 255],
   emptyDark = [228, 230, 227, 255];
 
+test("a fitted solid pattern has no seams after fractional zoom and pan", async ({ page }) => {
+  await page.setViewportSize({ width: 1011, height: 733 });
+  await page.goto("/");
+  const csv = Array.from({ length: 50 }, () => Array(50).fill("H7").join(",")).join("\n");
+  await page
+    .getByLabel("Open CSV")
+    .setInputFiles({ name: "Solid.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+  const canvas = page.getByRole("img", { name: "Pattern canvas" });
+  await expect(canvas).toBeVisible();
+  const grid = page.getByRole("button", { name: "Grid", exact: true });
+  await expect(grid).toHaveAttribute("aria-pressed", "true");
+  await grid.click();
+  const { center } = await fitCoordinates(page, 50, 50);
+  const raster = () =>
+    canvas.evaluate((node) => {
+      const canvas = node as HTMLCanvasElement;
+      const data = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height).data;
+      let left = canvas.width,
+        top = canvas.height,
+        right = -1,
+        bottom = -1;
+      let painted = 0,
+        unexpected = 0;
+      for (let y = 0; y < canvas.height; y++)
+        for (let x = 0; x < canvas.width; x++) {
+          const i = (y * canvas.width + x) * 4;
+          if (!data[i + 3]) continue;
+          painted++;
+          left = Math.min(left, x);
+          right = Math.max(right, x);
+          top = Math.min(top, y);
+          bottom = Math.max(bottom, y);
+          if (data[i] !== 0 || data[i + 1] !== 0 || data[i + 2] !== 0 || data[i + 3] !== 255)
+            unexpected++;
+        }
+      const width = right - left + 1,
+        height = bottom - top + 1;
+      return {
+        // Include fully transparent holes inside the otherwise solid rectangle.
+        unexpected: painted ? unexpected + width * height - painted : 1,
+        bounds: { left, top, width, height },
+      };
+    });
+  await expect.poll(async () => (await raster()).unexpected).toBe(0);
+  const beforePan = (await raster()).bounds;
+  await page.mouse.move(center.x, center.y);
+  await page.mouse.wheel(11.25, 7.5);
+  // Require the new raster in the same observation as the seam assertion. A black
+  // crop alone could pass before the wheel event, or even if navigation were broken.
+  await expect
+    .poll(async () => {
+      const { bounds, unexpected } = await raster();
+      return unexpected === 0 && bounds.left < beforePan.left && bounds.top < beforePan.top;
+    })
+    .toBe(true);
+  const beforeZoom = (await raster()).bounds;
+  await page.keyboard.down("Control");
+  await page.mouse.wheel(0, -27);
+  await page.keyboard.up("Control");
+  await expect
+    .poll(async () => {
+      const { bounds, unexpected } = await raster();
+      return (
+        unexpected === 0 && bounds.width > beforeZoom.width && bounds.height > beforeZoom.height
+      );
+    })
+    .toBe(true);
+  await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
+});
+
 async function scene(page: Page, csv: string) {
   await page.goto("/");
   await page
@@ -332,7 +402,7 @@ test("keyboard focus, grid and code overlays and resizing redraw without editing
       canvas.evaluate(
         (node) =>
           (node as HTMLCanvasElement).width ===
-          Math.round(node.getBoundingClientRect().width * Math.min(devicePixelRatio, 2)),
+          Math.round(node.getBoundingClientRect().width * devicePixelRatio),
       ),
     )
     .toBe(true);

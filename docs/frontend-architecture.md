@@ -88,10 +88,26 @@ draft. A zero-count highlight remains clearable and can reappear through undo.
 Document replacement clears it; create/resume navigation and locale changes retain it.
 
 The Canvas dims nonmatching cells and traces only exposed target edges, checking
-actual neighbors beyond the visible bounds. Dark/light strokes adapt to zoom;
+actual neighbors beyond the visible bounds. Dark/light square outlines adapt to zoom;
 below three pixels per cell, dimming provides emphasis without obscuring cells
 with outlines. The existing frame scheduler redraws changes, with the keyboard
 cursor last. No geometry cache or additional animation loop is maintained.
+`canvas-renderer.ts` computes shared integer backing-store boundaries for bead and
+checker fills, dimming masks, grid lines and selection/location outlines. Adjacent
+cell widths come from those boundaries, so fractional fit, zoom and pan do not
+leave transparent seams or interpolate bead colors. Logical input coordinates
+remain continuous. Below one backing pixel per bead, some cells collapse; they
+must not be expanded to overlap their neighbors.
+
+Fills precede the grid, code text, dimming masks, location outlines and cell cursor.
+Each grid boundary is drawn once; one path fill avoids double-compositing its
+translucent intersections. Code text retains browser antialiasing and is centered
+within the raster cell. The canvas uses actual display density up to an explicit
+16,777,216-pixel area and 8,192-pixel axis budget (64 MiB of RGBA storage, excluding
+browser overhead). Beyond that budget the browser scales the smaller buffer.
+Drawing uses actual buffer/CSS ratios after rounding. A controller-owned resolution
+media query schedules redraws on DPR changes and is removed on teardown.
+
 Show all locations uses `color-locations.ts` bounds and the unobscured area; normal
 highlighting preserves the viewport. Mobile activation closes the palette and
 focuses the persistent clear control. The status area owns the highlight summary,
