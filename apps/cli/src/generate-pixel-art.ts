@@ -10,7 +10,7 @@ type Options = { input: string; output: string; palette: string; scale: number }
 
 function usage(): string {
   return [
-    "Generate scaled pixel art directly from a bead-pattern CSV file.",
+    "Generate scaled pixel art directly from a bead-pattern CSV or TSV file.",
     "",
     "Usage:",
     "  pnpm generate:pixel <input.csv> [options]",
@@ -25,7 +25,7 @@ function usage(): string {
 
 function defaultOutputPath(input: string): string {
   const extension = extname(input);
-  const stem = extension.toLowerCase() === ".csv" ? input.slice(0, -extension.length) : input;
+  const stem = /\.(csv|tsv)$/i.test(extension) ? input.slice(0, -extension.length) : input;
   return `${stem}-pixel-art.png`;
 }
 

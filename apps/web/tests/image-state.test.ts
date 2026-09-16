@@ -206,7 +206,11 @@ it("rejects late decodes after edits, CSV, new images, cancellation or abort", a
     if (action === "csv")
       await store.set(
         importCsv$,
-        { name: "csv.csv", size: 2, text: async () => "H5" },
+        {
+          name: "csv.csv",
+          size: 2,
+          arrayBuffer: async () => new TextEncoder().encode("H5").buffer,
+        },
         controller.signal,
       );
     if (action === "image")

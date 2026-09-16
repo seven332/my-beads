@@ -14,6 +14,7 @@ export type BeadErrorCode =
   | "patternRow"
   | "csvColumns"
   | "csvEmpty"
+  | "csvEncoding"
   | "csvCharacter"
   | "csvQuote"
   | "patternCell"

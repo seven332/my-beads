@@ -25,7 +25,7 @@ function localFont(): { family: string; path: string } | undefined {
 
 function usage(): string {
   return [
-    "Generate a printable bead-pattern chart from a CSV file.",
+    "Generate a printable bead-pattern chart from a CSV or TSV file.",
     "",
     "Usage:",
     "  pnpm generate <input.csv> [options]",
@@ -97,7 +97,7 @@ function parseArguments(argv: string[]): Options {
   }
 
   input = resolve(input);
-  output = resolve(output || input.replace(/\.csv$/i, "-chart.png"));
+  output = resolve(output || input.replace(/\.(csv|tsv)$/i, "-chart.png"));
   palette = resolve(palette);
   title ||= defaultTitle(input);
 

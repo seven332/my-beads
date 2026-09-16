@@ -1,9 +1,9 @@
 import { test, expect, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
 import { parsePatternCsv, defaultPalette, type PatternGrid } from "@my-beads/core";
 import { selectChoice, startNew, openExport, closeExport, fitCoordinates } from "./helpers.js";
+import { sampleWebp } from "./fixtures.js";
 
 function enlargedImage() {
   const png = new PNG({ width: 1000, height: 1000 });
@@ -234,16 +234,12 @@ test("cancel and invalid PNG preserve the active document; WebP applies through 
   await startNew(page);
   await page
     .getByLabel("Open image", { exact: true })
-    .setInputFiles(
-      fileURLToPath(
-        new URL("../../../templates/hollow-knight/king-zote-vengefly.webp", import.meta.url),
-      ),
-    );
+    .setInputFiles({ name: "Sample.webp", mimeType: "image/webp", buffer: sampleWebp });
   await expect(
     page.getByRole("dialog").getByText("Sampled source · 198 × 300 pixels", { exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Apply image" }).click();
-  await expect(page.getByLabel("Pattern title")).toHaveValue("king-zote-vengefly");
+  await expect(page.getByLabel("Pattern title")).toHaveValue("Sample");
   const grid = parsePatternCsv((await download(page, "csv")).toString());
   expect([grid[0].length, grid.length]).toEqual([2, 2]);
   expect(grid.flat().filter(Boolean).length).toBeGreaterThan(0);
@@ -262,6 +258,7 @@ test("invalid settings preserve work and mappings honor distinct choices", async
   await expect(dialog.getByRole("alert")).toContainText("dimensions");
   await expect(dialog.getByRole("button", { name: "Apply image" })).toBeDisabled();
   await dialog.getByLabel("Target columns").fill("50");
+  await expect(dialog.getByRole("button", { name: "Apply image" })).toBeEnabled();
   await dialog.getByLabel("Distinct assignments").check();
   await dialog.getByLabel("Preserve chroma").uncheck();
   await expect(dialog.getByLabel("Map #000000")).toHaveAttribute("placeholder", "Auto · H7");

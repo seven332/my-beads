@@ -6,14 +6,17 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { patternCsv } from "./fixtures.js";
 
 const runFile = promisify(execFile);
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const cliSource = fileURLToPath(new URL("../src/", import.meta.url));
-const sherma = join(root, "templates/hollow-knight/sherma-singing-50x50.csv");
+let patternPath: string;
 let directory: string;
 beforeEach(async () => {
   directory = await mkdtemp(join(tmpdir(), "my-beads-test-"));
+  patternPath = join(directory, "pattern.csv");
+  await writeFile(patternPath, patternCsv);
 });
 afterEach(async () => {
   await rm(directory, { recursive: true, force: true });
@@ -28,10 +31,37 @@ function run(command: string, args: string[], cwd = root) {
 }
 
 describe("CLI compatibility", () => {
-  it.each([1, 20])("renders every Sherma pixel and alpha at %ix scale", async (scale) => {
+  it.each(["le", "be"])(
+    "reads UTF-16%s TSV and derives safe default output names",
+    async (order) => {
+      const bytes = Buffer.from("\uFEFFH7\tfff\r\n\t\r\n", "utf16le");
+      if (order === "be") bytes.swap16();
+      await writeFile(join(directory, "encoded.TSV"), bytes);
+      await run("generate-pixel-art", ["encoded.TSV", "--scale", "1"], directory);
+      const png = PNG.sync.read(await readFile(join(directory, "encoded-pixel-art.png")));
+      expect([png.width, png.height]).toEqual([2, 2]);
+      expect([...png.data]).toEqual([0, 0, 0, 255, 255, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0]);
+      await run("generate-chart", ["encoded.TSV"], directory);
+      expect(PNG.sync.read(await readFile(join(directory, "encoded-chart.png"))).width).toBe(2400);
+      expect(await readFile(join(directory, "encoded.TSV"))).toEqual(bytes);
+    },
+  );
+
+  it("reports invalid file encoding without generating an image", async () => {
+    await writeFile(join(directory, "invalid.csv"), Uint8Array.from([0xff, 0xfe, 0x48]));
+    await expect(run("generate-pixel-art", ["invalid.csv"], directory)).rejects.toMatchObject({
+      code: 1,
+      stderr: expect.stringContaining("Use UTF-8 or UTF-16"),
+    });
+    await expect(readFile(join(directory, "invalid-pixel-art.png"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
+  it.each([1, 20])("renders every fixture pixel and alpha at %ix scale", async (scale) => {
     const output = join(directory, "pixel.png");
     const result = await run("generate-pixel-art", [
-      sherma,
+      patternPath,
       "--output",
       output,
       "--scale",
@@ -40,8 +70,8 @@ describe("CLI compatibility", () => {
     expect(result.stdout).toContain("1270 beads");
     const png = PNG.sync.read(await readFile(output));
     expect([png.width, png.height]).toEqual([50 * scale, 50 * scale]);
-    // The committed fixture uses six-digit hex and TRANSPARENT. This oracle does not use core parsing/rendering.
-    const rows = (await readFile(sherma, "utf8"))
+    // The synthetic fixture uses six-digit hex and TRANSPARENT. This oracle does not use core parsing/rendering.
+    const rows = (await readFile(patternPath, "utf8"))
       .trim()
       .split(/\r?\n/)
       .map((line) => line.split(","));
@@ -62,9 +92,15 @@ describe("CLI compatibility", () => {
 
   it("generates an English chart with escaped title, cell labels and separate legend lines", async () => {
     const output = join(directory, "chart.svg");
-    await run("generate-chart", [sherma, "--output", output, "--title", "Sherma & <friends>"]);
+    await run("generate-chart", [
+      patternPath,
+      "--output",
+      output,
+      "--title",
+      "Pattern & <friends>",
+    ]);
     const svg = await readFile(output, "utf8");
-    expect(svg).toContain("Sherma &amp; &lt;friends&gt;");
+    expect(svg).toContain("Pattern &amp; &lt;friends&gt;");
     expect(svg).toContain("50 × 50 grid · 9 colors · 1270 beads");
     expect(svg).toContain(">MARD 221</text>");
     expect(svg).toContain('stroke-dasharray="6 6"');
@@ -74,7 +110,7 @@ describe("CLI compatibility", () => {
 
   it("renders chart PNGs with the platform font adapter", async () => {
     const output = join(directory, "chart.png");
-    await run("generate-chart", [sherma, "--output", output]);
+    await run("generate-chart", [patternPath, "--output", output]);
     const png = PNG.sync.read(await readFile(output));
     expect(png.width).toBe(2400);
     expect(png.height).toBeGreaterThan(2000);
@@ -129,7 +165,7 @@ describe("CLI compatibility", () => {
     ["generate-pixel-art", ["--palette"], "--palette requires"],
     ["generate-pixel-art", ["--unknown"], "Unknown option"],
   ] as const)("rejects invalid %s options %j", async (command, args, message) => {
-    await expect(run(command, [sherma, ...args])).rejects.toMatchObject({
+    await expect(run(command, [patternPath, ...args])).rejects.toMatchObject({
       code: 1,
       stderr: expect.stringContaining(message),
     });

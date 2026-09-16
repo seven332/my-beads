@@ -197,7 +197,11 @@ it("retranslates existing validation errors and protects a corrupt draft during 
   const text = "H7,H2\nH5";
   await app.store.set(
     importCsv$,
-    { name: "invalid.csv", size: text.length, text: async () => text },
+    {
+      name: "invalid.csv",
+      size: text.length,
+      arrayBuffer: async () => new TextEncoder().encode(text).buffer,
+    },
     new AbortController().signal,
   );
   expect(app.store.get(editor$).error).toBe("CSV row 2 has 1 columns; expected 2");
@@ -252,7 +256,7 @@ it("does not confuse non-Error rejections with cleared alerts", async () => {
   const signal = new AbortController().signal;
   await store.set(
     importCsv$,
-    { name: "unreadable.csv", size: 0, text: () => Promise.reject(null) },
+    { name: "unreadable.csv", size: 0, arrayBuffer: () => Promise.reject(null) },
     signal,
   );
   expect(store.get(editor$).error).toBe("操作失败：null");
@@ -262,4 +266,18 @@ it("does not confuse non-Error rejections with cleared alerts", async () => {
     signal,
   );
   expect(store.get(imageSession$)?.error).toBe("操作失败：undefined");
+});
+
+it("retranslates CSV decoding errors without losing the current document", async () => {
+  const store = createStore();
+  const before = store.get(editor$).document;
+  await store.set(
+    importCsv$,
+    { name: "invalid.csv", size: 1, arrayBuffer: async () => Uint8Array.from([0xff]).buffer },
+    new AbortController().signal,
+  );
+  expect(store.get(editor$).error).toContain("Use UTF-8 or UTF-16");
+  store.set(selectLocale$, "zh-CN");
+  expect(store.get(editor$).error).toContain("无法解码 CSV");
+  expect(store.get(editor$).document).toBe(before);
 });

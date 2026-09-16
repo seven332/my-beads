@@ -1,4 +1,5 @@
 export { defaultPalette, normalizeHex, validatePalette, type PaletteDocument } from "./palette.js";
+export { decodeCsv } from "./csv-encoding.js";
 export {
   createPattern,
   parseCsv,

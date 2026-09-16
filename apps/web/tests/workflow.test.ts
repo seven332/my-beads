@@ -8,6 +8,7 @@ import {
   rename$,
   workflow$,
   zoom$,
+  type CsvFile,
 } from "../src/state.js";
 import { DRAFT_KEY, decodeDraft } from "../src/drafts.js";
 import * as exporter from "../src/exports.js";
@@ -25,7 +26,7 @@ function input(selector: string, value: string) {
   element.value = value;
   element.dispatchEvent(new Event("input", { bubbles: true }));
 }
-function importCsv(file: { name: string; size: number; text(): Promise<string> }) {
+function importCsv(file: CsvFile) {
   const element = host.querySelector<HTMLInputElement>('[aria-label="Open CSV"]')!;
   Object.defineProperty(element, "files", { configurable: true, value: [file] });
   element.dispatchEvent(new Event("change", { bubbles: true }));
@@ -136,7 +137,8 @@ it("imports CSV dimensions and empty borders exactly and refuses approximate col
   importCsv({
     name: "Exact.csv",
     size: 50,
-    text: async () => "\uFEFF,,\r\n#000000,H5,\r\n,ERASE,TRANSPARENT\r\n",
+    arrayBuffer: async () =>
+      new TextEncoder().encode("\uFEFF,,\r\n#000000,H5,\r\n,ERASE,TRANSPARENT\r\n").buffer,
   });
   await vi.waitFor(() => expect(app.store.get(workflow$).page).toBe("edit"));
   const grid = [
@@ -150,7 +152,11 @@ it("imports CSV dimensions and empty borders exactly and refuses approximate col
   input('[name="columns"]', "0");
   click(".blank-form button");
   expect(host.querySelector('.blank-card [role="alert"]')?.textContent).toContain("integers");
-  importCsv({ name: "Unknown.csv", size: 7, text: async () => "#55514C" });
+  importCsv({
+    name: "Unknown.csv",
+    size: 7,
+    arrayBuffer: async () => new TextEncoder().encode("#55514C").buffer,
+  });
   await vi.waitFor(() =>
     expect(
       host.querySelector('[aria-labelledby="csv-heading"] [role="alert"]')?.textContent,
@@ -168,12 +174,12 @@ it("cancels a pending CSV when continuing the current work and ignores its late 
   app.store.set(newDocument$, 2, 1);
   app.store.set(rename$, "Original");
   click(".document-actions button");
-  const pending = Promise.withResolvers<string>();
-  importCsv({ name: "Late.csv", size: 2, text: () => pending.promise });
+  const pending = Promise.withResolvers<ArrayBuffer>();
+  importCsv({ name: "Late.csv", size: 2, arrayBuffer: () => pending.promise });
   expect(app.store.get(workflow$).csvLoading).toBe(true);
   click(".resume-pattern button");
   expect(app.store.get(workflow$).csvLoading).toBe(false);
-  pending.resolve("H7");
+  pending.resolve(new TextEncoder().encode("H7").buffer);
   await pending.promise;
   await Promise.resolve();
   expect(app.store.get(editor$).title).toBe("Original");
@@ -182,15 +188,15 @@ it("cancels a pending CSV when continuing the current work and ignores its late 
 });
 
 it("lets a newer creation supersede a slow CSV without losing its loading status", async () => {
-  const old = Promise.withResolvers<string>(),
-    latest = Promise.withResolvers<string>();
-  importCsv({ name: "Old.csv", size: 2, text: () => old.promise });
-  importCsv({ name: "Latest.csv", size: 2, text: () => latest.promise });
-  old.resolve("H7");
+  const old = Promise.withResolvers<ArrayBuffer>(),
+    latest = Promise.withResolvers<ArrayBuffer>();
+  importCsv({ name: "Old.csv", size: 2, arrayBuffer: () => old.promise });
+  importCsv({ name: "Latest.csv", size: 2, arrayBuffer: () => latest.promise });
+  old.resolve(new TextEncoder().encode("H7").buffer);
   await old.promise;
   await Promise.resolve();
   expect(app.store.get(workflow$).csvLoading).toBe(true);
-  latest.resolve("H2,H5");
+  latest.resolve(new TextEncoder().encode("H2,H5").buffer);
   await vi.waitFor(() => expect(app.store.get(editor$).title).toBe("Latest"));
   expect(app.store.get(editor$).document.grid).toEqual([["H2", "H5"]]);
   expect(app.store.get(workflow$).csvLoading).toBe(false);
