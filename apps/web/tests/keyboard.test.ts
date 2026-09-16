@@ -22,6 +22,16 @@ function press(target: EventTarget, key: string, options: KeyboardEventInit = {}
 function canvas() {
   return host.querySelector<HTMLCanvasElement>("canvas")!;
 }
+function point(target: HTMLElement, options: PointerEventInit = {}) {
+  target.dispatchEvent(
+    new PointerEvent("pointermove", {
+      bubbles: true,
+      pointerType: "mouse",
+      isPrimary: true,
+      ...options,
+    }),
+  );
+}
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
@@ -143,6 +153,98 @@ it("keeps Space from editing, releases it across focus and composition changes, 
   const button = host.querySelector<HTMLButtonElement>('[aria-label="Eraser"]')!;
   button.focus();
   expect(press(button, " ").defaultPrevented).toBe(false);
+});
+
+it("claims Space after a pointer return without stealing a newly focused input's keys", () => {
+  const input = host.querySelector<HTMLInputElement>(".title-input")!;
+  const idle = canvas().style.cursor;
+  point(canvas());
+  input.focus();
+  expect(press(input, " ").defaultPrevented).toBe(false);
+  expect(canvas().style.cursor).toBe(idle);
+  expect(document.activeElement).toBe(input);
+  window.dispatchEvent(new KeyboardEvent("keyup", { key: " " }));
+  point(canvas());
+  expect(document.activeElement).toBe(input);
+  // Reusing the already focused control may not emit another focusin, including on touch.
+  input.dispatchEvent(
+    new PointerEvent("pointerdown", { bubbles: true, pointerType: "touch", isPrimary: true }),
+  );
+  expect(press(input, " ").defaultPrevented).toBe(false);
+  window.dispatchEvent(new KeyboardEvent("keyup", { key: " " }));
+  point(canvas());
+  expect(press(input, " ").defaultPrevented).toBe(true);
+  expect(document.activeElement).toBe(canvas());
+  expect(canvas().style.cursor).toBe("grab");
+  expect(app.store.get(editor$).beads).toBe(0);
+});
+
+it("inherits Space pressed in a field only when the primary mouse returns to Canvas", () => {
+  const input = host.querySelector<HTMLInputElement>(".title-input")!;
+  const idle = canvas().style.cursor;
+  input.focus();
+  press(input, " ");
+  point(canvas(), { pointerType: "touch" });
+  point(canvas(), { isPrimary: false });
+  expect(document.activeElement).toBe(input);
+  expect(canvas().style.cursor).toBe(idle);
+  point(canvas());
+  expect(document.activeElement).toBe(canvas());
+  expect(canvas().style.cursor).toBe("grab");
+  window.dispatchEvent(new KeyboardEvent("keyup", { key: " " }));
+  expect(canvas().style.cursor).toBe(idle);
+});
+
+it("leaves modified and IME Space in a field even when the pointer returns to Canvas", () => {
+  const input = host.querySelector<HTMLInputElement>(".title-input")!;
+  const idle = canvas().style.cursor;
+  for (const options of [
+    { ctrlKey: true },
+    { metaKey: true },
+    { altKey: true },
+    { shiftKey: true },
+    { isComposing: true },
+    { keyCode: 229 },
+  ]) {
+    input.focus();
+    point(canvas());
+    expect(press(input, " ", options).defaultPrevented).toBe(false);
+    point(canvas());
+    expect(document.activeElement).toBe(input);
+    expect(canvas().style.cursor).toBe(idle);
+  }
+});
+
+it("does not revive a held Space after cancellation, modal work or composition", () => {
+  const input = host.querySelector<HTMLInputElement>(".title-input")!;
+  const idle = canvas().style.cursor;
+  for (const interrupt of [
+    () => window.dispatchEvent(new KeyboardEvent("keyup", { key: " " })),
+    () => press(input, "Escape"),
+    () => window.dispatchEvent(new Event("blur")),
+    () => {
+      input.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+      input.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
+    },
+    () => {
+      app.store.set(showCreate$);
+      app.store.set(showEditor$);
+    },
+  ]) {
+    input.focus();
+    press(input, " ");
+    interrupt();
+    point(canvas());
+    expect(canvas().style.cursor).toBe(idle);
+  }
+  for (const type of ["pointercancel", "lostpointercapture"]) {
+    canvas().focus();
+    press(canvas(), " ");
+    canvas().dispatchEvent(new PointerEvent(type, { bubbles: true, buttons: 1 }));
+    point(canvas());
+    press(canvas(), " ", { repeat: true });
+    expect(canvas().style.cursor).toBe(idle);
+  }
 });
 
 it("isolates help and creation, translates help, and restores its invoking focus", () => {
