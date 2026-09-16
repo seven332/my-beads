@@ -288,6 +288,17 @@ allows Safari's body-targeted events without sharing shortcuts across app mounts
 Discrete commands ignore repeats; zoom and history allow them. Browser-modified
 letters are not consumed. Native buttons retain Space and Enter activation.
 
+Creating/importing a pattern, continuing editing and restoring a draft focus Canvas.
+The keyboard adapter tracks a physical unmodified Space press separately from the
+active pan override. A primary mouse/pen return to Canvas plus Space claims Canvas
+focus before a pointer gesture starts, in either key/pointer order. Space capture
+handles this transfer before a previously focused combobox can consume the key.
+Hover alone never moves focus. Focusing another control clears pointer intent, so
+a stationary pointer cannot steal normal text entry or menu activation. Touch and
+secondary pointers do not claim this transfer. Input Space retains its native
+meaning until an explicit pointer return; already typed text is never rolled back.
+All new listeners belong to the same mount and are removed on teardown.
+
 Held Space is a transient Canvas override, independent of the selected tool and
 document state. The controller latches pan versus drawing on pointerdown; releasing
 Space during a pan cannot turn that gesture into a stroke. Pressing Space during a

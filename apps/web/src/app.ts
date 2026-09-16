@@ -130,7 +130,7 @@ export function mountApp(
   }
   function created() {
     fit();
-    focusPage(".title-input");
+    focusPage(".pattern-canvas");
   }
   const actions: Actions = {
     theme: (preference) => {
@@ -186,7 +186,7 @@ export function mountApp(
     resume: () => {
       cancelImport();
       store.set(state.showEditor$);
-      focusPage(".title-input");
+      focusPage(".pattern-canvas");
     },
     openExport: () => {
       store.set(showColorPicker$, false);
@@ -341,6 +341,7 @@ export function mountApp(
     dismissColorPicker,
   );
   const keyboard = mountKeyboard(root, {
+    canvas: () => lifecycle.refs.canvas.value,
     enabled: () =>
       store.get(state.workflow$).page === "edit" &&
       !store.get(exports.exportSettings$).open &&
@@ -403,6 +404,7 @@ export function mountApp(
   );
   // watch runs immediately; fitting is outside the read-only watch callback.
   fit();
+  if (recovered) focusPage(".pattern-canvas");
   function shortcut(event: KeyboardEvent) {
     if (event.defaultPrevented || composing(event)) return;
     const target = event.target as HTMLElement;
