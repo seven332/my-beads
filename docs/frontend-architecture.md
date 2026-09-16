@@ -222,7 +222,7 @@ do not guarantee insertion. The lifecycle owner closes removed/replaced dialogs
 and paints image previews only when their element or immutable grid changes.
 Image sessions use `keyed(session.id, ...)` to reset form defaults on replacement.
 Palette and mapping rows use `repeat` with stable color keys. Controlled input
-strings use `live`; blank/image options use `defaultValue` and `defaultChecked`
+strings and linked image dimensions use `live`; blank options use `defaultValue` and `defaultChecked`
 so unrelated renders preserve unfinished form edits. No LitElement, custom elements,
 Shadow DOM or second reactive state model is required.
 
@@ -459,24 +459,42 @@ each export AbortController so closing the dialog or unmounting prevents a late
 download. Workflow navigation is not persisted; the existing document-only draft
 schema remains unchanged.
 
-`image-file.ts` owns local PNG/WebP decoding, image events, cancellation and object
+`image-file.ts` owns local PNG/WebP/JPEG decoding, image events, cancellation and object
 URLs. It checks compressed size and decoded dimensions before Canvas allocation;
-only RGBA data leaves the adapter. Core `image-import.ts` samples cell centers,
-applies the alpha rule, counts source colors and reuses the shared color matcher.
-Manual overrides reserve candidates for distinct assignment. Sampling, source-color
-and raster limits bound the work; general photo quantization is not implicit.
-Web image import always offers the complete MARD 221 candidate palette, with
-chroma and distinct-assignment controls plus per-color overrides. Series filtering
-remains available in the shared core and CLI color-matching tool.
+only RGBA data leaves the adapter. The browser applies JPEG EXIF orientation before
+dimensions are read. Imports start at the source aspect ratio, with a longest edge
+of at most 50 cells and no automatic upscaling. Linked dimensions can be unlocked.
+
+Core `image-conversion.ts` composes sampling and MARD mapping into a serializable
+result, retaining sampled colors on correctable mapping errors. Ordinary mode uses
+linear-light area sampling with premultiplied alpha and a default maximum of 24
+bead colors. Preserve pixels mode uses the original cell-center sampling, defaults
+to the full 221 colors, and retains manual overrides and distinct assignments.
+The color budget (1–221) limits actual MARD codes, not source RGB colors. Transparent
+cells are omitted; no dithering or spatial deletion is applied. Exact palette pixels
+remain exact when the budget permits. Switching to ordinary mode ignores pixel
+overrides without deleting them. Series filtering remains a core/CLI option.
+
+`image-palette.ts` selects an actual MARD subset greedily by weighted perceptual
+error, seeded by manual choices and optimized only for sources without manual overrides.
+Palette selection uses at most 4096 representatives
+(4-bit RGB bins above that count); final mapping still uses each sampled RGB value.
+Shared matching streams distances rather than allocating source-by-palette matrices.
+The 256×256 target, 8192-axis/16-million-pixel source and 10 MB file limits bound work.
+Ordinary mode displays final bead counts. Pixel mode shows at most 100 source mapping
+rows at once, searchable by hex, without limiting which source colors are converted.
 
 `image-state.ts` owns a separate preview session and its original document revision.
-Its async command accepts an image-source IO boundary and an AbortSignal. A new
+Its async commands accept image-source and conversion IO boundaries plus AbortSignals. A new
 CSV/image import or grid cancels the mount's previous import owner. Apply also
 checks the revision and live-stroke state; canceled or stale work never replaces
 the document. Changed form settings disable Apply until the preview is refreshed.
 Numeric settings refresh automatically after a 200 ms input pause; checkbox changes
-and Enter refresh immediately. The mount owns the timer and cancels it on replacement,
-navigation, cancellation and teardown. Delayed work is bound to its image session.
+and Enter refresh immediately. Each conversion owns a module Worker; supersession,
+navigation, cancellation, teardown, success and failure terminate it and remove its
+listeners. The mount owns both debounce and conversion cancellation. Session ID,
+settings version, document revision and abort checks reject stale replies. Original
+RGBA pixels are retained for resampling; the Worker receives a structured clone.
 Decoding uses the latest requested settings, including changes made before it finishes.
 Current options and sampled source colors are separate from the last successful
 source/MARD preview snapshot. Pending or invalid settings keep that snapshot and its

@@ -216,6 +216,32 @@ export function matchColors(
       chromaticColors.length > 0;
     return { hex, lab, preserveChroma };
   });
+  // Shared assignments need only one row at a time, even for color-rich images.
+  if (!options.unique) {
+    return inputs.map((input) => {
+      let closest = paletteColors[0];
+      let best = Infinity;
+      let difference = Infinity;
+      for (const color of paletteColors) {
+        const delta = input.hex === color.hex ? 0 : deltaE2000(input.lab, color.lab);
+        const cost =
+          delta + (input.preserveChroma && color.chroma < chromaticThreshold ? 1_000_000 : 0);
+        if (cost < best) {
+          closest = color;
+          best = cost;
+          difference = delta;
+        }
+      }
+      return {
+        input: input.hex,
+        code: closest.code,
+        hex: closest.hex,
+        deltaE: difference,
+        preserveChroma: input.preserveChroma,
+        neutralFallback: input.preserveChroma && closest.chroma < chromaticThreshold,
+      };
+    });
+  }
   const differences = inputs.map((input) =>
     paletteColors.map((color) => deltaE2000(input.lab, color.lab)),
   );
@@ -227,9 +253,7 @@ export function matchColors(
         : difference,
     ),
   );
-  const assignments = options.unique
-    ? assignUniqueColors(costs)
-    : costs.map((row) => row.indexOf(Math.min(...row)));
+  const assignments = assignUniqueColors(costs);
 
   return inputs.map((input, index) => {
     const colorIndex = assignments[index];

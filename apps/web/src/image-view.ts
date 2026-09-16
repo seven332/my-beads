@@ -3,18 +3,20 @@ import { keyed } from "lit-html/directives/keyed.js";
 import { live } from "lit-html/directives/live.js";
 import { ref } from "lit-html/directives/ref.js";
 import { repeat } from "lit-html/directives/repeat.js";
-import { defaultPalette } from "@my-beads/core";
+import { defaultPalette, linkedImageSize } from "@my-beads/core";
 import type { Translate } from "./i18n/index.js";
 import type { ImageSession, ImageOptions } from "./image-state.js";
 import type { ViewRefs } from "./view-lifecycle.js";
 import { button } from "./ui/button.js";
 import { field } from "./ui/field.js";
 import { modal } from "./ui/dialog.js";
+import { select } from "./ui/select.js";
 
 export interface ImageActions {
   importImage(file: File): void;
   changeImageSettings(options: ImageOptions, immediate: boolean): void;
   overrideImage(source: string, code: string): void;
+  filterImageMappings(query: string): void;
   cancelImage(): void;
   applyImage(): void;
 }
@@ -25,7 +27,7 @@ export function imagePicker(label: string, name: string, action: (file: File) =>
     <input
       class="file-input"
       type="file"
-      accept="image/png,image/webp"
+      accept="image/png,image/webp,image/jpeg"
       aria-label=${name}
       @change=${(event: Event) => {
         const input = event.target as HTMLInputElement;
@@ -47,22 +49,40 @@ export function imageView(
   const previousMappings = new Map(
     preview?.mapped.mappings.map((mapping) => [mapping.source, mapping]),
   );
-  const changeSettings = (form: HTMLFormElement, immediate: boolean) => {
+  const usedColors = new Map<string, number>();
+  for (const mapping of preview?.mapped.mappings ?? [])
+    usedColors.set(mapping.code, (usedColors.get(mapping.code) ?? 0) + mapping.count);
+  const filtered = (sample?.colors ?? []).filter((color) =>
+    color.hex.includes(session.mappingQuery.trim().toUpperCase()),
+  );
+  const changeSettings = (form: HTMLFormElement, immediate: boolean, axis?: string) => {
     const data = new FormData(form);
     const value = (name: string) => {
       const raw = data.get(name);
       return raw === null || raw === "" ? NaN : Number(raw);
     };
-    actions.changeImageSettings(
-      {
-        columns: value("columns"),
-        rows: value("rows"),
-        alpha: value("alpha"),
-        includeNeutral: !data.has("chroma"),
-        unique: data.has("unique"),
-      },
-      immediate,
-    );
+    const next = {
+      ...options,
+      columns: value("columns"),
+      rows: value("rows"),
+      alpha: value("alpha"),
+      maxColors: value("maxColors"),
+      lockAspect: data.has("lockAspect"),
+      includeNeutral: !data.has("chroma"),
+      unique: data.has("unique"),
+    };
+    if (
+      next.lockAspect &&
+      session.pixels &&
+      (axis === "columns" || axis === "rows" || axis === "lockAspect")
+    ) {
+      const dimension = axis === "rows" ? "rows" : "columns";
+      Object.assign(
+        next,
+        linkedImageSize(session.pixels.width, session.pixels.height, dimension, next[dimension]),
+      );
+    }
+    actions.changeImageSettings(next, immediate);
   };
   const number = (label: string, name: string, value: number, max: number) =>
     field(
@@ -73,7 +93,7 @@ export function imageView(
         type="number"
         min=${name === "alpha" ? 0 : 1}
         max=${max}
-        .defaultValue=${String(value)}
+        .value=${live(Number.isNaN(value) ? "" : String(value))}
       />`,
     );
   return keyed(
@@ -100,6 +120,21 @@ export function imageView(
           )}
         </div>
         <p class="muted">${t(($) => $.image.intro)}</p>
+        <div class="mb-4">
+          ${select(
+            t(($) => $.image.mode),
+            options.mode,
+            [
+              { value: "image", label: t(($) => $.image.ordinary) },
+              { value: "pixel", label: t(($) => $.image.preservePixels) },
+            ],
+            (mode) =>
+              actions.changeImageSettings(
+                { ...options, mode, maxColors: mode === "pixel" ? 221 : 24 },
+                true,
+              ),
+          )}
+        </div>
         <form
           class="image-options"
           novalidate
@@ -107,9 +142,15 @@ export function imageView(
             changeSettings(
               event.currentTarget as HTMLFormElement,
               (event.target as HTMLInputElement).type === "checkbox",
+              (event.target as HTMLInputElement).name,
             )}
           @keydown=${(event: KeyboardEvent) => {
-            if (event.key === "Enter" && !event.isComposing) {
+            if (
+              event.key === "Enter" &&
+              !event.isComposing &&
+              event.target instanceof HTMLInputElement &&
+              event.target.type === "number"
+            ) {
               event.preventDefault();
               changeSettings(event.currentTarget as HTMLFormElement, true);
             }
@@ -131,27 +172,44 @@ export function imageView(
               options.rows,
               256,
             )}${number(
+              t(($) => $.image.maximumColors),
+              "maxColors",
+              options.maxColors,
+              221,
+            )}
+          </div>
+          <label class="flex items-center gap-[7px] text-ui"
+            ><input type="checkbox" name="lockAspect" .checked=${live(options.lockAspect)} />${t(
+              ($) => $.image.lockAspect,
+            )}</label
+          >
+          <p class="muted">${t(($) => $.image.budgetHelp)}</p>
+          <details class="text-ui" ?open=${options.mode === "pixel"}>
+            <summary>${t(($) => $.image.advanced)}</summary>
+            ${number(
               t(($) => $.image.alpha),
               "alpha",
               options.alpha,
               255,
             )}
-          </div>
-          <div class="flex flex-wrap items-center justify-between gap-4 text-ui">
-            <label class="flex items-center gap-[7px]"
-              ><input
-                type="checkbox"
-                name="chroma"
-                .defaultChecked=${!options.includeNeutral}
-              />${t(($) => $.image.chroma)}</label
-            >
-            <label class="flex items-center gap-[7px]"
-              ><input type="checkbox" name="unique" .defaultChecked=${!!options.unique} />${t(
-                ($) => $.image.unique,
-              )}</label
-            >
-          </div>
-          <p class="muted">${t(($) => $.image.settingsHelp)}</p>
+            <div class="flex flex-wrap items-center justify-between gap-4 text-ui">
+              <label class="flex items-center gap-[7px]"
+                ><input
+                  type="checkbox"
+                  name="chroma"
+                  .checked=${live(!options.includeNeutral)}
+                />${t(($) => $.image.chroma)}</label
+              >
+              ${options.mode === "pixel"
+                ? html`<label class="flex items-center gap-[7px]"
+                    ><input type="checkbox" name="unique" .checked=${live(!!options.unique)} />${t(
+                      ($) => $.image.unique,
+                    )}</label
+                  >`
+                : nothing}
+            </div>
+            <p class="muted">${t(($) => $.image.settingsHelp)}</p>
+          </details>
         </form>
         ${session.loading ? html`<p role="status">${t(($) => $.image.reading)}</p>` : nothing}
         ${session.error ? html`<p class="error" role="alert">${session.error}</p>` : nothing}
@@ -186,7 +244,7 @@ export function imageView(
                     aria-label=${t(($) => $.image.mardPreview)}
                   ></canvas>
                   <figcaption class="mt-[9px] text-caption">
-                    MARD 221 ·
+                    MARD 221 · ${t(($) => $.colors, { count: usedColors.size })} ·
                     ${t(($) => $.app.dimensions, {
                       columns: preview.mapped.grid[0].length,
                       rows: preview.mapped.grid.length,
@@ -200,7 +258,27 @@ export function imageView(
               </div>
             </div>`
           : nothing}
-        ${sample
+        ${preview && options.mode === "image"
+          ? html`<div
+              class="flex max-h-[160px] flex-wrap gap-2 overflow-auto"
+              aria-label=${t(($) => $.image.usedColors)}
+            >
+              ${[...usedColors]
+                .sort((a, b) => b[1] - a[1])
+                .map(
+                  ([code, count]) =>
+                    html`<span
+                      class="flex items-center gap-2 rounded-lg border border-solid border-border px-3 py-2 text-ui"
+                      ><span
+                        class="mapping-swatch"
+                        style=${`background:${defaultPalette.colors[code]}`}
+                      ></span
+                      ><span>${code} · ${t(($) => $.beads, { count })}</span></span
+                    >`,
+                )}
+            </div>`
+          : nothing}
+        ${sample && options.mode === "pixel"
           ? html`<div>
               <div class="flex items-center justify-between gap-4">
                 <h3 class="text-[15px]">${t(($) => $.image.mapping)}</h3>
@@ -209,6 +287,21 @@ export function imageView(
                 >
               </div>
               <p class="muted">${t(($) => $.image.mappingHelp)}</p>
+              ${field(
+                t(($) => $.image.findSource),
+                html`<input
+                  type="search"
+                  .value=${live(session.mappingQuery)}
+                  @input=${(event: Event) =>
+                    actions.filterImageMappings((event.target as HTMLInputElement).value)}
+                />`,
+              )}
+              <p class="muted">
+                ${t(($) => $.image.mappingLimit, {
+                  shown: Math.min(100, filtered.length),
+                  total: filtered.length,
+                })}
+              </p>
               <datalist id="image-mard-codes">
                 ${imageColors.map(([code, hex]) => html`<option value=${code}>${hex}</option>`)}
               </datalist>
@@ -217,7 +310,7 @@ export function imageView(
                 aria-label=${t(($) => $.image.mappings)}
               >
                 ${repeat(
-                  [...sample.colors].sort((a, b) => a.hex.localeCompare(b.hex)),
+                  [...filtered].sort((a, b) => a.hex.localeCompare(b.hex)).slice(0, 100),
                   (color) => color.hex,
                   ({ hex: source, count }) => {
                     const mapping = previousMappings.get(source);

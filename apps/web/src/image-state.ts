@@ -2,27 +2,32 @@ import { UiError, errorText, captureError } from "./errors.js";
 import { translation$ } from "./locale.js";
 import { command, computed, state } from "ccstate";
 import {
-  sampleImage,
-  mapImage,
+  BeadError,
+  imageGridSize,
   type RgbaImage,
-  type SamplingOptions,
-  type MatchOptions,
+  type ImageConversionOptions,
   type SampledImage,
   type MappedImage,
 } from "@my-beads/core";
-import { documentRevision$, editor$, replaceIfCurrent$ } from "./state.js";
+import type { ImageConverter } from "./image-worker.js";
+import { documentRevision$, replaceIfCurrent$ } from "./state.js";
 
-export interface ImageOptions extends SamplingOptions, Omit<MatchOptions, "series"> {}
+export interface ImageOptions extends ImageConversionOptions {
+  lockAspect: boolean;
+}
 export interface ImagePreview {
   sample: SampledImage;
   mapped: MappedImage;
 }
 export interface ImageSession {
   id: number;
+  version: number;
   name: string;
   revision: number;
   loading: boolean;
   settingsDirty: boolean;
+  dimensionsEdited: boolean;
+  mappingQuery: string;
   error: string;
   pixels: RgbaImage | null;
   options: ImageOptions;
@@ -41,45 +46,69 @@ export const cancelImage$ = command(({ get, set }) => {
   set(imageTokenState$, get(imageTokenState$) + 1);
   set(sessionState$, null);
 });
+export const filterImageMappings$ = command(({ get, set }, mappingQuery: string) => {
+  const session = get(sessionState$);
+  if (session) set(sessionState$, { ...session, mappingQuery });
+});
 export const changeImageSettings$ = command(({ get, set }, options: ImageOptions) => {
   const session = get(sessionState$);
   if (session && (session.loading || session.pixels))
-    set(sessionState$, { ...session, options, settingsDirty: true, error: "" });
-});
-export const updateImage$ = command(({ get, set }) => {
-  const session = get(sessionState$);
-  if (!session?.pixels) return;
-  let sample: SampledImage;
-  try {
-    sample = sampleImage(session.pixels, session.options);
-  } catch (error) {
-    set(sessionState$, { ...session, settingsDirty: false, error: captureError(error) });
-    return;
-  }
-  const sources = new Set(sample.colors.map((color) => color.hex));
-  const overrides = Object.fromEntries(
-    Object.entries(session.overrides).filter(([source]) => sources.has(source)),
-  );
-  try {
-    const mapped = mapImage(sample, session.options, overrides);
     set(sessionState$, {
       ...session,
-      sample,
-      preview: { sample, mapped },
-      settingsDirty: false,
-      overrides,
+      options,
+      version: session.version + 1,
+      settingsDirty: true,
+      dimensionsEdited:
+        session.dimensionsEdited ||
+        options.columns !== session.options.columns ||
+        options.rows !== session.options.rows,
       error: "",
     });
-  } catch (error) {
-    set(sessionState$, {
-      ...session,
-      sample,
-      settingsDirty: false,
-      overrides,
-      error: captureError(error),
-    });
-  }
 });
+export const updateImage$ = command(
+  async ({ get, set }, convert: ImageConverter, signal: AbortSignal) => {
+    signal.throwIfAborted();
+    const session = get(sessionState$);
+    if (!session?.pixels) return;
+    const version = session.version + 1;
+    set(sessionState$, { ...session, version, settingsDirty: true, error: "" });
+    try {
+      const result = await convert(
+        { pixels: session.pixels, options: session.options, overrides: session.overrides },
+        signal,
+      );
+      signal.throwIfAborted();
+      const current = get(sessionState$);
+      if (!current || current.id !== session.id || current.version !== version) return;
+      if (get(documentRevision$) !== session.revision) {
+        set(sessionState$, {
+          ...current,
+          settingsDirty: false,
+          error: new UiError("imageChangedApplying"),
+        });
+        return;
+      }
+      set(sessionState$, {
+        ...current,
+        sample: result.sample ?? current.sample,
+        preview:
+          result.sample && result.mapped
+            ? { sample: result.sample, mapped: result.mapped }
+            : current.preview,
+        overrides: result.overrides,
+        settingsDirty: false,
+        error: result.error
+          ? new BeadError(result.error.code, result.error.message, result.error.values)
+          : "",
+      });
+    } catch (error) {
+      signal.throwIfAborted();
+      const current = get(sessionState$);
+      if (current?.id === session.id && current.version === version)
+        set(sessionState$, { ...current, settingsDirty: false, error: captureError(error) });
+    }
+  },
+);
 export interface ImageSource {
   name: string;
   read(signal: AbortSignal): Promise<RgbaImage>;
@@ -89,24 +118,28 @@ export const loadImage$ = command(
     signal.throwIfAborted();
     const token = get(imageTokenState$) + 1;
     const revision = get(documentRevision$);
-    const grid = get(editor$).document.grid;
-    const options: ImageOptions = {
-      columns: grid[0].length,
-      rows: grid.length,
-      alpha: 128,
-      includeNeutral: false,
-      unique: false,
-    };
     set(imageTokenState$, token);
     set(sessionState$, {
       id: token,
+      version: 0,
       name: source.name,
       revision,
       loading: true,
-      settingsDirty: false,
+      settingsDirty: true,
+      dimensionsEdited: false,
+      mappingQuery: "",
       error: "",
       pixels: null,
-      options,
+      options: {
+        columns: 50,
+        rows: 50,
+        alpha: 128,
+        includeNeutral: false,
+        unique: false,
+        mode: "image",
+        maxColors: 24,
+        lockAspect: true,
+      },
       sample: null,
       preview: null,
       overrides: {},
@@ -125,8 +158,15 @@ export const loadImage$ = command(
         });
         return;
       }
-      set(sessionState$, { ...session, loading: false, pixels });
-      set(updateImage$);
+      set(sessionState$, {
+        ...session,
+        loading: false,
+        pixels,
+        options: session.dimensionsEdited
+          ? session.options
+          : { ...session.options, ...imageGridSize(pixels.width, pixels.height) },
+      });
+      return token;
     } catch (error) {
       signal.throwIfAborted();
       if (get(imageTokenState$) === token) {
@@ -147,8 +187,13 @@ export const overrideImage$ = command(({ get, set }, source: string, code: strin
   const overrides = { ...session.overrides };
   if (code) overrides[source] = code;
   else delete overrides[source];
-  set(sessionState$, { ...session, overrides });
-  set(updateImage$);
+  set(sessionState$, {
+    ...session,
+    overrides,
+    version: session.version + 1,
+    settingsDirty: true,
+    error: "",
+  });
 });
 export const applyImage$ = command(({ get, set }) => {
   const session = get(sessionState$);
@@ -157,7 +202,7 @@ export const applyImage$ = command(({ get, set }) => {
     replaceIfCurrent$,
     session.revision,
     session.preview.mapped.grid,
-    session.name.replace(/\.(png|webp)$/i, ""),
+    session.name.replace(/\.(png|webp|jpe?g)$/i, ""),
   );
   if (!applied) {
     set(sessionState$, { ...session, error: new UiError("imageChangedApplying") });

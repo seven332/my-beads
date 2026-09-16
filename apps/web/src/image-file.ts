@@ -4,7 +4,8 @@ import { validateImageSize, type RgbaImage } from "@my-beads/core";
 /** The file adapter owns the decoder and URL; only bounded RGBA data leaves it. */
 export async function readImage(file: File, signal: AbortSignal): Promise<RgbaImage> {
   signal.throwIfAborted();
-  if (!["image/png", "image/webp"].includes(file.type)) throw new UiError("imageType");
+  if (!["image/png", "image/webp", "image/jpeg"].includes(file.type))
+    throw new UiError("imageType");
   if (file.size > 10_000_000) throw new UiError("imageFileSize");
   const url = URL.createObjectURL(file);
   const image = new Image();

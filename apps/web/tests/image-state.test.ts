@@ -1,7 +1,7 @@
+import { loadPixelImage$ as loadImage$, convertInTest } from "./image-test-helpers.js";
 import { createStore } from "ccstate";
 import { expect, it } from "vitest";
 import {
-  loadImage$,
   imageSession$,
   updateImage$,
   overrideImage$,
@@ -32,7 +32,12 @@ it("uses the latest settings when decoding finishes", async () => {
     { name: "Loading.png", read: () => pending.promise },
     new AbortController().signal,
   );
-  store.set(changeImageSettings$, { columns: 3, rows: 1, alpha: 128 });
+  store.set(changeImageSettings$, {
+    ...store.get(imageSession$)!.options,
+    columns: 3,
+    rows: 1,
+    alpha: 128,
+  });
   expect(store.set(applyImage$)).toBe(false);
   pending.resolve(pixels);
   await loading;
@@ -48,12 +53,22 @@ it("retains read failures when settings change before or after decoding fails", 
     { name: "Broken.png", read: () => pending.promise },
     new AbortController().signal,
   );
-  store.set(changeImageSettings$, { columns: 3, rows: 1, alpha: 128 });
+  store.set(changeImageSettings$, {
+    ...store.get(imageSession$)!.options,
+    columns: 3,
+    rows: 1,
+    alpha: 128,
+  });
   pending.reject(new Error("Unable to decode image"));
   await loading;
   expect(store.get(imageSession$)?.settingsDirty).toBe(false);
   expect(store.get(imageSession$)?.error).toContain("Unable to decode image");
-  store.set(changeImageSettings$, { columns: 4, rows: 1, alpha: 128 });
+  store.set(changeImageSettings$, {
+    ...store.get(imageSession$)!.options,
+    columns: 4,
+    rows: 1,
+    alpha: 128,
+  });
   expect(store.get(imageSession$)?.error).toContain("Unable to decode image");
   expect(store.get(imageSession$)?.settingsDirty).toBe(false);
   expect(store.get(imageSession$)?.preview).toBeNull();
@@ -70,17 +85,26 @@ it("uses the full palette for previews and cross-prefix overrides without editin
     Object.entries(defaultPalette.colors),
   );
   store.set(overrideImage$, "#FFFFFF", "B15");
-  store.set(changeImageSettings$, { columns: 4, rows: 1, alpha: 128, unique: true });
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
+  store.set(changeImageSettings$, {
+    ...store.get(imageSession$)!.options,
+    columns: 4,
+    rows: 1,
+    alpha: 128,
+    unique: true,
+  });
   expect(store.set(applyImage$)).toBe(false);
-  store.set(updateImage$);
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   expect(store.get(imageSession$)?.preview?.mapped.candidates).toEqual(
     Object.entries(defaultPalette.colors),
   );
   expect(store.get(imageSession$)?.overrides).toEqual({ "#FFFFFF": "B15" });
   expect(store.get(imageSession$)?.preview?.mapped.grid).toEqual([["H7", "H7", "B15", "B15"]]);
   store.set(overrideImage$, "#FFFFFF", "");
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   expect(store.get(imageSession$)?.preview?.mapped.grid).toEqual([["H7", "H7", "H2", "H2"]]);
   store.set(overrideImage$, "#FFFFFF", "B15");
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   expect(store.get(editor$).beads).toBe(0);
   expect(store.set(applyImage$)).toBe(true);
   expect(store.get(editor$).document.grid).toEqual([["H7", "H7", "B15", "B15"]]);
@@ -94,13 +118,23 @@ it("preserves work on invalid preview, cancellation and stale Apply", async () =
   store.set(newDocument$, 2, 1);
   await store.set(loadImage$, { name: "Test.png", read: async () => pixels }, signal);
   const preview = store.get(imageSession$)?.preview;
-  store.set(changeImageSettings$, { columns: 0, rows: 1, alpha: 128 });
-  store.set(updateImage$);
+  store.set(changeImageSettings$, {
+    ...store.get(imageSession$)!.options,
+    columns: 0,
+    rows: 1,
+    alpha: 128,
+  });
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   expect(store.get(imageSession$)?.error).toContain("dimensions");
   expect(store.get(imageSession$)?.preview).toBe(preview);
   expect(store.set(applyImage$)).toBe(false);
-  store.set(changeImageSettings$, { columns: 2, rows: 1, alpha: 128 });
-  store.set(updateImage$);
+  store.set(changeImageSettings$, {
+    ...store.get(imageSession$)!.options,
+    columns: 2,
+    rows: 1,
+    alpha: 128,
+  });
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   store.set(rename$, "New title");
   expect(store.set(applyImage$)).toBe(false);
   expect(store.get(imageSession$)?.error).toContain("pattern changed");
@@ -117,21 +151,33 @@ it("keeps invalid mapping inputs until all errors are corrected or cleared", asy
     new AbortController().signal,
   );
   store.set(overrideImage$, "#000000", "BAD");
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   store.set(overrideImage$, "#FFFFFF", "H5");
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   expect(store.get(imageSession$)?.overrides).toEqual({ "#000000": "BAD", "#FFFFFF": "H5" });
   expect(store.get(imageSession$)?.error).toContain("Overrides");
   expect(store.set(applyImage$)).toBe(false);
   expect(store.get(editor$).beads).toBe(0);
   store.set(overrideImage$, "#000000", "");
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   expect(store.get(imageSession$)?.error).toBe("");
   expect(store.get(imageSession$)?.preview?.mapped.grid).toEqual([["H7", "H5"]]);
-  store.set(changeImageSettings$, { columns: 2, rows: 1, alpha: 128, unique: true });
-  store.set(updateImage$);
+  store.set(changeImageSettings$, {
+    ...store.get(imageSession$)!.options,
+    columns: 2,
+    rows: 1,
+    alpha: 128,
+    unique: true,
+  });
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   store.set(overrideImage$, "#000000", "H2");
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   store.set(overrideImage$, "#FFFFFF", "H2");
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   expect(store.get(imageSession$)?.error).toContain("cannot reuse");
   expect(store.set(applyImage$)).toBe(false);
   store.set(overrideImage$, "#000000", "H7");
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   expect(store.get(imageSession$)?.preview?.mapped.grid).toEqual([["H7", "H2"]]);
   expect(store.set(applyImage$)).toBe(true);
 });
@@ -144,16 +190,25 @@ it("retains conflicting manual choices when settings change and allows correctin
     new AbortController().signal,
   );
   store.set(overrideImage$, "#000000", "B15");
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   store.set(overrideImage$, "#FFFFFF", "B15");
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   const preview = store.get(imageSession$)?.preview;
-  store.set(changeImageSettings$, { columns: 4, rows: 1, alpha: 128, unique: true });
-  store.set(updateImage$);
+  store.set(changeImageSettings$, {
+    ...store.get(imageSession$)!.options,
+    columns: 4,
+    rows: 1,
+    alpha: 128,
+    unique: true,
+  });
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   expect(store.get(imageSession$)?.error).toContain("cannot reuse");
   expect(store.get(imageSession$)?.preview).toBe(preview);
   expect(store.get(imageSession$)?.sample?.grid[0]).toHaveLength(4);
   expect(store.get(imageSession$)?.overrides).toEqual({ "#000000": "B15", "#FFFFFF": "B15" });
   expect(store.set(applyImage$)).toBe(false);
   store.set(overrideImage$, "#FFFFFF", "G14");
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   expect(store.get(imageSession$)?.error).toBe("");
   expect(store.set(applyImage$)).toBe(true);
   expect(store.get(editor$).document.grid).toEqual([["B15", "B15", "G14", "G14"]]);
@@ -171,20 +226,37 @@ it("prunes only source colors absent after successful sampling and keeps choices
     new AbortController().signal,
   );
   store.set(overrideImage$, "#000000", "B15");
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   store.set(overrideImage$, "#FFFFFF", "G14");
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   const preview = store.get(imageSession$)?.preview;
-  store.set(changeImageSettings$, { columns: 2, rows: 1, alpha: NaN });
-  store.set(updateImage$);
+  store.set(changeImageSettings$, {
+    ...store.get(imageSession$)!.options,
+    columns: 2,
+    rows: 1,
+    alpha: NaN,
+  });
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   expect(store.get(imageSession$)?.error).toContain("Alpha threshold");
   expect(store.get(imageSession$)?.preview).toBe(preview);
   expect(store.get(imageSession$)?.overrides).toEqual({ "#000000": "B15", "#FFFFFF": "G14" });
   expect(store.set(applyImage$)).toBe(false);
-  store.set(changeImageSettings$, { columns: 2, rows: 1, alpha: 200 });
-  store.set(updateImage$);
+  store.set(changeImageSettings$, {
+    ...store.get(imageSession$)!.options,
+    columns: 2,
+    rows: 1,
+    alpha: 200,
+  });
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   expect(store.get(imageSession$)?.overrides).toEqual({ "#000000": "B15" });
   expect(store.get(imageSession$)?.preview?.mapped.grid).toEqual([["B15", null]]);
-  store.set(changeImageSettings$, { columns: 1, rows: 1, alpha: 200 });
-  store.set(updateImage$);
+  store.set(changeImageSettings$, {
+    ...store.get(imageSession$)!.options,
+    columns: 1,
+    rows: 1,
+    alpha: 200,
+  });
+  await store.set(updateImage$, convertInTest, new AbortController().signal);
   expect(store.get(imageSession$)?.overrides).toEqual({});
   expect(store.set(applyImage$)).toBe(true);
   expect(store.get(editor$).document.grid).toEqual([[null]]);

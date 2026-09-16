@@ -142,7 +142,7 @@ test("an open image import changes appearance without resetting source pixels or
     .getByLabel("Open image", { exact: true })
     .setInputFiles({ name: "Source.png", mimeType: "image/png", buffer: PNG.sync.write(png) });
   const dialog = page.getByRole("dialog");
-  await expect(page.locator(".mapping-row").first()).toBeVisible();
+  await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
   const preview = page.locator(".image-preview").first();
   const element = await preview.elementHandle();
   const pixels = () =>

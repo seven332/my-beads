@@ -1,3 +1,4 @@
+import { loadPixelImage$ as loadImage$, convertInTest } from "./image-test-helpers.js";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { mountApp } from "../src/app.js";
 import {
@@ -12,8 +13,10 @@ import {
 } from "../src/state.js";
 import { DRAFT_KEY, decodeDraft } from "../src/drafts.js";
 import * as exporter from "../src/exports.js";
-import { loadImage$, imageSession$, applyImage$ } from "../src/image-state.js";
+import { imageSession$, applyImage$ } from "../src/image-state.js";
 import { selectLocale$ } from "../src/locale.js";
+import { convertImage, type ImageConversionResult } from "@my-beads/core";
+import type { ImageConverter } from "../src/image-worker.js";
 
 let host: HTMLElement;
 let app: ReturnType<typeof mountApp>;
@@ -60,6 +63,7 @@ beforeEach(() => {
   host = document.createElement("div");
   document.body.append(host);
   app = mountApp(host, {
+    convertImage: convertInTest,
     storage: () => ({
       getItem: (key) => values.get(key) ?? null,
       setItem: (key, value) => {
@@ -278,7 +282,7 @@ it("preserves image form drafts within a session and closes and replaces native 
   expect(second).not.toBe(first);
   expect(first.open).toBe(false);
   expect(second.open).toBe(true);
-  expect(second.querySelector<HTMLInputElement>('[name="columns"]')!.value).toBe("50");
+  expect(second.querySelector<HTMLInputElement>('[name="columns"]')!.value).toBe("1");
   expect(second.querySelector<HTMLInputElement>('[name="alpha"]')!.value).toBe("128");
   expect(second.querySelector<HTMLInputElement>('[name="unique"]')!.checked).toBe(false);
   expect(show).toHaveBeenCalledTimes(2);
@@ -312,12 +316,12 @@ it("coalesces numeric drafts, keeps the old preview and refreshes checkbox chang
   expect(app.store.set(applyImage$)).toBe(false);
   input('dialog [name="alpha"]', "128");
   click('dialog [name="unique"]');
-  expect(app.store.get(imageSession$)?.settingsDirty).toBe(false);
+  await vi.waitFor(() => expect(app.store.get(imageSession$)?.settingsDirty).toBe(false));
   expect(app.store.get(imageSession$)?.error).toBe("");
   expect(app.store.get(imageSession$)?.options.unique).toBe(true);
   input('dialog [name="columns"]', "6");
   columns.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-  expect(app.store.get(imageSession$)?.settingsDirty).toBe(false);
+  await vi.waitFor(() => expect(app.store.get(imageSession$)?.settingsDirty).toBe(false));
   expect(app.store.set(applyImage$)).toBe(true);
   expect(app.store.get(editor$).document.grid).toEqual([["H7", "H7", "H7", "H2", "H2", "H2"]]);
 });
@@ -344,6 +348,7 @@ it("does not carry scheduled settings across canceled, replaced or destroyed ima
   previous.destroy();
   expect(host.childElementCount).toBe(0);
   app = mountApp(host, {
+    convertImage: convertInTest,
     storage: () => ({
       getItem: (key) => values.get(key) ?? null,
       setItem: (key, value) => {
@@ -358,4 +363,57 @@ it("does not carry scheduled settings across canceled, replaced or destroyed ima
     expect(app.store.get(imageSession$)?.preview?.mapped.grid).toEqual([["H7", "H7"]]),
   );
   expect(previous.store.get(imageSession$)).toEqual(pending);
+});
+
+it("aborts conversion IO on supersession, cancellation, replacement and unmount", async () => {
+  app.destroy();
+  const pixels = { width: 2, height: 1, data: Uint8Array.from([0, 0, 0, 255, 255, 255, 255, 255]) };
+  const pending: {
+    signal: AbortSignal;
+    resolve: (result: ImageConversionResult) => void;
+    result: ImageConversionResult;
+  }[] = [];
+  const converter: ImageConverter = (request, signal) => {
+    const deferred = Promise.withResolvers<ImageConversionResult>();
+    pending.push({
+      signal,
+      resolve: deferred.resolve,
+      result: convertImage(request.pixels, request.options),
+    });
+    return deferred.promise;
+  };
+  app = mountApp(host, {
+    readImage: async () => pixels,
+    convertImage: converter,
+    storage: () => ({ getItem: () => null, setItem: () => {} }),
+  });
+  const upload = (selector: string, name: string) => {
+    const element = host.querySelector<HTMLInputElement>(selector)!;
+    Object.defineProperty(element, "files", {
+      configurable: true,
+      value: [new File([], name, { type: "image/png" })],
+    });
+    element.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+  upload('[aria-label="Open image"]', "First.png");
+  await vi.waitFor(() => expect(pending).toHaveLength(1));
+  expect(app.store.set(applyImage$)).toBe(false);
+  click('dialog [name="lockAspect"]');
+  expect(pending[0].signal.aborted).toBe(true);
+  expect(pending).toHaveLength(2);
+  upload('[aria-label="Replace image"]', "Second.png");
+  await vi.waitFor(() => expect(pending).toHaveLength(3));
+  expect(pending[1].signal.aborted).toBe(true);
+  click(".image-footer button");
+  expect(pending[2].signal.aborted).toBe(true);
+  upload('[aria-label="Open image"]', "Third.png");
+  await vi.waitFor(() => expect(pending).toHaveLength(4));
+  const previous = app.store.get(imageSession$);
+  app.destroy();
+  expect(pending[3].signal.aborted).toBe(true);
+  for (const job of pending) job.resolve(job.result);
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(app.store.get(imageSession$)).toEqual(previous);
+  expect(host.childElementCount).toBe(0);
 });
