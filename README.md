@@ -67,7 +67,21 @@ pnpm match:color "#4C4C40"
 
 Add `--help` to any command for all options.
 
-CSV files use a rectangular grid of MARD codes or exact palette hex values, with empty cells for transparency. Pattern files live in [`templates/`](templates/).
+CSV and TSV files use a rectangular grid, one cell per bead position. Import accepts MARD codes and exact palette hex values with or without `#`, including three-digit hex. Codes take priority: `B17` is a MARD code, while `#B17` is a hex color. Values are case-insensitive; empty fields, `""`, `TRANSPARENT`, and `ERASE` represent empty cells.
+
+Both the editor and CLI accept UTF-8 (with or without BOM) and BOM-marked UTF-16 LE/BE. Comma, semicolon, and Tab delimiters, quoted fields, and LF/CRLF/CR line endings are supported. A leading `sep=` line can declare a comma, semicolon, or literal Tab delimiter. Otherwise, the first available delimiter outside quotes wins in this order: comma, semicolon, Tab. Use one delimiter consistently; imports never retry another delimiter to repair invalid data.
+
+Import preserves the full grid, including empty border rows and columns. It does not skip headers or blank rows, pad uneven rows, resize the canvas, or approximate unknown colors. The browser accepts files up to 2 MB and grids up to 256 × 256 cells.
+
+CSV export uses uppercase MARD codes and empty fields, with commas, UTF-8 without BOM, LF line endings, and a final LF. It includes no header, coordinates, or color-count table. For example, this is a 3 × 3 grid:
+
+```csv
+,H7,
+H2,,B17
+,,
+```
+
+Empty records in a one-column grid use `""` so the cells remain explicit. A CSV export preserves the grid and bead colors; its filename carries the title. Code-based exports require a reader that understands MARD codes; hex-only tools need conversion. Pattern files live in [`templates/`](templates/).
 
 The built-in palette is based on the [Pixel Beads MARD color chart](https://www.pixel-beads.com/zh/mard-bead-color-chart). Its [color data](packages/core/src/data/mard-221-colors.json) is shared by the editor and CLI tools.
 
@@ -102,7 +116,7 @@ pnpm test:e2e
 pnpm test:production
 ```
 
-Tests live alongside their packages. See the [frontend architecture guide](docs/frontend-architecture.md) for state, rendering, translation, and testing conventions.
+Tests live alongside their packages and use test-owned fixtures or constructed data, independently of `templates/`. See the [frontend architecture guide](docs/frontend-architecture.md) for state, rendering, translation, and testing conventions.
 
 GitHub Actions checks pull requests and deploys the editor to GitHub Pages when changes affecting the web build reach `main`. See the [browser CI guide](docs/browser-ci.md) for filtering, sharding, and test reports, and the [deployment workflow](.github/workflows/pages.yml) for its triggers.
 

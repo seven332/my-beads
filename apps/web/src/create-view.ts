@@ -127,7 +127,7 @@ export function createView(
           <input
             class="file-input"
             type="file"
-            accept=".csv,text/csv"
+            accept=".csv,.tsv,text/csv,text/tab-separated-values"
             aria-label=${t(($) => $.app.openCsv)}
             @change=${(event: Event) => {
               const input = event.target as HTMLInputElement,

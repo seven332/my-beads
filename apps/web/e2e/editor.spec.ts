@@ -1,8 +1,8 @@
 import { test, expect, type Page, type Download } from "@playwright/test";
 import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
 import { createPattern, defaultPalette, parsePatternCsv, type PatternGrid } from "@my-beads/core";
+import { patternCsv } from "./fixtures.js";
 import {
   selectChoice,
   openExport,
@@ -12,9 +12,6 @@ import {
   openPalette,
 } from "./helpers.js";
 
-const shermaPath = fileURLToPath(
-  new URL("../../../templates/hollow-knight/sherma-singing-50x50.csv", import.meta.url),
-);
 async function bytes(download: Download) {
   return readFile((await download.path())!);
 }
@@ -113,15 +110,15 @@ for (const width of [1440, 390]) {
   });
 }
 
-test("Sherma: all tools, grouped undo, CSV round trip and exact PNG/chart downloads", async ({
-  page,
-}) => {
+test("all tools, grouped undo, CSV round trip and exact PNG/chart downloads", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
-  await page.getByLabel("Open CSV").setInputFiles(shermaPath);
+  await page
+    .getByLabel("Open CSV")
+    .setInputFiles({ name: "Pattern.csv", mimeType: "text/csv", buffer: Buffer.from(patternCsv) });
   await expect(page.getByTestId("counts")).toHaveText("1,270 beads · 9 colors");
-  const grid = parsePatternCsv(await readFile(shermaPath, "utf8")).map((row) => [...row]);
+  const grid = parsePatternCsv(patternCsv).map((row) => [...row]);
   const { cell } = await fitCoordinates(page, 50, 50);
   const canvas = await page.getByRole("img", { name: "Pattern canvas" }).elementHandle();
   await openPalette(page);
@@ -155,7 +152,7 @@ test("Sherma: all tools, grouped undo, CSV round trip and exact PNG/chart downlo
   await page.getByRole("button", { name: "Codes", exact: true }).click();
   await page.getByRole("button", { name: "Grid", exact: true }).click();
   expect(await canvas!.evaluate((node) => node === document.querySelector("canvas"))).toBe(true);
-  await page.getByLabel("Pattern title").fill("Sherma study");
+  await page.getByLabel("Pattern title").fill("Pattern study");
   const csv = await download(page, "csv");
   expect(parsePatternCsv(csv.toString())).toEqual(grid);
   await startNew(page);
@@ -166,9 +163,9 @@ test("Sherma: all tools, grouped undo, CSV round trip and exact PNG/chart downlo
   expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual(grid);
   verifyPixels(await download(page, "pixel", 1), grid, 1);
   verifyPixels(await download(page, "pixel", 3), grid, 3);
-  await page.getByLabel("Pattern title").fill("Sherma & friends");
+  await page.getByLabel("Pattern title").fill("Pattern & friends");
   const svg = (await download(page, "svg")).toString();
-  expect(svg).toContain("Sherma &amp; friends");
+  expect(svg).toContain("Pattern &amp; friends");
   expect(svg).toContain("MARD 221");
   expect(svg).toContain("50 × 50 grid · 9 colors · 1274 beads");
   for (const [code, count] of createPattern(grid).counts) {
@@ -210,7 +207,9 @@ test("zoom and pan preserve cell targeting; invalid imports and exports preserve
   await expect(page.getByRole("alert")).toContainText("row");
   expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual(grid);
   await startNew(page);
-  await page.getByLabel("Open CSV").setInputFiles(shermaPath);
+  await page
+    .getByLabel("Open CSV")
+    .setInputFiles({ name: "Pattern.csv", mimeType: "text/csv", buffer: Buffer.from(patternCsv) });
   await expect(page.getByTestId("counts")).toHaveText("1,270 beads · 9 colors");
   await openExport(page);
   await selectChoice(page.getByRole("combobox", { name: "Export format", exact: true }), "svg");

@@ -142,14 +142,22 @@ it("imports canonical CSV and preserves the document when validation fails", asy
     controller = new AbortController();
   await store.set(
     state.importCsv$,
-    { name: "Test.csv", size: 12, text: async () => 'H7,""\nH2,H7' },
+    {
+      name: "Test.csv",
+      size: 12,
+      arrayBuffer: async () => new TextEncoder().encode('H7,""\nH2,H7').buffer,
+    },
     controller.signal,
   );
   expect(store.get(state.editor$).title).toBe("Test");
   expect(store.get(state.editor$).beads).toBe(3);
   await store.set(
     state.importCsv$,
-    { name: "bad.csv", size: 1, text: async () => "INVALID" },
+    {
+      name: "bad.csv",
+      size: 1,
+      arrayBuffer: async () => new TextEncoder().encode("INVALID").buffer,
+    },
     controller.signal,
   );
   expect(store.get(state.editor$).error).toContain("INVALID");
@@ -157,21 +165,71 @@ it("imports canonical CSV and preserves the document when validation fails", asy
   controller.abort();
 });
 
+it("imports byte-encoded TSV and preserves the document on invalid encoding or dimensions", async () => {
+  const store = createStore();
+  const signal = new AbortController().signal;
+  const bytes = Uint8Array.from([0xfe, 0xff, 0, 0x48, 0, 0x37, 0, 9, 0, 0x48, 0, 0x32]);
+  expect(
+    await store.set(
+      state.importCsv$,
+      { name: "Encoded.TSV", size: bytes.length, arrayBuffer: async () => bytes.buffer },
+      signal,
+    ),
+  ).toBe(true);
+  expect(store.get(state.editor$).title).toBe("Encoded");
+  const before = store.get(state.editor$).document;
+  expect(before.grid).toEqual([["H7", "H2"]]);
+  for (const invalid of [
+    Uint8Array.from([0xff]),
+    new TextEncoder().encode(Array(257).fill("H7").join("\t")),
+  ]) {
+    expect(
+      await store.set(
+        state.importCsv$,
+        { name: "Invalid.tsv", size: invalid.length, arrayBuffer: async () => invalid.buffer },
+        signal,
+      ),
+    ).toBe(false);
+    expect(store.get(state.editor$).document).toBe(before);
+    expect(store.get(state.editor$).title).toBe("Encoded");
+    expect(store.get(state.editor$).error).not.toBe("");
+  }
+  expect(
+    await store.set(
+      state.importCsv$,
+      {
+        name: "Large.tsv",
+        size: 2_000_001,
+        arrayBuffer: () => {
+          throw new Error("Oversize input must be rejected before reading");
+        },
+      },
+      signal,
+    ),
+  ).toBe(false);
+  expect(store.get(state.editor$).error).toContain("2 MB");
+  expect(store.get(state.editor$).document).toBe(before);
+});
+
 it("does not apply stale reads after another import, new grid, edits or unmount", async () => {
   for (const replacement of ["import", "new", "edit", "abort"] as const) {
     const store = createStore(),
       controller = new AbortController();
-    const deferred = Promise.withResolvers<string>();
+    const deferred = Promise.withResolvers<ArrayBuffer>();
     const pending = store.set(
       state.importCsv$,
-      { name: "old.csv", size: 1, text: () => deferred.promise },
+      { name: "old.csv", size: 1, arrayBuffer: () => deferred.promise },
       controller.signal,
     );
     const observed = pending.catch((error) => error);
     if (replacement === "import")
       await store.set(
         state.importCsv$,
-        { name: "new.csv", size: 1, text: async () => "H2" },
+        {
+          name: "new.csv",
+          size: 1,
+          arrayBuffer: async () => new TextEncoder().encode("H2").buffer,
+        },
         controller.signal,
       );
     if (replacement === "new") store.set(state.newDocument$, 2, 3);
@@ -180,7 +238,7 @@ it("does not apply stale reads after another import, new grid, edits or unmount"
       store.set(state.finishStroke$);
     }
     if (replacement === "abort") controller.abort();
-    deferred.resolve("H5");
+    deferred.resolve(new TextEncoder().encode("H5").buffer);
     await observed;
     expect(store.get(state.editor$).document.grid[0][0]).not.toBe("H5");
     expect(store.get(state.editor$).title).not.toBe("old");

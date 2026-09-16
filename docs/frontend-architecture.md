@@ -15,10 +15,18 @@ Standalone lit-html replaces the original renderer in [#32](https://github.com/s
   grids as immutable. Chart rendering accepts integer widths from 800 to 10000 pixels,
   with a minimum of `columns * max(20, digits(columns) * 8) + 250` for readable cells
   and separated multi-digit coordinates.
+- CSV byte decoding is a pure core helper; the browser and CLI read bytes through their
+  own file APIs. Decode UTF-8 or BOM-marked UTF-16 before parsing. Delimiter declarations
+  take priority over quote-aware comma/semicolon/Tab detection. Preserve empty records,
+  rectangular shape, exact code identity, and source-row offsets after declarations.
+  Export a compact comma/code grid with explicit single-column empty records.
 - The browser app owns ccstate, lit-html views, Canvas interaction, file decoding,
   downloads and storage. It imports the core without Node polyfills.
 - `apps/cli` owns filesystem paths, system fonts, macOS sips and native resvg.
   Browser code must never import these adapters.
+
+Tests use package-local fixtures or constructed data. Do not read application pattern
+assets from `templates/`; adding or changing a user's pattern must not affect test oracles.
 
 ## State and commands
 

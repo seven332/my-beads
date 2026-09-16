@@ -2,6 +2,7 @@ import { UiError, errorText, captureError } from "./errors.js";
 import { command, computed, state } from "ccstate";
 import {
   createPattern,
+  decodeCsv,
   defaultPalette,
   floodFill,
   paintLine,
@@ -349,7 +350,7 @@ export const newDocument$ = command(({ set }, width: number, height: number) => 
 export interface CsvFile {
   name: string;
   size: number;
-  text(): Promise<string>;
+  arrayBuffer(): Promise<ArrayBuffer>;
 }
 export const importCsv$ = command(async ({ get, set }, file: CsvFile, signal: AbortSignal) => {
   signal.throwIfAborted();
@@ -360,15 +361,15 @@ export const importCsv$ = command(async ({ get, set }, file: CsvFile, signal: Ab
   set(csvLoadingState$, true);
   try {
     if (file.size > 2_000_000) throw new UiError("csvSize");
-    const text = await file.text();
+    const bytes = await file.arrayBuffer();
     signal.throwIfAborted();
     if (get(importState$) !== token) return false;
     if (get(historyState$).revision !== revision) {
       set(reportError$, new UiError("csvChanged"), "csv");
       return false;
     }
-    const grid = parsePatternCsv(text);
-    set(replaceDocument$, grid, file.name.replace(/\.csv$/i, ""));
+    const grid = parsePatternCsv(decodeCsv(new Uint8Array(bytes)));
+    set(replaceDocument$, grid, file.name.replace(/\.(csv|tsv)$/i, ""));
     return true;
   } catch (error) {
     signal.throwIfAborted();

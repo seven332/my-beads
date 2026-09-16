@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { defaultPalette, parsePatternCsv, serializePatternCsv } from "@my-beads/core";
 import { selectChoice, openExport } from "./helpers.js";
+import { patternCsv } from "./fixtures.js";
 
 async function checkChart(page: Page, csv: string, width: number, title: string) {
   const grid = parsePatternCsv(csv);
@@ -170,14 +171,8 @@ test("narrow printable export keeps all legend entries inside their cards", asyn
   await checkChart(page, serializePatternCsv(grid), 800, "Nine-color study");
 });
 
-test("default Sherma printable export has complete readable labels and counts", async ({
-  page,
-}) => {
-  const csv = await readFile(
-    new URL("../../../templates/hollow-knight/sherma-singing-50x50.csv", import.meta.url),
-    "utf8",
-  );
-  await checkChart(page, csv, 2400, "Sherma");
+test("default printable export has complete readable labels and counts", async ({ page }) => {
+  await checkChart(page, patternCsv, 2400, "Pattern");
 });
 
 test("maximum-width grid exports separated three-digit coordinates", async ({ page }) => {

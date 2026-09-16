@@ -3,6 +3,65 @@ import { readFile } from "node:fs/promises";
 import { parsePatternCsv } from "@my-beads/core";
 import { selectChoice, startNew, continueEditing, openExport, closeExport } from "./helpers.js";
 
+for (const order of ["le", "be"]) {
+  test(`UTF-16${order} grids export compact CSV and reimport with empty borders intact`, async ({
+    page,
+  }) => {
+    const separator = order === "le" ? "\t" : ";";
+    const text =
+      `\uFEFFsep=${separator}\r\n` +
+      [
+        ["", "h7", '"fff"', ""],
+        ["", "B17", "ERASE", ""],
+        ["", "", "", ""],
+      ]
+        .map((row) => row.join(separator))
+        .join("\r\n") +
+      "\r\n";
+    const bytes = Buffer.from(text, "utf16le");
+    if (order === "be") bytes.swap16();
+    await page.goto("/");
+    await page
+      .getByLabel("Open CSV")
+      .setInputFiles({ name: "Encoded.TSV", mimeType: "text/tab-separated-values", buffer: bytes });
+    await expect(page.getByLabel("Pattern title")).toHaveValue("Encoded");
+    await expect(page.locator(".canvas-status")).toContainText("4 × 3 cells");
+    await expect(page.getByTestId("counts")).toHaveText("3 beads · 3 colors");
+    await openExport(page);
+    const pending = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download" }).click();
+    const downloaded = await pending;
+    expect(downloaded.suggestedFilename()).toBe("Encoded.csv");
+    const exported = await readFile((await downloaded.path())!);
+    expect(exported.toString("utf8")).toBe(",H7,H2,\n,B17,,\n,,,\n");
+    await closeExport(page);
+    await startNew(page);
+    await page
+      .getByLabel("Open CSV")
+      .setInputFiles({ name: "Roundtrip.csv", mimeType: "text/csv", buffer: exported });
+    await expect(page.getByLabel("Pattern title")).toHaveValue("Roundtrip");
+    await expect(page.locator(".canvas-status")).toContainText("4 × 3 cells");
+    await expect(page.getByTestId("counts")).toHaveText("3 beads · 3 colors");
+    await openExport(page);
+    const second = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download" }).click();
+    expect(await readFile((await (await second).path())!)).toEqual(exported);
+    await closeExport(page);
+    await startNew(page);
+    await page
+      .getByLabel("Open CSV")
+      .setInputFiles({
+        name: "Invalid.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from([0xff, 0xfe, 0x48]),
+      });
+    await expect(page.getByRole("alert")).toContainText("Use UTF-8 or UTF-16");
+    await continueEditing(page);
+    await expect(page.getByLabel("Pattern title")).toHaveValue("Roundtrip");
+    await expect(page.getByTestId("counts")).toHaveText("3 beads · 3 colors");
+  });
+}
+
 test("creates only on request, returns to the current work, and exports without leaving the editor", async ({
   page,
 }) => {
