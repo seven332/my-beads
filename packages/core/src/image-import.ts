@@ -177,14 +177,14 @@ export function mapImage(
       "colorBudget",
       "Increase the color limit or clear manual/distinct assignments.",
     );
+  const pending = sample.colors.filter((color) => !Object.hasOwn(overrides, color.hex));
   candidates = selectImagePalette(
-    sample,
+    pending,
     maximum,
     [...reserved],
     !!options.includeNeutral,
     candidates,
   );
-  const pending = sample.colors.filter((color) => !Object.hasOwn(overrides, color.hex));
   const available: PaletteDocument = {
     colors: Object.fromEntries(
       candidates.filter(([code]) => !options.unique || !reserved.has(code)),

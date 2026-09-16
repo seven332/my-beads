@@ -1,18 +1,18 @@
 import { deltaE2000, hexToLab, type Lab } from "./color-match.js";
 import type { SampledImage } from "./image-import.js";
 
-/** Select actual bead colors, using bounded representatives only for palette selection. */
+/** Reserve manual bead choices, then optimize only the source colors still mapped automatically. */
 export function selectImagePalette(
-  sample: SampledImage,
+  colors: SampledImage["colors"],
   maximum: number,
   reserved: readonly string[],
   includeNeutral: boolean,
   candidates: [string, string][],
 ) {
-  if (maximum >= candidates.length || sample.colors.length <= maximum) return candidates;
+  if (maximum >= candidates.length || colors.length + reserved.length <= maximum) return candidates;
   const bins = new Map<string, { lab: number[]; count: number }>();
-  for (const { hex, count } of sample.colors) {
-    const key = sample.colors.length <= 4096 ? hex : [1, 3, 5].map((i) => hex[i]).join("");
+  for (const { hex, count } of colors) {
+    const key = colors.length <= 4096 ? hex : [1, 3, 5].map((i) => hex[i]).join("");
     const bin = bins.get(key) ?? { lab: [0, 0, 0], count: 0 };
     const lab = hexToLab(hex);
     for (let i = 0; i < 3; i++) bin.lab[i] += lab[i] * count;

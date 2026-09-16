@@ -29,6 +29,32 @@ test("keeps large pixel mapping lists bounded and searchable, including after a 
   await expect(dialog.getByRole("button", { name: "Apply image" })).toBeEnabled();
 });
 
+test("opens advanced image settings with Enter and refreshes numeric fields with Enter", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page
+    .getByLabel("Open image", { exact: true })
+    .setInputFiles({ name: "Gradient.png", mimeType: "image/png", buffer: richImage() });
+  const dialog = page.getByRole("dialog");
+  const apply = dialog.getByRole("button", { name: "Apply image" });
+  await expect(apply).toBeEnabled();
+  const summary = dialog.locator("summary");
+  const alpha = dialog.getByLabel("Alpha threshold");
+  await summary.focus();
+  await summary.press("Enter");
+  await expect(alpha).toBeVisible();
+  await expect(summary).toBeFocused();
+  await alpha.fill("255");
+  await alpha.press("Enter");
+  await expect(apply).toBeEnabled();
+  await expect(alpha).toHaveValue("255");
+  await summary.focus();
+  await summary.press("Enter");
+  await expect(alpha).toBeHidden();
+  await expect(apply).toBeEnabled();
+});
+
 test("decodes JPEG EXIF orientation before deriving grid dimensions", async ({ page }) => {
   await page.goto("/");
   const encoded = await page.evaluate(() => {

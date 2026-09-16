@@ -121,3 +121,34 @@ it("derives source proportions without upscaling and clamps linked dimensions to
   expect(linkedImageSize(600, 400, "rows", 256)).toEqual({ columns: 256, rows: 171 });
   expect(linkedImageSize(600, 400, "rows", NaN)).toEqual({ rows: NaN });
 });
+
+it("spends the remaining palette budget on automatic colors instead of overridden source colors", () => {
+  const pixels = Array.from({ length: 1024 }, (_, index) => {
+    const hex =
+      index < 1000
+        ? "#000000"
+        : index < 1010
+          ? defaultPalette.colors.F13
+          : index < 1020
+            ? defaultPalette.colors.D22
+            : "#333996";
+    return [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16)).concat(255);
+  });
+  const result = convertImage(
+    { width: 64, height: 16, data: Uint8Array.from(pixels.flat()) },
+    { ...options, columns: 64, rows: 16, mode: "pixel", maxColors: 3, includeNeutral: true },
+    { "#000000": "H2" },
+  );
+  expect(result.error).toBeNull();
+  const mapped = result.mapped!.grid.flat();
+  expect(mapped.slice(0, 1000)).toEqual(Array(1000).fill("H2"));
+  const fewerOverriddenPixels = convertImage(
+    { width: 25, height: 1, data: Uint8Array.from([pixels[0], ...pixels.slice(1000)].flat()) },
+    { ...options, columns: 25, rows: 1, mode: "pixel", maxColors: 3, includeNeutral: true },
+    { "#000000": "H2" },
+  );
+  expect(fewerOverriddenPixels.error).toBeNull();
+  expect(mapped.slice(1000)).toEqual(fewerOverriddenPixels.mapped!.grid[0].slice(1));
+  expect(mapped.slice(1000)).not.toContain("H7");
+  expect(new Set(mapped).size).toBe(3);
+});

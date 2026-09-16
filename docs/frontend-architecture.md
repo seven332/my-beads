@@ -476,7 +476,8 @@ remain exact when the budget permits. Switching to ordinary mode ignores pixel
 overrides without deleting them. Series filtering remains a core/CLI option.
 
 `image-palette.ts` selects an actual MARD subset greedily by weighted perceptual
-error, seeded by manual choices. Palette selection uses at most 4096 representatives
+error, seeded by manual choices and optimized only for sources without manual overrides.
+Palette selection uses at most 4096 representatives
 (4-bit RGB bins above that count); final mapping still uses each sampled RGB value.
 Shared matching streams distances rather than allocating source-by-palette matrices.
 The 256×256 target, 8192-axis/16-million-pixel source and 10 MB file limits bound work.

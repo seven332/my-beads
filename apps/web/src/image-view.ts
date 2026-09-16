@@ -145,7 +145,12 @@ export function imageView(
               (event.target as HTMLInputElement).name,
             )}
           @keydown=${(event: KeyboardEvent) => {
-            if (event.key === "Enter" && !event.isComposing) {
+            if (
+              event.key === "Enter" &&
+              !event.isComposing &&
+              event.target instanceof HTMLInputElement &&
+              event.target.type === "number"
+            ) {
               event.preventDefault();
               changeSettings(event.currentTarget as HTMLFormElement, true);
             }
