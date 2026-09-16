@@ -1,3 +1,4 @@
+import { loadPixelImage$ as loadImage$, convertInTest } from "./image-test-helpers.js";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createStore } from "ccstate";
 import { checkCatalogs } from "../scripts/check-i18n.js";
@@ -14,12 +15,7 @@ import {
   undo$,
   zoom$,
 } from "../src/state.js";
-import {
-  loadImage$,
-  imageSession$,
-  updateImage$,
-  changeImageSettings$,
-} from "../src/image-state.js";
+import { imageSession$, updateImage$, changeImageSettings$ } from "../src/image-state.js";
 import { DRAFT_KEY, type DraftStorage } from "../src/drafts.js";
 import {
   openExport$,
@@ -32,7 +28,7 @@ const mounts: { app: ReturnType<typeof mountApp>; host: HTMLElement }[] = [];
 function mount(storage: () => DraftStorage) {
   const host = document.createElement("div");
   document.body.append(host);
-  const app = mountApp(host, { storage });
+  const app = mountApp(host, { storage, convertImage: convertInTest });
   mounts.push({ app, host });
   return { app, host };
 }
@@ -228,13 +224,13 @@ it("updates an open image dialog without discarding its preview or unfinished se
   columns.value = "7";
   columns.dispatchEvent(new Event("input", { bubbles: true }));
   app.store.set(selectLocale$, "zh-CN");
-  await vi.waitFor(() => expect(dialog!.textContent).toContain("导入像素图"));
+  await vi.waitFor(() => expect(dialog!.textContent).toContain("导入图片"));
   expect(host.querySelector("dialog")).toBe(dialog);
   expect(columns.value).toBe("7");
   expect(app.store.get(imageSession$)?.preview).toBe(before?.preview);
   expect(app.store.get(imageSession$)?.settingsDirty).toBe(true);
   app.store.set(changeImageSettings$, { ...before!.options, columns: 0 });
-  app.store.set(updateImage$);
+  await app.store.set(updateImage$, convertInTest, new AbortController().signal);
   expect(app.store.get(imageSession$)?.error).toContain("目标网格行列数");
   app.store.set(selectLocale$, "en-US");
   expect(app.store.get(imageSession$)?.error).toContain("Target grid dimensions");

@@ -2,13 +2,13 @@
 
 A browser-based editor for creating, editing, and exporting perler bead patterns.
 
-My Beads uses the **MARD 221** palette and supports **English and Simplified Chinese**. Start with a blank canvas, a CSV pattern, or a pixel image, then turn it into a chart you can follow while placing beads.
+My Beads uses the **MARD 221** palette and supports **English and Simplified Chinese**. Start with a blank canvas, a CSV pattern, or an image, then turn it into a chart you can follow while placing beads.
 
 **[Open the editor](https://seven332.github.io/my-beads/)**
 
 ## Create → Edit → Export
 
-1. **Create a pattern.** Choose the size of a blank canvas, import a CSV with its original grid and colors, or convert a PNG/WebP image with adjustable sampling and color mapping.
+1. **Create a pattern.** Choose the size of a blank canvas, import a CSV with its original grid and colors, or convert a PNG, WebP, or JPEG image with an adjustable grid and bead-color limit. Ordinary images use area sampling and up to 24 MARD colors by default; Preserve pixels mode keeps cell-center sampling and offers manual color mapping.
 2. **Edit on the canvas.** Draw with the pencil, erase, fill regions, and pick colors. Zoom and pan, undo and redo, and toggle grid lines or color codes. See how many beads each color uses and highlight their locations.
 3. **Export your work.** Download CSV for later editing, a transparent pixel-art PNG at your chosen scale, or a printable PNG/SVG chart with coordinates, color codes, and a bead-count legend.
 

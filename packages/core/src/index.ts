@@ -31,3 +31,10 @@ export {
   type ImageMapping,
 } from "./image-import.js";
 export { BeadError, type BeadErrorCode } from "./errors.js";
+export {
+  convertImage,
+  imageGridSize,
+  linkedImageSize,
+  type ImageConversionOptions,
+  type ImageConversionResult,
+} from "./image-conversion.js";

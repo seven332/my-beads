@@ -1,6 +1,7 @@
 import { BeadError } from "./errors.js";
 import { defaultPalette, type PaletteDocument } from "./palette.js";
 import { matchColors, type MatchOptions } from "./color-match.js";
+import { selectImagePalette } from "./image-palette.js";
 import type { PatternGrid } from "./pattern.js";
 
 export interface RgbaImage {
@@ -43,8 +44,12 @@ export function validateImageSize(width: number, height: number): void {
   }
 }
 
-/** Sample the source pixel at each target cell's center; never blend neighboring colors. */
-export function sampleImage(image: RgbaImage, options: SamplingOptions): SampledImage {
+/** Sample cell centers for pixel art, or alpha-weighted areas for ordinary images. */
+export function sampleImage(
+  image: RgbaImage,
+  options: SamplingOptions,
+  mode: "pixel" | "image" = "pixel",
+): SampledImage {
   validateImageSize(image.width, image.height);
   if (image.data.length !== image.width * image.height * 4)
     throw new BeadError("imageData", "Image RGBA data has an invalid length.");
@@ -63,19 +68,25 @@ export function sampleImage(image: RgbaImage, options: SamplingOptions): Sampled
       const sx = Math.floor(((x + 0.5) * image.width) / columns);
       const sy = Math.floor(((y + 0.5) * image.height) / rows);
       const offset = (sy * image.width + sx) * 4;
-      if (image.data[offset + 3] === 0 || image.data[offset + 3] < alpha) return null;
+      const rgba =
+        mode === "image"
+          ? areaPixel(
+              image,
+              (x * image.width) / columns,
+              (y * image.height) / rows,
+              ((x + 1) * image.width) / columns,
+              ((y + 1) * image.height) / rows,
+            )
+          : image.data.subarray(offset, offset + 4);
+      // Area overlaps may round an exact threshold slightly down (for example 128 to 127.999…).
+      if (rgba[3] === 0 || rgba[3] + 1e-9 < alpha) return null;
       const hex =
         "#" +
         [0, 1, 2]
-          .map((i) => image.data[offset + i].toString(16).padStart(2, "0"))
+          .map((i) => rgba[i].toString(16).padStart(2, "0"))
           .join("")
           .toUpperCase();
       counts.set(hex, (counts.get(hex) ?? 0) + 1);
-      if (counts.size > 256)
-        throw new BeadError(
-          "sampleColors",
-          "The sampled image has more than 256 colors. Use pixel art or a smaller target grid.",
-        );
       return hex;
     }),
   );
@@ -85,20 +96,63 @@ export function sampleImage(image: RgbaImage, options: SamplingOptions): Sampled
   return { grid, colors };
 }
 
+const linearChannels = Array.from({ length: 256 }, (_, byte) => {
+  const value = byte / 255;
+  return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+});
+function encodedChannel(value: number): number {
+  return Math.round(
+    Math.max(
+      0,
+      Math.min(1, value <= 0.0031308 ? value * 12.92 : 1.055 * value ** (1 / 2.4) - 0.055),
+    ) * 255,
+  );
+}
+
+/** Linear-light area sampling with premultiplied alpha; invisible RGB cannot tint an edge. */
+function areaPixel(
+  image: RgbaImage,
+  left: number,
+  top: number,
+  right: number,
+  bottom: number,
+): number[] {
+  const channels = [0, 0, 0];
+  let opacity = 0;
+  for (let y = Math.floor(top); y < Math.ceil(bottom); y++) {
+    for (let x = Math.floor(left); x < Math.ceil(right); x++) {
+      const weight =
+        (Math.min(x + 1, right) - Math.max(x, left)) * (Math.min(y + 1, bottom) - Math.max(y, top));
+      const offset =
+        (Math.min(y, image.height - 1) * image.width + Math.min(x, image.width - 1)) * 4;
+      const alpha = image.data[offset + 3] * weight;
+      opacity += alpha;
+      for (let c = 0; c < 3; c++) channels[c] += linearChannels[image.data[offset + c]] * alpha;
+    }
+  }
+  return [
+    ...channels.map((channel) => (opacity ? encodedChannel(channel / opacity) : 0)),
+    opacity / ((right - left) * (bottom - top)),
+  ];
+}
+
 /** Manual choices reserve candidates before solving automatic distinct assignments. */
 export function mapImage(
   sample: SampledImage,
-  options: MatchOptions = {},
+  options: MatchOptions & { maxColors?: number } = {},
   overrides: Readonly<Record<string, string>> = {},
 ): MappedImage {
   const series = (options.series ?? []).map((s) => s.trim().toUpperCase());
   if (series.some((s) => !/^[A-Z]+$/.test(s)))
     throw new BeadError("series", "Series must contain letter prefixes.");
-  const candidates = Object.entries(defaultPalette.colors).filter(
+  let candidates = Object.entries(defaultPalette.colors).filter(
     ([code]) => !series.length || series.some((s) => code.startsWith(s)),
   );
   if (!candidates.length)
     throw new BeadError("seriesEmpty", "No MARD colors match the selected series.");
+  const maximum = options.maxColors ?? candidates.length;
+  if (!Number.isInteger(maximum) || maximum < 1 || maximum > 221)
+    throw new BeadError("imageColors", "Maximum bead colors must be an integer from 1 to 221.");
   const palette = Object.fromEntries(candidates);
   const sources = new Set(sample.colors.map((color) => color.hex));
   const reserved = new Set<string>();
@@ -115,6 +169,21 @@ export function mapImage(
       );
     reserved.add(code);
   }
+  if (
+    options.maxColors !== undefined &&
+    (reserved.size > maximum || (options.unique && sources.size > maximum))
+  )
+    throw new BeadError(
+      "colorBudget",
+      "Increase the color limit or clear manual/distinct assignments.",
+    );
+  candidates = selectImagePalette(
+    sample,
+    maximum,
+    [...reserved],
+    !!options.includeNeutral,
+    candidates,
+  );
   const pending = sample.colors.filter((color) => !Object.hasOwn(overrides, color.hex));
   const available: PaletteDocument = {
     colors: Object.fromEntries(

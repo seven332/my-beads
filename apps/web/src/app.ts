@@ -11,6 +11,7 @@ import { exportPattern } from "./exports.js";
 import * as images from "./image-state.js";
 import * as exports from "./export-state.js";
 import { readImage } from "./image-file.js";
+import { runImageConversion, type ImageConverter } from "./image-worker.js";
 import { createDrafts, type DraftStorage } from "./drafts.js";
 import { mountKeyboard } from "./keyboard.js";
 import { composing } from "./shortcuts.js";
@@ -32,6 +33,7 @@ export function mountApp(
   adapters: {
     storage?: () => DraftStorage;
     readImage?: typeof readImage;
+    convertImage?: ImageConverter;
     themeRoot?: HTMLElement;
   } = {},
 ) {
@@ -64,6 +66,7 @@ export function mountApp(
   let importController: AbortController | undefined;
   let exportController: AbortController | undefined;
   let imagePreviewTimer: ReturnType<typeof setTimeout> | undefined;
+  let imagePreviewController: AbortController | undefined;
   let helpInvoker: HTMLElement | null = null;
   const downloads = new Map<string, ReturnType<typeof setTimeout>>();
   const root = document.createElement("div");
@@ -78,6 +81,18 @@ export function mountApp(
   function cancelImagePreview() {
     clearTimeout(imagePreviewTimer);
     imagePreviewTimer = undefined;
+    imagePreviewController?.abort();
+    imagePreviewController = undefined;
+  }
+  function updateImagePreview() {
+    imagePreviewController?.abort();
+    imagePreviewController = new AbortController();
+    const signal = AbortSignal.any([lifetime.signal, imagePreviewController.signal]);
+    store
+      .set(images.updateImage$, adapters.convertImage ?? runImageConversion, signal)
+      .catch((error) => {
+        if (!signal.aborted) fail(error);
+      });
   }
   function cancelImport() {
     cancelImagePreview();
@@ -252,6 +267,10 @@ export function mountApp(
           { name: file.name, read: (signal) => (adapters.readImage ?? readImage)(file, signal) },
           signal,
         )
+        .then((id) => {
+          if (id !== undefined && !signal.aborted && store.get(images.imageSession$)?.id === id)
+            updateImagePreview();
+        })
         .catch((error) => {
           if (!signal.aborted) fail(error);
         });
@@ -261,18 +280,20 @@ export function mountApp(
       store.set(images.changeImageSettings$, options);
       const session = store.get(images.imageSession$);
       if (!session?.pixels) return;
-      if (immediate) store.set(images.updateImage$);
+      if (immediate) updateImagePreview();
       else
         imagePreviewTimer = setTimeout(() => {
           imagePreviewTimer = undefined;
           if (!lifetime.signal.aborted && store.get(images.imageSession$)?.id === session.id)
-            store.set(images.updateImage$);
+            updateImagePreview();
         }, 200);
     },
     overrideImage: (source, code) => {
       cancelImagePreview();
       store.set(images.overrideImage$, source, code);
+      updateImagePreview();
     },
+    filterImageMappings: (query) => store.set(images.filterImageMappings$, query),
     cancelImage: cancelImport,
     applyImage: () => {
       if (store.set(images.applyImage$)) {

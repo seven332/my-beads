@@ -51,7 +51,7 @@ it("preserves transparency and includes exactly the alpha threshold", () => {
     [null, "#FF0000", "#FF0000", "#FF0000"],
   ]);
 });
-it("rejects invalid dimensions, buffers, thresholds and color-rich samples", () => {
+it("rejects invalid dimensions, buffers and thresholds but accepts color-rich samples", () => {
   const source = image([[0, 0, 0, 255]]);
   for (const columns of [0, 1.5, 257, NaN])
     expect(() => sampleImage(source, { columns, rows: 1, alpha: 128 })).toThrow("dimensions");
@@ -67,9 +67,7 @@ it("rejects invalid dimensions, buffers, thresholds and color-rich samples", () 
     Array.from({ length: 512 }, (_, i) => [i % 256, Math.floor(i / 256), 0, 255]),
     256,
   );
-  expect(() => sampleImage(many, { columns: 256, rows: 2, alpha: 1 })).toThrow(
-    "more than 256 colors",
-  );
+  expect(sampleImage(many, { columns: 256, rows: 2, alpha: 1 }).colors).toHaveLength(512);
 });
 it("maps exact colors, permits shared codes by default and respects overrides", () => {
   const sample = sampleImage(

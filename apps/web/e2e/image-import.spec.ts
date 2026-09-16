@@ -68,6 +68,8 @@ test("imports enlarged PNG with explicit sampling, override, edit, exports and d
     .getByLabel("Open image", { exact: true })
     .setInputFiles({ name: "Pixel design.png", mimeType: "image/png", buffer: enlargedImage() });
   const dialog = page.getByRole("dialog");
+  await selectChoice(dialog.getByRole("combobox", { name: "Image processing" }), "pixel");
+  await dialog.getByLabel("Lock aspect ratio").uncheck();
   await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
   await expect(dialog.getByLabel("MARD series", { exact: true })).toHaveCount(0);
   await expect(page.getByTestId("counts")).toHaveText("1 bead · 1 color");
@@ -75,7 +77,7 @@ test("imports enlarged PNG with explicit sampling, override, edit, exports and d
   await dialog.getByLabel("Target rows").fill("50");
   await expect(dialog.getByRole("button", { name: "Update preview" })).toHaveCount(0);
   await expect(
-    dialog.getByText("MARD 221 · 50 × 50 cells · 1,750 beads", { exact: true }),
+    dialog.getByText("MARD 221 · 2 colors · 50 × 50 cells · 1,750 beads", { exact: true }),
   ).toBeVisible();
   expect(
     await dialog
@@ -120,16 +122,21 @@ test("automatically refreshes settings while retaining valid previews and manual
       buffer: PNG.sync.write(source),
     });
   const dialog = page.getByRole("dialog");
+  await selectChoice(dialog.getByRole("combobox", { name: "Image processing" }), "pixel");
+  await dialog.getByLabel("Lock aspect ratio").uncheck();
   const apply = dialog.getByRole("button", { name: "Apply image" });
   const preview = dialog.getByRole("img", { name: "MARD preview" });
   await expect(preview).toBeVisible();
   await dialog.getByLabel("Target columns").fill("4");
   await dialog.getByLabel("Target rows").fill("1");
-  await expect(dialog.getByText("MARD 221 · 4 × 1 cells · 4 beads", { exact: true })).toBeVisible();
+  await expect(
+    dialog.getByText("MARD 221 · 2 colors · 4 × 1 cells · 4 beads", { exact: true }),
+  ).toBeVisible();
   const black = dialog.getByLabel("Map #000000", { exact: true });
   const white = dialog.getByLabel("Map #FFFFFF", { exact: true });
   await black.fill("B15");
   await white.fill("B15");
+  await expect(apply).toBeEnabled();
   const beforeConflict = await preview.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL());
   await dialog.getByLabel("Distinct assignments").check();
   await expect(dialog.getByRole("alert")).toContainText("cannot reuse");
@@ -142,9 +149,13 @@ test("automatically refreshes settings while retaining valid previews and manual
   await dialog.getByLabel("Target columns").fill("6");
   await expect(dialog.getByRole("status")).toHaveCount(0);
   await expect(dialog.getByRole("alert")).toContainText("cannot reuse");
-  await expect(dialog.getByText("MARD 221 · 4 × 1 cells · 4 beads", { exact: true })).toBeVisible();
+  await expect(
+    dialog.getByText("MARD 221 · 1 color · 4 × 1 cells · 4 beads", { exact: true }),
+  ).toBeVisible();
   await white.fill("G14");
-  await expect(dialog.getByText("MARD 221 · 6 × 1 cells · 6 beads", { exact: true })).toBeVisible();
+  await expect(
+    dialog.getByText("MARD 221 · 2 colors · 6 × 1 cells · 6 beads", { exact: true }),
+  ).toBeVisible();
   const valid = await preview.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL());
   await dialog.getByLabel("Alpha threshold").fill("");
   await expect(dialog.getByRole("alert")).toContainText("Alpha threshold");
@@ -154,7 +165,7 @@ test("automatically refreshes settings while retaining valid previews and manual
   await dialog.getByLabel("Target columns").fill("8");
   await dialog.getByLabel("Target columns").fill("10");
   await expect(
-    dialog.getByText("MARD 221 · 10 × 1 cells · 10 beads", { exact: true }),
+    dialog.getByText("MARD 221 · 2 colors · 10 × 1 cells · 10 beads", { exact: true }),
   ).toBeVisible();
   await expect(dialog.getByLabel("Target columns")).toBeFocused();
   await expect(black).toHaveValue("B15");
@@ -177,6 +188,8 @@ test("keeps manual color input focused when resampling changes source color coun
     .getByLabel("Open image", { exact: true })
     .setInputFiles({ name: "Focus.png", mimeType: "image/png", buffer: PNG.sync.write(source) });
   const dialog = page.getByRole("dialog");
+  await selectChoice(dialog.getByRole("combobox", { name: "Image processing" }), "pixel");
+  await dialog.getByLabel("Lock aspect ratio").uncheck();
   const black = dialog.getByLabel("Map #000000", { exact: true });
   await expect(black).toBeVisible();
   // Queue both native field edits and focus before the debounce can finish.
@@ -195,7 +208,9 @@ test("keeps manual color input focused when resampling changes source color coun
   await page.keyboard.type("B15");
   await expect(black).toHaveValue("B15");
   await expect(black).toBeFocused();
-  await expect(dialog.getByText("MARD 221 · 3 × 1 cells · 3 beads", { exact: true })).toBeVisible();
+  await expect(
+    dialog.getByText("MARD 221 · 2 colors · 3 × 1 cells · 3 beads", { exact: true }),
+  ).toBeVisible();
   await dialog.getByRole("button", { name: "Apply image" }).click();
   expect(parsePatternCsv((await download(page, "csv")).toString())).toEqual([["H2", "B15", "H2"]]);
 });
@@ -241,7 +256,7 @@ test("cancel and invalid PNG preserve the active document; WebP applies through 
   await page.getByRole("button", { name: "Apply image" }).click();
   await expect(page.getByLabel("Pattern title")).toHaveValue("Sample");
   const grid = parsePatternCsv((await download(page, "csv")).toString());
-  expect([grid[0].length, grid.length]).toEqual([2, 2]);
+  expect([grid[0].length, grid.length]).toEqual([33, 50]);
   expect(grid.flat().filter(Boolean).length).toBeGreaterThan(0);
 });
 
@@ -253,6 +268,8 @@ test("invalid settings preserve work and mappings honor distinct choices", async
     .getByLabel("Open image", { exact: true })
     .setInputFiles({ name: "colors.png", mimeType: "image/png", buffer: enlargedImage() });
   const dialog = page.getByRole("dialog");
+  await selectChoice(dialog.getByRole("combobox", { name: "Image processing" }), "pixel");
+  await dialog.getByLabel("Lock aspect ratio").uncheck();
   await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
   await dialog.getByLabel("Target columns").fill("0");
   await expect(dialog.getByRole("alert")).toContainText("dimensions");
@@ -280,8 +297,11 @@ test("invalid mappings block Apply across edits to other rows until corrected", 
     .getByLabel("Open image", { exact: true })
     .setInputFiles({ name: "colors.png", mimeType: "image/png", buffer: enlargedImage() });
   const dialog = page.getByRole("dialog");
+  await selectChoice(dialog.getByRole("combobox", { name: "Image processing" }), "pixel");
+  await dialog.getByLabel("Lock aspect ratio").uncheck();
   await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
   await dialog.getByLabel("Target columns").fill("50");
+  await dialog.getByLabel("Target rows").fill("1");
   const black = dialog.getByLabel("Map #000000", { exact: true });
   const white = dialog.getByLabel("Map #FFFFFF", { exact: true });
   await black.fill("BAD");
@@ -325,6 +345,8 @@ test("image dialog isolates undo and redo from the pattern and saved draft", asy
   await startNew(page);
   await page.getByLabel("Open image", { exact: true }).setInputFiles(file);
   const dialog = page.getByRole("dialog");
+  await selectChoice(dialog.getByRole("combobox", { name: "Image processing" }), "pixel");
+  await dialog.getByLabel("Lock aspect ratio").uncheck();
   await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
   for (const key of ["Control+z", "Control+Shift+z", "Meta+z", "Meta+Shift+z"]) {
     await dialog.getByLabel("Distinct assignments").press(key);
@@ -341,6 +363,7 @@ test("image dialog isolates undo and redo from the pattern and saved draft", asy
   await startNew(page);
   await page.getByLabel("Open image", { exact: true }).setInputFiles(file);
   await expect(dialog.getByRole("img", { name: "MARD preview" })).toBeVisible();
+  await selectChoice(dialog.getByRole("combobox", { name: "Image processing" }), "pixel");
   await dialog.getByLabel("Distinct assignments").press("Control+z");
   await dialog.getByRole("button", { name: "Apply image" }).click();
   await expect(dialog).toHaveCount(0);
