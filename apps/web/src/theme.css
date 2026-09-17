@@ -12,7 +12,6 @@
     --ui-focus: #e18754;
     --ui-header-border: #dfe1d9;
     --ui-header: #fbfbf8;
-    --ui-brand-mark: #72845b;
     --ui-tagline: #829080;
     --ui-import-border: #cfd7c7;
     --ui-eyebrow: #84917c;
@@ -72,7 +71,6 @@
     --ui-focus: #ffac76;
     --ui-header-border: #44503f;
     --ui-header: #202722;
-    --ui-brand-mark: #b2ce96;
     --ui-tagline: #a9b6a1;
     --ui-import-border: #71816d;
     --ui-eyebrow: #adc299;
@@ -142,7 +140,6 @@
   --color-focus: var(--ui-focus);
   --color-header-border: var(--ui-header-border);
   --color-header: var(--ui-header);
-  --color-brand-mark: var(--ui-brand-mark);
   --color-tagline: var(--ui-tagline);
   --color-import-border: var(--ui-import-border);
   --color-eyebrow: var(--ui-eyebrow);

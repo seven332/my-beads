@@ -1,3 +1,5 @@
+<img src="apps/web/public/logo.svg" alt="My Beads logo" width="80" height="80" />
+
 # My Beads
 
 A browser-based editor for creating, editing, and exporting perler bead patterns.

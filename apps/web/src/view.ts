@@ -10,8 +10,6 @@ import { editorView } from "./editor-view.js";
 import { exportView, type ExportActions } from "./export-view.js";
 import type { ExportSettings } from "./export-state.js";
 import type { ViewRefs } from "./view-lifecycle.js";
-import { Grid3x3 } from "@lucide/icons";
-import { icon } from "./icon.js";
 import { keyboardHelp } from "./keyboard-help.js";
 import { themePicker } from "./theme-view.js";
 import type { ThemePreference } from "./theme-preference.js";
@@ -67,8 +65,15 @@ export function view(
       actions.startNew();
     }}
   >
-    <span class="brand-mark">${icon(Grid3x3)}</span
-    ><span class="brand-name">${t(($) => $.app.name)}</span></a
+    <img
+      class="brand-mark"
+      src=${`${import.meta.env.BASE_URL}logo.svg`}
+      width="35"
+      height="35"
+      alt=""
+      aria-hidden="true"
+      draggable="false"
+    /><span class="brand-name">${t(($) => $.app.name)}</span></a
   >`;
   const language = html`<label class="language-picker"
     ><span>${t(($) => $.app.language)}</span> ${select(
