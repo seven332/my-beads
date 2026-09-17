@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" stroke-width="14" role="img" aria-label="My Beads">
+  <title>My Beads</title>
+  <g stroke="#e18754">
+    <circle cx="128" cy="32" r="15" />
+    <circle cx="80" cy="80" r="15" />
+    <circle cx="176" cy="80" r="15" />
+    <circle cx="128" cy="128" r="15" />
+  </g>
+  <circle cx="128" cy="80" r="15" stroke="#efcb75" />
+  <g stroke="#72845b">
+    <circle cx="80" cy="176" r="15" />
+    <circle cx="128" cy="176" r="15" />
+    <circle cx="176" cy="176" r="15" />
+    <circle cx="128" cy="224" r="15" />
+  </g>
+</svg>
