@@ -1,0 +1,72 @@
+import { test, expect } from "@playwright/test";
+import { openPreview, supportsWebGL } from "./preview-helpers.js";
+
+test("draws every instance on demand, changes the camera, and releases GPU resources on close", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page
+    .getByLabel("Open CSV")
+    .setInputFiles({
+      name: "Colors.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from("H7,,H2\n,B15,"),
+    });
+  const supported = await supportsWebGL(page);
+  if (!supported) {
+    const dialog = await openPreview(page, false);
+    await expect(dialog.getByRole("alert")).toContainText("keep editing");
+    return;
+  }
+  await page.evaluate(() => {
+    const probe = { draws: 0, instances: [] as number[], deleted: 0, camera: "" };
+    Reflect.set(window, "gpuProbe", probe);
+    const gl = WebGL2RenderingContext.prototype;
+    const draw = gl.drawElementsInstanced;
+    gl.drawElementsInstanced = function (...args) {
+      probe.draws++;
+      probe.instances.push(args[4]);
+      return draw.apply(this, args);
+    };
+    const remove = gl.deleteBuffer;
+    gl.deleteBuffer = function (buffer) {
+      probe.deleted++;
+      return remove.call(this, buffer);
+    };
+    const matrix = gl.uniformMatrix4fv;
+    gl.uniformMatrix4fv = function (...args) {
+      probe.camera = Array.from(args[2]).join(",");
+      return matrix.apply(this, args);
+    };
+  });
+  const read = () =>
+    page.evaluate(
+      () =>
+        Reflect.get(window, "gpuProbe") as {
+          draws: number;
+          instances: number[];
+          deleted: number;
+          camera: string;
+        },
+    );
+  const frames = () =>
+    page.evaluate(async () => {
+      for (let i = 0; i < 4; i++) await new Promise(requestAnimationFrame);
+    });
+  const dialog = await openPreview(page, true);
+  await frames();
+  const first = await read();
+  expect(first.instances).toContain(3);
+  expect(first.instances).toContain(6);
+  await frames();
+  expect((await read()).draws).toBe(first.draws);
+  await dialog.getByRole("button", { name: "Rotate left" }).click();
+  await expect.poll(async () => (await read()).camera).not.toBe(first.camera);
+  await dialog.getByRole("button", { name: "Reset view" }).click();
+  await expect.poll(async () => (await read()).camera).toBe(first.camera);
+  await page.keyboard.press("Escape");
+  expect((await read()).deleted).toBeGreaterThan(0);
+  const stopped = (await read()).draws;
+  await frames();
+  expect((await read()).draws).toBe(stopped);
+});

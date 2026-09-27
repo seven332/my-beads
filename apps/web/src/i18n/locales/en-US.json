@@ -1,4 +1,20 @@
 {
+  "preview": {
+    "open": "3D preview",
+    "heading": "Beads on the board",
+    "close": "Close 3D preview",
+    "canvas": "3D pegboard preview",
+    "controls": "3D view controls",
+    "left": "Rotate left",
+    "right": "Rotate right",
+    "in": "Zoom in",
+    "out": "Zoom out",
+    "reset": "Reset view",
+    "loading": "Preparing your bead board…",
+    "failed": "The 3D preview is unavailable. Close it to keep editing, or reopen it to try again.",
+    "help": "Drag to rotate · Scroll or pinch to zoom · Right-drag or use two fingers to pan",
+    "note": "Unfused beads. Illustrative proportions, not actual-size measurements."
+  },
   "picker": {
     "open": "Open color picker",
     "close": "Close color picker",

@@ -26,6 +26,8 @@ export function createViewLifecycle(
     imageDialog: createRef<HTMLDialogElement>(),
     exportDialog: createRef<HTMLDialogElement>(),
     keyboardDialog: createRef<HTMLDialogElement>(),
+    previewDialog: createRef<HTMLDialogElement>(),
+    previewCanvas: createRef<HTMLCanvasElement>(),
     sourcePreview: createRef<HTMLCanvasElement>(),
     mappedPreview: createRef<HTMLCanvasElement>(),
     colorArea: createRef<HTMLElement>(),
@@ -87,6 +89,9 @@ export function createViewLifecycle(
     holdPan(held: boolean) {
       canvas?.controller.holdPan(held);
     },
+    finishInteraction() {
+      canvas?.controller.finishInteraction();
+    },
     sync(model: EditorModel, image: ImageSession | null, theme: Theme) {
       if (dock?.element !== refs.dock.value) {
         dock?.controller.destroy();
@@ -146,9 +151,12 @@ export function createViewLifecycle(
         canvas.controller.update(model, canvas.colors);
       }
       const previous = dialogs;
-      dialogs = [refs.imageDialog.value, refs.exportDialog.value, refs.keyboardDialog.value].filter(
-        (dialog): dialog is HTMLDialogElement => !!dialog,
-      );
+      dialogs = [
+        refs.imageDialog.value,
+        refs.exportDialog.value,
+        refs.keyboardDialog.value,
+        refs.previewDialog.value,
+      ].filter((dialog): dialog is HTMLDialogElement => !!dialog);
       for (const dialog of previous) if (!dialogs.includes(dialog)) dialog.close();
       for (const dialog of dialogs) if (!dialog.open) dialog.showModal();
       selects.sync();

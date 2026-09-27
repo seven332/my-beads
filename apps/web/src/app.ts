@@ -10,6 +10,8 @@ import { editingArea, paletteIsOverlay } from "./canvas-viewport.js";
 import { exportPattern } from "./exports.js";
 import * as images from "./image-state.js";
 import * as exports from "./export-state.js";
+import * as preview from "./preview-3d-state.js";
+import { createPreviewController, type PreviewLoader } from "./preview-3d-controller.js";
 import { readImage } from "./image-file.js";
 import { runImageConversion, type ImageConverter } from "./image-worker.js";
 import { createDrafts, type DraftStorage } from "./drafts.js";
@@ -35,6 +37,7 @@ export function mountApp(
     readImage?: typeof readImage;
     convertImage?: ImageConverter;
     themeRoot?: HTMLElement;
+    loadPreview?: PreviewLoader;
   } = {},
 ) {
   const store = createStore();
@@ -58,6 +61,9 @@ export function mountApp(
     ),
   );
   const lifetime = new AbortController();
+  const previewController = createPreviewController((id, status) => {
+    if (!lifetime.signal.aborted) store.set(preview.reportPreview$, id, status);
+  }, adapters.loadPreview);
   const pickerMedia = window.matchMedia("(max-width: 900px), (max-height: 600px)");
   store.set(setPickerCompact$, pickerMedia.matches);
   pickerMedia.addEventListener("change", () => store.set(setPickerCompact$, pickerMedia.matches), {
@@ -148,6 +154,18 @@ export function mountApp(
     focusPage(".pattern-canvas");
   }
   const actions: Actions = {
+    // Commit before pointer activation transfers focus and Canvas blur cancels a live stroke.
+    preparePreview: () => lifecycle.finishInteraction(),
+    openPreview: () => {
+      lifecycle.finishInteraction();
+      store.set(showColorPicker$, false);
+      store.set(preview.openPreview$);
+    },
+    closePreview: () => {
+      store.set(preview.closePreview$);
+      host.querySelector<HTMLElement>(".preview-open")?.focus({ preventScroll: true });
+    },
+    previewAction: (action) => previewController.action(action),
     theme: (preference) => {
       store.set(selectTheme$, preference);
       appearance.save(preference);
@@ -366,6 +384,7 @@ export function mountApp(
     enabled: () =>
       store.get(state.workflow$).page === "edit" &&
       !store.get(exports.exportSettings$).open &&
+      !store.get(preview.previewSession$) &&
       !store.get(images.imageSession$) &&
       !store.get(state.editor$).keyboardHelpOpen &&
       !store.get(state.editor$).colorPicker.open,
@@ -414,10 +433,16 @@ export function mountApp(
           get(state.workflow$),
           get(exports.exportSettings$),
           get(themePreference$),
+          get(preview.previewSession$),
         ),
         root,
       );
       lifecycle.sync(model, image, theme);
+      previewController.sync(
+        lifecycle.refs.previewCanvas.value,
+        get(preview.previewSession$),
+        theme,
+      );
       keyboard.sync();
       drafts.observe(get(state.committedDocument$));
     },
@@ -436,6 +461,7 @@ export function mountApp(
     if (
       store.get(state.workflow$).page !== "edit" ||
       store.get(exports.exportSettings$).open ||
+      store.get(preview.previewSession$) ||
       store.get(state.editor$).keyboardHelpOpen ||
       store.get(images.imageSession$)
     )
@@ -472,6 +498,7 @@ export function mountApp(
       }
       downloads.clear();
       keyboard.destroy();
+      previewController.destroy();
       helpInvoker = null;
       lifecycle.destroy();
       part?.setConnected(false);

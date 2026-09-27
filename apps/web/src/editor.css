@@ -679,7 +679,9 @@
   .editor-actions .document-actions .primary {
     padding-inline: 10px;
   }
-  .editor-actions .document-actions .primary > span {
+  .editor-actions .document-actions .primary > span,
+  .editor-actions .document-actions .new-pattern-open > span,
+  .editor-actions .document-actions .preview-open > span {
     display: none;
   }
 }

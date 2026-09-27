@@ -15,8 +15,10 @@ import { themePicker } from "./theme-view.js";
 import type { ThemePreference } from "./theme-preference.js";
 import type { Hsv, ColorChannel, ColorFormat } from "./color-picker.js";
 import { colorPicker } from "./color-picker-view.js";
+import { previewView, type PreviewActions } from "./preview-3d-view.js";
+import type { PreviewSession } from "./preview-3d-state.js";
 
-export interface Actions extends ImageActions, CreateActions, ExportActions {
+export interface Actions extends ImageActions, CreateActions, ExportActions, PreviewActions {
   tool(tool: Tool): void;
   color(code: string): void;
   search(value: string): void;
@@ -55,6 +57,7 @@ export function view(
   flow: ReturnType<typeof workflow$.read>,
   exports: ExportSettings,
   preference: ThemePreference,
+  preview: PreviewSession | null,
 ) {
   const brand = html`<a
     class="brand"
@@ -125,5 +128,6 @@ export function view(
       refs.exportDialog,
     )}
     ${keyboardHelp(model.keyboardHelpOpen, actions.closeKeyboardHelp, t, refs.keyboardDialog)}
+    ${previewView(preview, actions, refs, t)}
   </div>`;
 }

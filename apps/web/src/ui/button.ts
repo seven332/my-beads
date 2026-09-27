@@ -13,6 +13,7 @@ export interface ButtonOptions {
   expanded?: boolean;
   controls?: string;
   onClick?: (event: MouseEvent) => void;
+  onPointerDown?: (event: PointerEvent) => void;
 }
 
 /** Native activation and state, with layout and translated content supplied by the view. */
@@ -31,6 +32,7 @@ export function button(content: string | TemplateResult, options: ButtonOptions 
     aria-expanded=${options.expanded === undefined ? nothing : String(options.expanded)}
     aria-controls=${options.controls ?? nothing}
     @click=${options.onClick ?? nothing}
+    @pointerdown=${options.onPointerDown ?? nothing}
   >
     ${content}
   </button>`;
