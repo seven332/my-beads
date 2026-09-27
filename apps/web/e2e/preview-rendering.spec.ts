@@ -1,6 +1,45 @@
 import { test, expect } from "@playwright/test";
 import { openPreview, supportsWebGL } from "./preview-helpers.js";
 
+test("closing and reopening releases document keyboard listeners while holding Control", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "Create blank grid" }).click();
+  const supported = await supportsWebGL(page);
+  if (!supported) {
+    await openPreview(page, false);
+    await page.keyboard.press("Escape");
+    return;
+  }
+  await page.evaluate(() => {
+    const listeners = new Set<EventListenerOrEventListenerObject>();
+    const add = document.addEventListener.bind(document);
+    const remove = document.removeEventListener.bind(document);
+    document.addEventListener = (...args: Parameters<typeof add>) => {
+      if (args[0] === "keydown" || args[0] === "keyup") listeners.add(args[1]);
+      add(...args);
+    };
+    document.removeEventListener = (...args: Parameters<typeof remove>) => {
+      if (args[0] === "keydown" || args[0] === "keyup") listeners.delete(args[1]);
+      remove(...args);
+    };
+    Reflect.set(window, "previewKeyListenerCount", () => listeners.size);
+  });
+  const count = () => page.evaluate(() => Reflect.get(window, "previewKeyListenerCount")());
+  for (let i = 0; i < 2; i++) {
+    const dialog = await openPreview(page, true);
+    expect(await count()).toBe(1);
+    await page.keyboard.down("Control");
+    expect(await count()).toBe(2);
+    // Control-click is a context-menu gesture on macOS; Escape closes with the key held.
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    expect(await count()).toBe(0);
+    await page.keyboard.up("Control");
+  }
+});
+
 test("draws every instance on demand, changes the camera, and releases GPU resources on close", async ({
   page,
 }) => {

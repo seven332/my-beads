@@ -534,7 +534,10 @@ Camera gestures and preview status never write document, viewport or draft state
 Editor shortcuts are suspended until closing restores focus to the entry.
 
 `preview-3d-controller.ts` imports the Three.js renderer only when opened and owns
-its lifetime. Session identity rejects late module completions and notifications;
+its lifetime. Before rendering a closed or replaced session, the app releases its
+controller while the preview canvas is still attached: OrbitControls removes its
+keyboard listeners through the canvas's current root. Post-render synchronization
+mounts the new canvas. Session identity rejects late module completions and notifications;
 notifications are deferred outside the readonly render watcher. Reopening retries
 failed graphics initialization. Context loss shows a translated message and leaves
 the 2D document available. A separate canvas is required because the existing

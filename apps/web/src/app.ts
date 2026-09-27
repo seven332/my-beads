@@ -421,6 +421,8 @@ export function mountApp(
       document.documentElement.lang = locale;
       document.title = t(($) => $.app.pageTitle);
       const image = get(images.imageSession$);
+      const previewSession = get(preview.previewSession$);
+      previewController.beforeRender(previewSession);
       part = render(
         view(
           model,
@@ -433,16 +435,12 @@ export function mountApp(
           get(state.workflow$),
           get(exports.exportSettings$),
           get(themePreference$),
-          get(preview.previewSession$),
+          previewSession,
         ),
         root,
       );
       lifecycle.sync(model, image, theme);
-      previewController.sync(
-        lifecycle.refs.previewCanvas.value,
-        get(preview.previewSession$),
-        theme,
-      );
+      previewController.sync(lifecycle.refs.previewCanvas.value, previewSession, theme);
       keyboard.sync();
       drafts.observe(get(state.committedDocument$));
     },

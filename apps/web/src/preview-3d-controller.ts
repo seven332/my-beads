@@ -23,6 +23,11 @@ export function createPreviewController(
     previous?.renderer?.destroy();
   }
   return {
+    beforeRender(session: PreviewSession | null) {
+      // OrbitControls removes keyboard listeners from canvas.getRootNode().
+      // Release the old session while its canvas still belongs to the document.
+      if (current?.id !== session?.id) release();
+    },
     sync(canvas: HTMLCanvasElement | undefined, session: PreviewSession | null, theme: Theme) {
       if (current?.canvas !== canvas || current?.id !== session?.id) release();
       if (!canvas || !session) return;
