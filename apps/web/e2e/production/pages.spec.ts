@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { parsePatternCsv } from "@my-beads/core";
 import { selectChoice, openExport, openPalette } from "../helpers.js";
 import { checkToolCursors } from "../cursor-helpers.js";
+import { checkBuiltPreview } from "../preview-helpers.js";
 
 test("built editor loads at a repository path and preserves editing, exports and drafts", async ({
   page,
@@ -33,6 +34,7 @@ test("built editor loads at a repository path and preserves editing, exports and
     .setInputFiles({ name: "Pages.csv", mimeType: "text/csv", buffer: Buffer.from('H7,""') });
   await expect(page.getByLabel("Pattern title")).toHaveValue("Pages");
   await expect(page.getByTestId("counts")).toHaveText("1 bead · 1 color");
+  await checkBuiltPreview(page);
   await checkToolCursors(page);
   await openPalette(page);
   await page.getByLabel("Search colors").fill("H2");

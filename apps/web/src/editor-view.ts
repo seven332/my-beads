@@ -9,8 +9,10 @@ import type { Actions } from "./view.js";
 import type { Translate } from "./i18n/index.js";
 import { paletteResults, usedColors } from "./palette-view.js";
 import {
+  Box,
   Download,
   Eraser,
+  FilePlus2,
   Hand,
   Keyboard,
   Minus,
@@ -77,10 +79,17 @@ export function editorView(
       <div class="editor-actions floating-panel" data-canvas-panel>
         ${language}
         <div class="document-actions">
-          ${button(
-            t(($) => $.create.new),
-            { onClick: actions.startNew },
-          )}
+          ${button(html`${icon(FilePlus2)}<span>${t(($) => $.create.new)}</span>`, {
+            className: "with-icon new-pattern-open",
+            label: t(($) => $.create.new),
+            onClick: actions.startNew,
+          })}
+          ${button(html`${icon(Box)}<span>${t(($) => $.preview.open)}</span>`, {
+            className: "with-icon preview-open",
+            label: t(($) => $.preview.open),
+            onClick: actions.openPreview,
+            onPointerDown: actions.preparePreview,
+          })}
           ${button(html`${icon(Download)}<span>${t(($) => $.export.open)}</span>`, {
             variant: "primary",
             className: "with-icon",

@@ -52,6 +52,9 @@ async function controlsReachable(page: Page) {
 for (const [width, height] of [
   [1440, 900],
   [1280, 720],
+  [768, 1024],
+  [601, 900],
+  [461, 900],
   [390, 844],
   [844, 390],
   [320, 390],

@@ -524,6 +524,46 @@ they mount the real app and state graph. jsdom lacks native dialog methods, so D
 tests adapt those methods while Chromium/WebKit exercise actual dialogs, image
 decoding, storage, reloads and exported contents. No screenshot baseline is required.
 
+## 3D pegboard preview
+
+The editor's 3D action opens a native modal over the persistent 2D canvas.
+`preview-3d-state.ts` owns only a transient session: an immutable grid snapshot,
+title/count and loading status. Opening finishes the current stroke as one history
+entry; the entry's pointer-down handler releases Canvas capture before focus moves.
+Camera gestures and preview status never write document, viewport or draft state.
+Editor shortcuts are suspended until closing restores focus to the entry.
+
+`preview-3d-controller.ts` imports the Three.js renderer only when opened and owns
+its lifetime. Before rendering a closed or replaced session, the app releases its
+controller while the preview canvas is still attached: OrbitControls removes its
+keyboard listeners through the canvas's current root. Post-render synchronization
+mounts the new canvas. Session identity rejects late module completions and notifications;
+notifications are deferred outside the readonly render watcher. Reopening retries
+failed graphics initialization. Context loss shows a translated message and leaves
+the 2D document available. A separate canvas is required because the existing
+Canvas 2D context cannot change to WebGL.
+
+`preview-3d-data.ts` maps each nonempty cell to its original square-lattice position
+and MARD reference color, preserving empty borders. `preview-3d-renderer.ts` uses
+instanced hollow beads and pegs with shared geometry/materials and a board slab.
+The normalized pitch, diameter, bore and height are illustrative, not millimeter
+measurements. Lighting changes the shaded appearance; the palette data and exports
+remain unchanged. There is no 3D editing or fusion simulation.
+
+Radial segments decrease from 20 to 12 above 4096 cells and to 8 above 16384 cells;
+all beads and pegs remain present, including at 256 × 256. The framebuffer is capped
+at 2 million pixels, 4096 pixels per axis and 2× density. OrbitControls has no damping
+or automatic rotation: camera, theme, visibility and resize events schedule frames,
+with no idle animation loop. Teardown cancels frames and releases controls, observers,
+listeners, geometries, materials, instance buffers and the WebGL context.
+
+Tests construct their own grids, inspect scene instances without a GPU, and exercise
+session isolation, async loading and failure. Browser tests use real WebGL where an
+independent capability probe succeeds, test unavailable/lost context separately,
+and validate the lazy chunk under the production repository subpath. Visual review
+and desktop/emulated-mobile measurements complement behavioral tests; emulation is
+not evidence of physical-phone frame rates.
+
 ## Interface languages
 
 The web app follows vm0's i18next, JSON resource and typed-selector approach,

@@ -1,0 +1,107 @@
+.preview-dialog {
+  width: min(1200px, calc(100vw - 32px));
+  height: min(900px, calc(100dvh - 32px));
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+}
+.preview-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+.preview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px;
+}
+.preview-heading h2 {
+  font-size: 20px;
+}
+.preview-heading .icon-button {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+}
+.preview-summary {
+  margin: 6px 0 0;
+  color: var(--ui-secondary);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.preview-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: var(--ui-workspace);
+}
+.preview-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+.preview-canvas:active {
+  cursor: grabbing;
+}
+.preview-stage[data-status="failed"] .preview-canvas {
+  visibility: hidden;
+}
+.preview-message {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  pointer-events: none;
+  text-align: center;
+}
+.preview-message p {
+  max-width: 420px;
+  border-radius: 12px;
+  padding: 20px;
+  background: var(--ui-surface);
+  line-height: 1.7;
+}
+.preview-controls {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+}
+.preview-controls button {
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+}
+.preview-footer {
+  padding: 12px 24px;
+  color: var(--ui-secondary);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.preview-footer p {
+  margin: 0;
+}
+@media (max-width: 600px), (max-height: 500px) {
+  .preview-dialog {
+    width: 100vw;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+  .preview-heading {
+    padding: max(12px, env(safe-area-inset-top)) 16px 12px;
+  }
+  .preview-footer {
+    padding: 10px 16px max(10px, env(safe-area-inset-bottom));
+  }
+}

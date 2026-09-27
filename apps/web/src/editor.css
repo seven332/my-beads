@@ -101,6 +101,7 @@
 .editor-topbar {
   grid-area: 1 / 1 / 2 / -1;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: start;
   gap: 20px;
@@ -117,7 +118,7 @@
   padding: 8px 12px;
 }
 .editor-document {
-  min-width: 0;
+  min-width: min(300px, 100%);
   flex: 1;
   max-width: 620px;
 }
@@ -143,6 +144,7 @@
 }
 .editor-actions {
   flex-shrink: 0;
+  margin-left: auto;
 }
 .editor-actions .preferences {
   flex-shrink: 0;
@@ -484,6 +486,9 @@
   .editor-document .brand-name {
     display: none;
   }
+  .editor-document {
+    min-width: min(220px, 100%);
+  }
   .editor-document .title-input {
     padding-left: 8px;
     font-size: 14px;
@@ -668,18 +673,15 @@
   .editor-error {
     top: 108px;
   }
-}
-@media (max-width: 460px) {
-  .editor-actions {
-    gap: 8px;
-  }
   .editor-actions .document-actions button {
     padding-inline: 8px;
   }
   .editor-actions .document-actions .primary {
     padding-inline: 10px;
   }
-  .editor-actions .document-actions .primary > span {
+  .editor-actions .document-actions .primary > span,
+  .editor-actions .document-actions .new-pattern-open > span,
+  .editor-actions .document-actions .preview-open > span {
     display: none;
   }
 }

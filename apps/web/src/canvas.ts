@@ -189,6 +189,14 @@ export function mountCanvas(canvas: HTMLCanvasElement, actions: CanvasActions) {
   window.addEventListener("blur", cancel);
   document.addEventListener("visibilitychange", visibility);
   return {
+    finishInteraction() {
+      const active = pointer;
+      pointer = undefined;
+      panHeld = false;
+      updateMouseCursor();
+      actions.finish();
+      if (active && canvas.hasPointerCapture(active.id)) canvas.releasePointerCapture(active.id);
+    },
     interacting() {
       return !!pointer;
     },
