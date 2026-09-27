@@ -61,6 +61,57 @@ still deploys only from main under its existing path filters and deployment conc
 
 ## Local verification
 
+### Native pointer coordinates
+
+If a canvas panning test fails before the canvas receives `pointerdown`, compare the editor with
+an application-free input diagnostic. From the repository root, after installing the pinned
+Playwright browsers:
+
+```sh
+pnpm --filter @my-beads/web diagnose:pointer
+pnpm --filter @my-beads/web diagnose:pointer --browser chromium
+pnpm --filter @my-beads/web diagnose:pointer --headed
+pnpm test:e2e canvas-cursor.spec.ts canvas-rendering.spec.ts --project=webkit
+pnpm test:e2e canvas-cursor.spec.ts canvas-rendering.spec.ts --project=chromium
+```
+
+The diagnostic defaults to headless WebKit and needs no development server. It uses a blank canvas
+at the suite's 1440×1000 viewport, checks three positions with left/middle/right down, drag and up,
+and repeats at device scale factors 1 and 2. JSON output includes requested and received CSS
+coordinates, targets, button masks, event trust, window metrics and runtime/browser versions.
+Missing events, wrong targets/buttons or coordinate errors greater than one CSS pixel produce exit
+status 1. Raw fractional values are retained: small native rounding in headed WebKit differs from
+large coordinate drift. This diagnostic does not replace or relax the editor's regression tests.
+
+For a clean JSON file, invoke Node directly to omit pnpm's script and failure banners:
+
+```sh
+mkdir -p codex-work
+node apps/web/scripts/diagnose-pointer-input.ts > codex-work/pointer-input.json
+```
+
+Record the display arrangement, primary monitor and scaling separately; browser `screen` values
+are emulated metrics, not a physical display inventory. Compare headless/headed WebKit, Chromium,
+and Linux CI with the same lockfile and bundled browsers. A wrong coordinate on the blank page
+isolates the failure from editor hit testing. If only the editor fails, inspect its delivered
+events, overlays, focus and pointer capture. Keep native `page.mouse` input; replacing it with
+`dispatchEvent` cannot verify browser hit testing or native pointer capture.
+
+[Issue #51](https://github.com/seven332/my-beads/issues/51) records an older macOS failure where
+middle-button input requested at (600,500) arrived near (-586.67,1666.67), while left/right input
+was correct. On 2026-09-27, clean main `7459c58` passed all 19 tests in the two files above on
+macOS 26.6.2, Node 26.8.2 and Playwright 1.63.0 / WebKit 2359 (26.6), with zero retries. The blank
+page also received correct input in both engines at 1× and 2×. Ubuntu 24.04's
+[browser CI run](https://github.com/seven332/my-beads/actions/runs/36299508247) passed too.
+
+The [pinned macOS WebKit input bridge](https://github.com/microsoft/playwright/blob/v1.63.0/browser_patches/webkit/patches/bootstrap.diff)
+round-trips middle-button events through `NSEvent`/`CGEvent`; left and right events do not take that
+extra path. This is an investigation lead, not a confirmed cause. The historical display state and
+trigger remain unknown, so #51 stays open. No product coordinate offset, dependency fix or display
+configuration workaround has been established.
+
+### Full suite
+
 Use Node.js 24+ and the repository's pnpm version:
 
 ```sh
