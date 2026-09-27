@@ -96,7 +96,8 @@ test("draws every instance on demand, changes the camera, and releases GPU resou
   await frames();
   const first = await read();
   expect(first.instances).toContain(3);
-  expect(first.instances).toContain(6);
+  // The 3 by 2 pattern sits on a 7 by 6 peg lattice, including the two-cell border.
+  expect(first.instances).toContain(42);
   await frames();
   expect((await read()).draws).toBe(first.draws);
   await dialog.getByRole("button", { name: "Rotate left" }).click();
