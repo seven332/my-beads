@@ -91,11 +91,12 @@ export function createPegboardScene(grid: PatternGrid) {
 
   const pegGeometry = new CylinderGeometry(pegRadius * 0.75, pegRadius, pegHeight, 8);
   const boardMaterial = new MeshStandardMaterial({ color: "#dad9cc", roughness: 0.8 });
-  const pegs = new InstancedMesh(pegGeometry, boardMaterial, data.width * data.height);
-  for (let row = 0; row < data.height; row++)
-    for (let column = 0; column < data.width; column++) {
-      const { x, z } = pegPosition(column, row, data.width, data.height);
-      pegs.setMatrixAt(row * data.width + column, transform.makeTranslation(x, pegHeight / 2, z));
+  // The two-cell margin is part of the peg lattice; content pegs start at board index (2, 2).
+  const pegs = new InstancedMesh(pegGeometry, boardMaterial, layout.width * layout.depth);
+  for (let row = 0; row < layout.depth; row++)
+    for (let column = 0; column < layout.width; column++) {
+      const { x, z } = pegPosition(column, row, layout.width, layout.depth);
+      pegs.setMatrixAt(row * layout.width + column, transform.makeTranslation(x, pegHeight / 2, z));
     }
   pegs.instanceMatrix.needsUpdate = true;
   const boardGeometry = new BoxGeometry(layout.width, 0.24, layout.depth);

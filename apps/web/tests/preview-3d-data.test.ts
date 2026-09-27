@@ -35,11 +35,11 @@ it("builds hollow beads, matching pegs, and a full board even for blank patterns
     [null, "H7", null],
     ["H2", null, null],
   ]);
-  expect([model.width, model.depth, model.beads.count, model.pegs.count]).toEqual([7, 6, 2, 6]);
+  expect([model.width, model.depth, model.beads.count, model.pegs.count]).toEqual([7, 6, 2, 42]);
   const matrix = new Matrix4();
   model.beads.getMatrixAt(0, matrix);
   expect(matrix.elements.slice(12, 15)).toEqual([0, 0, -0.5]);
-  model.pegs.getMatrixAt(1, matrix);
+  model.pegs.getMatrixAt(2 * model.width + 3, matrix);
   expect(matrix.elements[12]).toBe(0);
   expect(matrix.elements[14]).toBe(-0.5);
   const color = new Color();
@@ -66,7 +66,7 @@ it("builds hollow beads, matching pegs, and a full board even for blank patterns
     [null, null],
   ]);
   expect(blank.beads.count).toBe(0);
-  expect(blank.pegs.count).toBe(6);
+  expect(blank.pegs.count).toBe(42);
   blank.dispose();
 });
 
@@ -82,9 +82,38 @@ it("starts content two cells from the top-left board edge and alternates guides 
   ]);
   const first = pegPosition(0, 0, 12, 7);
   const last = pegPosition(11, 6, 12, 7);
-  // Two empty pitches, then a half-cell to the first/last peg center.
+  // Two unused peg cells, then a half-cell to the first/last content peg center.
   expect([first.x + layout.width / 2, first.z + layout.depth / 2]).toEqual([2.5, 2.5]);
   expect([layout.width / 2 - last.x, layout.depth / 2 - last.z]).toEqual([2.5, 2.5]);
+});
+
+it("fills all four two-cell margins with pegs while content beads stay on their original pegs", () => {
+  const grid = Array.from({ length: 7 }, () => Array<string | null>(12).fill(null));
+  grid[0][0] = "H7";
+  grid[6][11] = "H2";
+  const model = createPegboardScene(grid);
+  const positions = new Set<string>();
+  const matrix = new Matrix4();
+  for (let i = 0; i < model.pegs.count; i++) {
+    model.pegs.getMatrixAt(i, matrix);
+    positions.add(`${matrix.elements[12]},${matrix.elements[14]}`);
+  }
+  // A complete 16 by 11 lattice, with no holes, duplicates or missing corners.
+  expect(model.pegs.count).toBe(176);
+  expect(positions.size).toBe(176);
+  for (let z = -5; z <= 5; z++)
+    for (let x = -7.5; x <= 7.5; x++) expect(positions.has(`${x},${z}`)).toBe(true);
+  expect(model.beads.count).toBe(2);
+  for (const [bead, peg, x, z] of [
+    [0, 34, -5.5, -3],
+    [1, 141, 5.5, 3],
+  ]) {
+    model.beads.getMatrixAt(bead, matrix);
+    expect(matrix.elements.slice(12, 15)).toEqual([x, 0, z]);
+    model.pegs.getMatrixAt(peg, matrix);
+    expect([matrix.elements[12], matrix.elements[14]]).toEqual([x, z]);
+  }
+  model.dispose();
 });
 
 it("renders solid ink and real dash gaps between cells without marking the outer margin", () => {
@@ -127,7 +156,7 @@ it.each([
       Array.from({ length: rows }, () => Array<null>(columns).fill(null)),
     );
     expect([model.width, model.depth]).toEqual([columns + 4, rows + 4]);
-    expect(model.pegs.count).toBe(columns * rows);
+    expect(model.pegs.count).toBe((columns + 4) * (rows + 4));
     expect(model.beads.count).toBe(0);
     model.board.geometry.computeBoundingBox();
     expect(model.board.geometry.boundingBox!.getSize(new Vector3()).toArray()).toEqual([
@@ -158,7 +187,7 @@ it("keeps all 65,536 beads with bounded geometry and framebuffer work", () => {
     Array.from({ length: 256 }, () => Array<string>(256).fill("B15")),
   );
   expect(model.beads.count).toBe(65536);
-  expect(model.pegs.count).toBe(65536);
+  expect(model.pegs.count).toBe(67600);
   const triangles =
     (model.beads.geometry.index!.count / 3) * model.beads.count +
     (model.pegs.geometry.index!.count / 3) * model.pegs.count;
