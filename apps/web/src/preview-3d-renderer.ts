@@ -1,13 +1,16 @@
 import {
   BoxGeometry,
+  BufferGeometry,
   Color,
   CylinderGeometry,
   DirectionalLight,
+  Float32BufferAttribute,
   HemisphereLight,
   InstancedMesh,
   LatheGeometry,
   Matrix4,
   Mesh,
+  MeshBasicMaterial,
   MeshStandardMaterial,
   PerspectiveCamera,
   Scene,
@@ -23,14 +26,42 @@ import type { PreviewStatus } from "./preview-3d-state.js";
 import {
   beadShape,
   pegPosition,
+  pegboardLayout,
   previewBuffer,
   previewData,
   previewQuality,
 } from "./preview-3d-data.js";
 
+/** One mesh keeps physical stroke widths without WebGL's one-pixel line limitation. */
+function guideGeometry(
+  columns: number,
+  rows: number,
+  guides: ReturnType<typeof pegboardLayout>["guides"],
+) {
+  const positions: number[] = [];
+  const halfWidth = 0.02;
+  for (const { from, to, dashed } of guides) {
+    const vertical = from.x === to.x;
+    const length = vertical ? to.z - from.z : to.x - from.x;
+    for (let start = 0; start < length; start += dashed ? 1 : length) {
+      const end = Math.min(length, start + (dashed ? 0.6 : length));
+      // Clip ink to the content envelope, leaving the whole outer margin unmarked.
+      const left = Math.max(-columns / 2, from.x + (vertical ? -halfWidth : start));
+      const right = Math.min(columns / 2, from.x + (vertical ? halfWidth : end));
+      const top = Math.max(-rows / 2, from.z + (vertical ? start : -halfWidth));
+      const bottom = Math.min(rows / 2, from.z + (vertical ? end : halfWidth));
+      // Counterclockwise from above: both triangles face the camera's allowed hemisphere.
+      positions.push(left, 0, top, left, 0, bottom, right, 0, bottom);
+      positions.push(left, 0, top, right, 0, bottom, right, 0, top);
+    }
+  }
+  return new BufferGeometry().setAttribute("position", new Float32BufferAttribute(positions, 3));
+}
+
 /** CPU scene construction is separate from WebGL so placement/resources can be tested directly. */
 export function createPegboardScene(grid: PatternGrid) {
   const data = previewData(grid);
+  const layout = pegboardLayout(data.width, data.height);
   const scene = new Scene();
   const { segments } = previewQuality(data.width * data.height);
   const { radius, hole, height, pegRadius, pegHeight } = beadShape;
@@ -67,10 +98,19 @@ export function createPegboardScene(grid: PatternGrid) {
       pegs.setMatrixAt(row * data.width + column, transform.makeTranslation(x, pegHeight / 2, z));
     }
   pegs.instanceMatrix.needsUpdate = true;
-  const boardGeometry = new BoxGeometry(data.width + 0.6, 0.24, data.height + 0.6);
+  const boardGeometry = new BoxGeometry(layout.width, 0.24, layout.depth);
   const board = new Mesh(boardGeometry, boardMaterial);
   board.position.y = -0.12;
-  scene.add(board, pegs, beads, new HemisphereLight("#ffffff", "#696657", 2.1));
+  const gridGeometry = guideGeometry(data.width, data.height, layout.guides);
+  const gridMaterial = new MeshBasicMaterial({
+    color: "#8b917b",
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+  });
+  const guides = new Mesh(gridGeometry, gridMaterial);
+  guides.position.y = 0.002;
+  scene.add(board, guides, pegs, beads, new HemisphereLight("#ffffff", "#696657", 2.1));
   const key = new DirectionalLight("#ffffff", 2.7);
   key.position.set(-3, 7, 5);
   scene.add(key);
@@ -81,16 +121,20 @@ export function createPegboardScene(grid: PatternGrid) {
     scene,
     beads,
     pegs,
-    width: data.width + 0.6,
-    depth: data.height + 0.6,
+    board,
+    guides,
+    width: layout.width,
+    depth: layout.depth,
     dispose() {
       beads.dispose();
       pegs.dispose();
       beadGeometry.dispose();
       pegGeometry.dispose();
       boardGeometry.dispose();
+      gridGeometry.dispose();
       beadMaterial.dispose();
       boardMaterial.dispose();
+      gridMaterial.dispose();
       scene.clear();
     },
   };

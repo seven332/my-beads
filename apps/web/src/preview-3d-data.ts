@@ -13,6 +13,31 @@ export function pegPosition(column: number, row: number, width: number, height: 
   return { x: column - (width - 1) / 2, z: row - (height - 1) / 2 };
 }
 
+/** Content starts two pitches inside the board; guide phase starts at its top-left boundary. */
+export function pegboardLayout(columns: number, rows: number) {
+  const margin = 2;
+  const left = -columns / 2;
+  const top = -rows / 2;
+  const guides: {
+    from: { x: number; z: number };
+    to: { x: number; z: number };
+    dashed: boolean;
+  }[] = [];
+  for (let offset = 0; offset <= columns; offset += 5)
+    guides.push({
+      from: { x: left + offset, z: top },
+      to: { x: left + offset, z: top + rows },
+      dashed: offset % 10 !== 0,
+    });
+  for (let offset = 0; offset <= rows; offset += 5)
+    guides.push({
+      from: { x: left, z: top + offset },
+      to: { x: left + columns, z: top + offset },
+      dashed: offset % 10 !== 0,
+    });
+  return { width: columns + margin * 2, depth: rows + margin * 2, guides };
+}
+
 export function previewData(grid: PatternGrid) {
   const width = grid[0].length;
   const height = grid.length;

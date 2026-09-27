@@ -551,6 +551,15 @@ Canvas 2D context cannot change to WebGL.
 `preview-3d-data.ts` maps each nonempty cell to its original square-lattice position
 and MARD reference color, preserving empty borders. `preview-3d-renderer.ts` uses
 instanced hollow beads and pegs with shared geometry/materials and a board slab.
+The slab extends two cell pitches beyond the pattern envelope on every side, and
+camera fitting includes that margin. Counting guides start at the content's top-left
+cell boundary: solid at offsets 0, 10, 20, ... and dashed at 5, 15, 25, ... in both
+directions. Partial groups retain this origin without rounding dimensions or adding
+off-cadence lines. Empty pattern borders and peg/bead coordinates remain unchanged.
+All guide strokes are batched into one triangle mesh with world-space widths and
+clipped dash segments. A small surface lift and polygon offset prevent coplanar
+flicker; normal depth testing lets beads occlude the markings. Guide geometry and
+material share the scene's disposal lifetime, with no texture or idle animation.
 The normalized pitch, diameter, bore and height are illustrative, not millimeter
 measurements. Lighting changes the shaded appearance; the palette data and exports
 remain unchanged. There is no 3D editing or fusion simulation.
