@@ -102,8 +102,9 @@ export function imageView(
       {
         ref: refs.imageDialog,
         labelledBy: "image-heading",
+        // Preview completion must not recenter controls beneath an active pointer.
         className:
-          "image-dialog max-h-[calc(100vh_-_40px)] w-[min(900px,calc(100vw_-_28px))] p-6 mobile:p-4",
+          "image-dialog fixed top-5 bottom-auto my-0 max-h-[calc(100vh_-_40px)] w-[min(900px,calc(100vw_-_28px))] overflow-y-auto p-6 [scrollbar-gutter:stable] mobile:p-4",
         onCancel: actions.cancelImage,
       },
       html`<div
