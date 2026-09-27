@@ -507,6 +507,11 @@ Invalid codes or distinct-assignment conflicts leave current source rows editabl
 and preserve the previous preview until corrected. Preview settings remain transient.
 The native dialog owns focus and Escape. Editor undo/redo shortcuts are suspended
 while an image session is open; native text editing inside its controls remains available.
+The image dialog keeps a stable top inset and reserves classic-scrollbar space while
+its bounded content scrolls internally. Async preview insertion must not recenter the
+dialog or move its processing selector/menu beneath an active pointer. Browser tests
+gate delivery to the real image Worker and complete conversion between pointer-down
+and pointer-up on both the trigger and an option, including compact/short viewports.
 Preview Canvases are independent of the stable editor Canvas. Shared MARD
 suggestions avoid duplicating the full palette for every mapping row.
 
