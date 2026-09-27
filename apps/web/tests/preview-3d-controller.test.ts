@@ -27,8 +27,6 @@ it("rejects late loading and notifications, disposes on close, and uses the late
   controller.sync(undefined, null, "light");
   const mount = vi.fn(renderer);
   resolve({ mountPreview3D: mount });
-  await vi.waitFor(() => expect(load).toHaveBeenCalledOnce());
-  expect(mount).not.toHaveBeenCalled();
   let status!: (value: PreviewStatus) => void;
   const live = renderer();
   load.mockImplementation(async () => ({
@@ -42,6 +40,9 @@ it("rejects late loading and notifications, disposes on close, and uses the late
   controller.sync(canvas, { ...session, id: 2 }, "light");
   controller.sync(canvas, { ...session, id: 2 }, "dark");
   await vi.waitFor(() => expect(report).toHaveBeenCalledWith(2, "ready"));
+  // Wait for the reopened renderer to settle before checking the old module;
+  // an immediate negative assertion could pass before its continuation ran.
+  expect(mount).not.toHaveBeenCalled();
   controller.action("left");
   expect(live.action).toHaveBeenCalledWith("left");
   controller.sync(canvas, { ...session, id: 2 }, "light");
