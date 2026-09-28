@@ -74,11 +74,11 @@ it("starts content two cells from the top-left board edge and alternates guides 
   const layout = pegboardLayout(12, 7);
   expect([layout.width, layout.depth]).toEqual([16, 11]);
   expect(layout.guides).toEqual([
-    { from: { x: -6, z: -3.5 }, to: { x: -6, z: 3.5 }, dashed: false },
-    { from: { x: -1, z: -3.5 }, to: { x: -1, z: 3.5 }, dashed: true },
-    { from: { x: 4, z: -3.5 }, to: { x: 4, z: 3.5 }, dashed: false },
-    { from: { x: -6, z: -3.5 }, to: { x: 6, z: -3.5 }, dashed: false },
-    { from: { x: -6, z: 1.5 }, to: { x: 6, z: 1.5 }, dashed: true },
+    { from: { x: -6, z: -5.5 }, to: { x: -6, z: 5.5 }, dashed: false },
+    { from: { x: -1, z: -5.5 }, to: { x: -1, z: 5.5 }, dashed: true },
+    { from: { x: 4, z: -5.5 }, to: { x: 4, z: 5.5 }, dashed: false },
+    { from: { x: -8, z: -3.5 }, to: { x: 8, z: -3.5 }, dashed: false },
+    { from: { x: -8, z: 1.5 }, to: { x: 8, z: 1.5 }, dashed: true },
   ]);
   const first = pegPosition(0, 0, 12, 7);
   const last = pegPosition(11, 6, 12, 7);
@@ -116,13 +116,13 @@ it("fills all four two-cell margins with pegs while content beads stay on their 
   model.dispose();
 });
 
-it("renders solid ink and real dash gaps between cells without marking the outer margin", () => {
+it("extends solid ink and real dash gaps through the margin to the board edges", () => {
   const model = createPegboardScene(Array.from({ length: 7 }, () => Array<null>(12).fill(null)));
   model.scene.updateMatrixWorld(true);
   const hits = (x: number, z: number) =>
     new Raycaster(new Vector3(x, 1, z), new Vector3(0, -1, 0)).intersectObject(model.guides)
       .length > 0;
-  // Same top-left dash phase in both directions, including near the clipped far ends.
+  // The two-cell extension preserves the dash phase inside the content area.
   expect(hits(-1, -3.25)).toBe(true);
   expect(hits(-1, -2.7)).toBe(false);
   expect(hits(-1, 2.75)).toBe(true);
@@ -133,8 +133,17 @@ it("renders solid ink and real dash gaps between cells without marking the outer
   expect(hits(5.8, 1.5)).toBe(false);
   expect(hits(4, -2.7)).toBe(true);
   expect(hits(4.05, -2.7)).toBe(false);
-  expect(hits(-6.1, -3.5)).toBe(false);
-  expect(hits(-6, -3.6)).toBe(false);
+  // Both guide styles cross the spare peg rows/columns on all four sides.
+  for (const z of [-5.49, 5.49]) expect(hits(-6, z)).toBe(true);
+  for (const x of [-7.99, 7.99]) expect(hits(x, -3.5)).toBe(true);
+  for (const z of [-5.25, -4.25, 3.75, 4.75]) expect(hits(-1, z)).toBe(true);
+  for (const z of [-4.7, -3.7, 4.3, 5.3]) expect(hits(-1, z)).toBe(false);
+  for (const x of [-7.75, -6.75, 6.25, 7.25]) expect(hits(x, 1.5)).toBe(true);
+  for (const x of [-7.2, -6.2, 6.8, 7.8]) expect(hits(x, 1.5)).toBe(false);
+  expect(hits(-6, -5.51)).toBe(false);
+  expect(hits(-6, 5.51)).toBe(false);
+  expect(hits(-8.01, -3.5)).toBe(false);
+  expect(hits(8.01, -3.5)).toBe(false);
   expect(model.guides.material.depthTest).toBe(true);
   expect(model.guides.material.transparent).toBe(false);
   expect(model.guides.position.y).toBeGreaterThan(0);
@@ -166,10 +175,18 @@ it.each([
     ]);
     const positions = model.guides.geometry.getAttribute("position");
     for (let i = 0; i < positions.count; i++) {
-      expect(Math.abs(positions.getX(i))).toBeLessThanOrEqual(columns / 2);
-      expect(Math.abs(positions.getZ(i))).toBeLessThanOrEqual(rows / 2);
+      expect(Math.abs(positions.getX(i))).toBeLessThanOrEqual(model.width / 2);
+      expect(Math.abs(positions.getZ(i))).toBeLessThanOrEqual(model.depth / 2);
       expect(positions.getY(i)).toBe(0);
     }
+    model.guides.geometry.computeBoundingBox();
+    const bounds = model.guides.geometry.boundingBox!;
+    expect([bounds.min.x, bounds.max.x, bounds.min.z, bounds.max.z]).toEqual([
+      -model.width / 2,
+      model.width / 2,
+      -model.depth / 2,
+      model.depth / 2,
+    ]);
     // Upward winding makes the ink visible above the board without double-sided rendering.
     for (let i = 0; i < positions.count; i += 3) {
       const a = new Vector3().fromBufferAttribute(positions, i);

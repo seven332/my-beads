@@ -554,12 +554,14 @@ instanced hollow beads and pegs with shared geometry/materials and a board slab.
 The slab and its unit-pitch peg lattice extend two cells beyond the pattern envelope
 on every side, and camera fitting includes that margin. Content pegs occupy board
 indices starting at (2, 2); the extra border pegs do not add cells or beads to the
-document. Counting guides start at the content's top-left
+document. Counting guide positions start at the content's top-left
 cell boundary: solid at offsets 0, 10, 20, ... and dashed at 5, 15, 25, ... in both
 directions. Partial groups retain this origin without rounding dimensions or adding
-off-cadence lines. Empty pattern borders and peg/bead coordinates remain unchanged.
+off-cadence lines. Every solid or dashed guide extends across the two-cell peg margin
+to the slab's outer edges; the dash phase inside the content area stays unchanged.
+Empty pattern borders and peg/bead coordinates remain unchanged.
 All guide strokes are batched into one triangle mesh with world-space widths and
-clipped dash segments. A small surface lift and polygon offset prevent coplanar
+dash segments clipped at the board edges. A small surface lift and polygon offset prevent coplanar
 flicker; normal depth testing lets beads occlude the markings. Guide geometry and
 material share the scene's disposal lifetime, with no texture or idle animation.
 The normalized pitch, diameter, bore and height are illustrative, not millimeter

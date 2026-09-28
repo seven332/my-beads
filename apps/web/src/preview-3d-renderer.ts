@@ -34,8 +34,8 @@ import {
 
 /** One mesh keeps physical stroke widths without WebGL's one-pixel line limitation. */
 function guideGeometry(
-  columns: number,
-  rows: number,
+  boardWidth: number,
+  boardDepth: number,
   guides: ReturnType<typeof pegboardLayout>["guides"],
 ) {
   const positions: number[] = [];
@@ -45,11 +45,11 @@ function guideGeometry(
     const length = vertical ? to.z - from.z : to.x - from.x;
     for (let start = 0; start < length; start += dashed ? 1 : length) {
       const end = Math.min(length, start + (dashed ? 0.6 : length));
-      // Clip ink to the content envelope, leaving the whole outer margin unmarked.
-      const left = Math.max(-columns / 2, from.x + (vertical ? -halfWidth : start));
-      const right = Math.min(columns / 2, from.x + (vertical ? halfWidth : end));
-      const top = Math.max(-rows / 2, from.z + (vertical ? start : -halfWidth));
-      const bottom = Math.min(rows / 2, from.z + (vertical ? end : halfWidth));
+      // Extend through the spare peg rows, clipping only at the slab's outer edges.
+      const left = Math.max(-boardWidth / 2, from.x + (vertical ? -halfWidth : start));
+      const right = Math.min(boardWidth / 2, from.x + (vertical ? halfWidth : end));
+      const top = Math.max(-boardDepth / 2, from.z + (vertical ? start : -halfWidth));
+      const bottom = Math.min(boardDepth / 2, from.z + (vertical ? end : halfWidth));
       // Counterclockwise from above: both triangles face the camera's allowed hemisphere.
       positions.push(left, 0, top, left, 0, bottom, right, 0, bottom);
       positions.push(left, 0, top, right, 0, bottom, right, 0, top);
@@ -102,7 +102,7 @@ export function createPegboardScene(grid: PatternGrid) {
   const boardGeometry = new BoxGeometry(layout.width, 0.24, layout.depth);
   const board = new Mesh(boardGeometry, boardMaterial);
   board.position.y = -0.12;
-  const gridGeometry = guideGeometry(data.width, data.height, layout.guides);
+  const gridGeometry = guideGeometry(layout.width, layout.depth, layout.guides);
   const gridMaterial = new MeshBasicMaterial({
     color: "#8b917b",
     polygonOffset: true,
