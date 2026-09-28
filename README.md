@@ -18,6 +18,8 @@ Search the palette by MARD code or hex color. When a hex color has no exact matc
 
 Open **3D preview** in the editor to inspect your pattern as hollow, unfused beads on a pegboard. Drag to rotate, scroll or pinch to zoom, and use **Reset view** to fit the board again. Viewing leaves your pattern and editing history intact. The preview uses illustrative proportions, requires WebGL2, and does not simulate ironing or melting.
 
+The board includes two rows of unused pegs around every side of the pattern. Content starts two cells from the board's top-left edge. Grid guide positions start at that content boundary with solid lines, then alternate dashed and solid every five cells in both directions. Each line spans the whole board, including the spare peg border. The extra board pegs do not add cells or beads to your pattern.
+
 To find a color visually, open **All colors** and click the swatch beside the search field. On desktop, the picker opens beside the palette so the results stay in place. On smaller screens, a bottom sheet brings the picker and matching colors together. Drag in the color area, adjust the hue slider, or choose **HEX**, **RGB**, **HSL**, or **HSB** to enter values. Switching formats keeps the same target color. Click a MARD result to use it as your drawing color and close the picker; on smaller screens this returns to the canvas. Close or press Escape to keep browsing with the target and format retained.
 
 Files are processed locally in your browser. The editor keeps a local draft between visits; export a CSV to keep a separate copy or move your work to another device. Printable chart labels stay in English in either interface language.

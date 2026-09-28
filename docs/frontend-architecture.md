@@ -551,12 +551,26 @@ Canvas 2D context cannot change to WebGL.
 `preview-3d-data.ts` maps each nonempty cell to its original square-lattice position
 and MARD reference color, preserving empty borders. `preview-3d-renderer.ts` uses
 instanced hollow beads and pegs with shared geometry/materials and a board slab.
+The slab and its unit-pitch peg lattice extend two cells beyond the pattern envelope
+on every side, and camera fitting includes that margin. Content pegs occupy board
+indices starting at (2, 2); the extra border pegs do not add cells or beads to the
+document. Counting guide positions start at the content's top-left
+cell boundary: solid at offsets 0, 10, 20, ... and dashed at 5, 15, 25, ... in both
+directions. Partial groups retain this origin without rounding dimensions or adding
+off-cadence lines. Every solid or dashed guide extends across the two-cell peg margin
+to the slab's outer edges; the dash phase inside the content area stays unchanged.
+Empty pattern borders and peg/bead coordinates remain unchanged.
+All guide strokes are batched into one triangle mesh with world-space widths and
+dash segments clipped at the board edges. A small surface lift and polygon offset prevent coplanar
+flicker; normal depth testing lets beads occlude the markings. Guide geometry and
+material share the scene's disposal lifetime, with no texture or idle animation.
 The normalized pitch, diameter, bore and height are illustrative, not millimeter
 measurements. Lighting changes the shaded appearance; the palette data and exports
 remain unchanged. There is no 3D editing or fusion simulation.
 
 Radial segments decrease from 20 to 12 above 4096 cells and to 8 above 16384 cells;
-all beads and pegs remain present, including at 256 × 256. The framebuffer is capped
+all beads and pegs remain present, including 65,536 beads and 67,600 board pegs for
+a full 256 × 256 pattern. The framebuffer is capped
 at 2 million pixels, 4096 pixels per axis and 2× density. OrbitControls has no damping
 or automatic rotation: camera, theme, visibility and resize events schedule frames,
 with no idle animation loop. Teardown cancels frames and releases controls, observers,
