@@ -20,6 +20,8 @@
     "test:ci": "node --test .github/scripts/*.test.mjs",
     "test:e2e": "pnpm --filter @my-beads/web test:e2e",
     "test:production": "pnpm --filter @my-beads/web build && pnpm --filter @my-beads/web test:production",
+    "benchmark:3d": "pnpm --filter @my-beads/web build && pnpm --filter @my-beads/web exec playwright test --config playwright.benchmark.config.ts",
+    "benchmark:3d:compare": "tsx apps/web/benchmarks/compare.ts",
     "build": "pnpm --filter @my-beads/core build && pnpm --filter @my-beads/web build"
   },
   "devDependencies": {

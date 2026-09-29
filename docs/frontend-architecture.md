@@ -583,6 +583,13 @@ and validate the lazy chunk under the production repository subpath. Visual revi
 and desktop/emulated-mobile measurements complement behavioral tests; emulation is
 not evidence of physical-phone frame rates.
 
+`apps/web/benchmarks/` owns an opt-in Playwright suite over the normal production
+build. Its browser-injected probe observes native WebGL submissions/resources and
+rendering callback timing without imports or hooks in application code. The
+[measurement guide](preview-benchmark.md) defines CPU/GPU boundaries, repeat
+comparisons, resource reclamation and software-renderer limitations. Ordinary CI
+runs a small real-WebGL accounting regression, not the timing matrix.
+
 ## Interface languages
 
 The web app follows vm0's i18next, JSON resource and typed-selector approach,
