@@ -76,6 +76,12 @@ export interface BenchmarkReport {
 
 export function compareReports(baseline: BenchmarkReport[], candidate: BenchmarkReport[]) {
   if (!baseline.length || !candidate.length) throw new Error("Both runs must contain reports");
+  for (const [name, reports] of [
+    ["baseline", baseline],
+    ["candidate", candidate],
+  ] as const)
+    if (new Set(reports.map((report) => `${report.revision}/${report.dirty}`)).size !== 1)
+      throw new Error(`Mixed revisions within the ${name} run`);
   const key = (report: BenchmarkReport) => `${report.environment.browser}/${report.scenario}`;
   const keys = (reports: BenchmarkReport[]) => [...new Set(reports.map(key))].sort();
   if (JSON.stringify(keys(baseline)) !== JSON.stringify(keys(candidate)))
@@ -83,12 +89,9 @@ export function compareReports(baseline: BenchmarkReport[], candidate: Benchmark
   return keys(baseline).map((name) => {
     const before = baseline.filter((report) => key(report) === name);
     const after = candidate.filter((report) => key(report) === name);
-    for (const group of [before, after]) {
+    for (const group of [before, after])
       if (new Set(group.map((report) => report.repeat)).size !== group.length)
         throw new Error(`Duplicate repeats: ${name}`);
-      if (new Set(group.map((report) => `${report.revision}/${report.dirty}`)).size !== 1)
-        throw new Error(`Mixed revisions within a run: ${name}`);
-    }
     const reference = before[0];
     for (const report of [...before, ...after]) {
       if (

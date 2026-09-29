@@ -144,6 +144,28 @@ it("rejects duplicate repeats, mixed revisions and unreleased contexts", () => {
   expect(() => compareReports([baseline], [leaked])).toThrow(/Incomplete/);
 });
 
+it.each(["scenario", "browser"] as const)(
+  "rejects mixed source states across %s boundaries in either input run",
+  (boundary) => {
+    const first = report(),
+      second = report();
+    if (boundary === "scenario") second.scenario = "another";
+    else second.environment.browser = "webkit";
+    const baseline = [first, second];
+    const candidate = structuredClone(baseline);
+    for (const item of candidate) item.revision = "candidate";
+    expect(compareReports(baseline, candidate)).toHaveLength(2);
+    for (const run of [baseline, candidate]) {
+      run[1].revision = "mixed";
+      expect(() => compareReports(baseline, candidate)).toThrow(/Mixed revisions/);
+      run[1].revision = run[0].revision;
+      run[1].dirty = true;
+      expect(() => compareReports(baseline, candidate)).toThrow(/Mixed revisions/);
+      run[1].dirty = false;
+    }
+  },
+);
+
 it("separates RAF CPU time from synchronous task tails and excludes missing GPU timing", () => {
   const probe = report().probe;
   probe.frames.push({ ...probe.frames[0], kind: "task", startedAt: 10, cpuMs: 20 });
