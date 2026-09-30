@@ -574,7 +574,7 @@ atlas. Camera, theme and resize updates reuse it. Theme changes affect only the
 background, not the environment or material colors. Environment intensity 0.35
 and white key/fill intensities 1.3/0.25 replace the hemisphere lighting when the
 environment is available; bead roughness stays 0.48. This balances broad plastic
-highlights without introducing tone mapping, shadows or remote assets.
+highlights without shadows or remote assets.
 
 The source room's instanced meshes, geometry and materials and the generator's
 intermediate targets/shaders are disposed immediately after conversion. The
@@ -584,6 +584,22 @@ target allocated internally by Three.js before an exception prevented its return
 Contexts without a renderable half-float color-buffer extension retain the original
 direct/hemisphere lighting. Unexpected conversion failures use the existing
 preview error/retry path. No cross-context cache or extra animation loop is added.
+
+The visible environment-lit scene uses `NeutralToneMapping` at exposure 1.1,
+followed by the renderer's explicitly selected `SRGBColorSpace` output conversion.
+Beads, board and pegs share this material-shader policy, with no postprocessing pass
+or extra target. Palette hex values still enter Three.js's linear working space
+once; instance data and exports remain unchanged. The PMREM stays linear and is
+generated before selecting the visible output policy.
+
+Unlit counting guides set `toneMapped: false`, retaining their authored `#8b917b`
+color through normal sRGB output conversion. Solid light/dark background colors
+use the renderer's clear-color path, which bypasses tone mapping. Neither becomes
+an exposure-dependent reference color. The direct-only capability fallback keeps
+`NoToneMapping` and exposure 1: Neutral reduced its black-bead hole readability in
+visual comparisons. This is a deliberate compatibility policy, not a theme switch.
+Native-WebGL browser tests check both paths, actual background/guide pixels and
+the linked material shaders without screenshot baselines or production test hooks.
 
 Radial segments decrease from 20 to 12 above 4096 cells and to 8 above 16384 cells;
 all beads and pegs remain present, including 65,536 beads and 67,600 board pegs for
