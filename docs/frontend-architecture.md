@@ -563,7 +563,8 @@ Empty pattern borders and peg/bead coordinates remain unchanged.
 All guide strokes are batched into one triangle mesh with world-space widths and
 dash segments clipped at the board edges. A small surface lift and polygon offset prevent coplanar
 flicker; normal depth testing lets beads occlude the markings. Guide geometry and
-material share the scene's disposal lifetime, with no texture or idle animation.
+material share the scene's disposal lifetime. The markings reuse the board's AO
+texture described below and add no idle animation.
 The normalized pitch, diameter, bore and height are illustrative, not millimeter
 measurements. Lighting changes the shaded appearance; the palette data and exports
 remain unchanged. There is no 3D editing or fusion simulation.
