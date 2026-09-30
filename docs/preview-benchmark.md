@@ -219,11 +219,80 @@ No maximum-grid software-Chromium comparison, physical-phone run or native GPU
 timer result was produced for this slice. Do not extend the measured results to
 those cases or to the complete matrix.
 
+## Static contact shading comparison — 2026-09-30
+
+Issue #98 uses the merged Neutral-output renderer at `d09dc96` as its baseline.
+Two generated red-channel visibility maps add shape-local cavity/base shading and
+an occupancy-aware board contact field. Counting marks now receive the same light,
+tone mapping and board AO as the slab, superseding the unlit-guide policy recorded
+above. Lights, exposure, palette data, mesh positions and instance counts stay the
+same. This is approximate indirect occlusion, not neighbor-aware bead shading or
+directional shadows.
+
+Matched H7/H5/H4/H2/B15/D22/F13/A7 strips, sparse corner contacts, a dense patch and
+a narrow board were inspected in Chromium/WebKit, both themes and both lighting
+paths, at fitted and close views. Contacts gain soft grounding and cavities gain
+depth while upper rims, peg tops and physical holes remain readable. Unrelated
+empty areas stay clear, and markings no longer act as unlit overlays. The contact
+field caps its darkness rather than accumulating contributions from every neighbor.
+
+Fresh runs used the unchanged protocol, M4 Pro host, headless browsers,
+1440 × 1000 viewport, DPR 1, 1198 × 758 framebuffer and
+`PREVIEW_BENCHMARK_DEVICE=local-m4-pro`, without concurrent builds/tests.
+Each selected case has three reports. Both baseline/candidate comparisons passed.
+
+| Case / backend                   | First-session ready, before → after | Per-report warm median, before → after | Paced orbit P95, before → after |
+| -------------------------------- | ----------------------------------- | -------------------------------------- | ------------------------------- |
+| 50-sparse / Chromium SwiftShader | 164.5 → 140.7 ms                    | 130.95 → 120.8 ms                      | 117.5 → 117.1 ms                |
+| 50-sparse / WebKit Apple GPU     | 72 → 75 ms                          | 47 → 47.5 ms                           | 17 → 17 ms                      |
+| 256-full / WebKit Apple GPU      | 110 → 120 ms                        | 75 → 86 ms                             | 17 → 17 ms                      |
+
+Values are medians across three reports. First-opening draw-containing RAF CPU
+P95 medians changed from 82.8 to 58.3 ms, 19 to 19 ms and 28 to 28 ms, respectively.
+Orbit CPU P95 medians changed from 0.3 to 0.3 ms, 2 to 1 ms and 2 to 2 ms.
+WebKit startup reflects a modest added cost; the software-Chromium reduction does
+not establish a general speedup or isolate the effect of shader sharing. These
+instrumented CPU submissions and paced frame intervals do not measure GPU
+completion or displayed FPS. Neither backend exposed native GPU timer results.
+
+Visible draws/triangles stay four / 194,668 for 50-sparse and four / 9,530,388 for
+256-full. In these nonempty scenes, live textures increase from 6 to 8 and buffers
+from 16 to 21. The two maps add no framebuffer, renderbuffer, mesh or render pass;
+live framebuffers/renderbuffers stay 4/1. Live programs decrease from 4 to 3 because
+the board and lit guides share a standard-material program. Peak textures rise
+from 7 to 8; peak framebuffers remain 5. The board map is 1820 × 1820 for a full
+256 × 256 document, with mipmaps, and the shared local map is 16 × 32 without them.
+The density rule bounds either map axis at 2048, including other document sizes.
+
+Idle draws remain zero, draft/CSV bytes are unchanged, and all native handles reach
+zero after close. The maps are explicitly deleted, while renderer-owned defaults
+are reclaimed by context loss as before. Browser tests additionally verify no map
+re-upload during camera/theme/resize changes, cleanup after a mipmap initialization
+failure and successful reopening. Single-run 50-blank, 50-full and 17×100-sparse
+cases passed in both browsers; these provide coverage, not repeated timing evidence.
+
+A single candidate 256-full run also completed in software Chromium, including
+three opens and cleanup (4.4 minutes for the whole test). Its first-ready value was
+174.4 ms, warm median 154.85 ms, and paced orbit P95 3533.2 ms. The fast readiness
+callback does not imply fast presentation: this software backend remains very slow
+at maximum geometry. No fresh repeated maximum-Chromium baseline was captured, so
+this establishes coverage only, not a before/after performance conclusion.
+
+Raw reports are in `codex-work/benchmarks/issue-98-{baseline,candidate}-small/`,
+`issue-98-{baseline,candidate}-large/`, `issue-98-candidate-edges/` and
+`issue-98-candidate-software-large/`. Compare the
+matching small and large pairs with `pnpm benchmark:3d:compare`.
+Manual matched screenshots are `codex-work/screenshots/issue-98-{baseline,candidate}-*.png`;
+benchmark fitted/close views are preserved as `issue-98-final-*.png` in that directory.
+The preview lazy chunk grows by about 2.00 kB raw / 0.72 kB gzip. No new package,
+network asset, physical-phone measurement or full repeated browser/scenario matrix
+is included in this slice.
+
 ## Validation
 
 ```sh
 pnpm --filter @my-beads/web test preview-benchmark.test.ts
-pnpm test:e2e preview-benchmark.spec.ts preview-environment.spec.ts preview-output.spec.ts preview-3d.spec.ts preview-rendering.spec.ts --workers 2 --retries 0
+pnpm test:e2e preview-benchmark.spec.ts preview-environment.spec.ts preview-output.spec.ts preview-occlusion.spec.ts preview-3d.spec.ts preview-rendering.spec.ts --workers 2 --retries 0
 ```
 
 The repository's format/lint/typecheck/package tests/build and production smoke commands still apply. No `templates/` files are used by the benchmark or its tests.
