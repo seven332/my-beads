@@ -88,6 +88,80 @@ Both representative nonempty cases submitted four draws per interaction callback
 
 Raw local artifacts are retained in `codex-work/benchmarks/issue-95-matrix/` (including the explicit `slow-case/` rerun) and `codex-work/benchmarks/issue-95-repeats/`. The eight fitted/close-up screenshots in `codex-work/screenshots/issue-95-*.png` were visually inspected. The dense distant board retains visible aliasing; these images establish the current appearance for later geometry/lighting comparisons. Generated artifacts are ignored by Git; rerun the commands above to produce your own evidence.
 
+## Environment lighting comparison — 2026-09-30
+
+Issue #96 compares the unchanged `103642a` renderer with the environment-lighting
+worktree on the same host/browsers/viewport described above. The probe, fixtures
+and input protocol are unchanged. Three independent 50-sparse repeats per browser
+were captured for each version, with no simultaneous test/build workload.
+
+| Median across three reports  | Chromium / SwiftShader, before → after | WebKit / Apple GPU, before → after |
+| ---------------------------- | -------------------------------------- | ---------------------------------- |
+| First-session ready          | 79.5 → 157.7 ms                        | 53 → 74 ms                         |
+| Per-report warm-ready median | 62.6 → 127.9 ms                        | 32 → 43 ms                         |
+| Orbit CPU P95                | 0.3 → 0.3 ms                           | 2 → 1 ms                           |
+| Paced orbit interval P95     | 100.4 → 117.3 ms                       | 17 → 17 ms                         |
+
+Environment generation runs during initialization, outside steady camera RAF
+callbacks. Its draw-containing initialization task tail was 34.8–35.9 ms in
+Chromium and 23–24 ms in WebKit on first opening. This boundary starts at the first
+observed viewport and includes surrounding initialization; it is not isolated
+PMREM CPU time or GPU execution time. Baseline initialization has no offscreen
+draws, so that task-tail metric is absent rather than zero. Full startup includes
+additional shader work and is reported separately above.
+
+A separate browser diagnostic timed the actual `createPreviewEnvironment` call,
+including room creation, PMREM submission and temporary cleanup, after module and
+renderer creation. Three fresh contexts in one page measured 30.8/21.2/22.1 ms
+in Chromium and 24/16/15 ms in WebKit. This development-module diagnostic excludes
+the first visible scene render, uses no GPU fence and is CPU elapsed time only;
+the production startup figures above remain the end-to-end comparison.
+
+This is an appearance/performance tradeoff, not a speed improvement. WebKit's
+one-millisecond CPU differences are below useful attribution precision. Software
+Chromium showed a repeatable extra paced interval and startup cost. No GPU timer
+or physical-phone result is available. Repeated measurements cover 50-sparse only;
+do not extrapolate the numbers to maximum grids or all hardware.
+
+The complete candidate matrix passed all 20 browser/scenario combinations and
+60 open/close cycles. Its single 256-full case reported 180.3 ms first-session
+ready and 3550.6 ms paced orbit P95 in software Chromium, versus 115 ms and 17 ms
+in WebKit. Both still submit four draws and 9,530,388 triangles per interaction.
+The Chromium case took about 4.3 minutes to execute the full protocol. These are
+coverage observations, not repeated large-board performance evidence. Automated
+comparison with the older #95 matrix was correctly rejected because its device
+note differs; no metadata was rewritten to force acceptance. The before/after
+table uses the fresh, compatible 50-sparse reports instead.
+
+Manual black/white/green/blue/red/orange comparisons in both themes favored
+environment intensity 0.35 with white key/fill intensities 1.3/0.25. The initial
+brighter setting lost white-bead surface detail. Both 64- and 128-pixel environment
+faces were inspected; 128 did not provide a useful visible improvement at the
+unchanged bead roughness of 0.48, so 64 was retained. Its atlas is 336 × 256 rather
+than 384 × 512. Dark beads gain broad neutral highlights; holes and counting guides
+remain visible. Tone mapping and contact shadows remain separate work.
+
+In the repeated nonempty case, peak textures/framebuffers increase from 5/3 to
+7/5 during generation. After initialization, 6 textures, 4 framebuffers and one
+renderbuffer remain, including the retained environment target and its depth
+attachment. Live scene buffers/programs/VAOs stay at 16/4/4; temporary room and
+filtering resources are disposed before interaction. Both environment textures
+and framebuffers plus the depth renderbuffer are explicitly deleted by close;
+the same renderer-owned defaults as before are reclaimed by context loss. All
+live handles reach zero. The two environment textures and depth allocation are
+bounded at 336 × 256, with no regeneration on camera/theme/resize changes.
+
+Reports: `codex-work/benchmarks/issue-96-baseline-repeats/`,
+`issue-96-candidate-repeats/` and `issue-96-candidate-matrix/`. Compare the two repeat
+directories with the existing comparison command. The candidate matrix also
+passes the comparator's standalone completeness/consistency checks via an identity
+comparison.
+Manual color-strip screenshots are `codex-work/screenshots/issue-96-baseline-*.png`,
+`issue-96-balanced64-*.png` and `issue-96-balanced128-*.png`; fitted/close-up sparse
+and maximum-board views are `issue-96-{chromium,webkit}-{50-sparse,256-full}-*.png`.
+The preview lazy chunk
+grows by about 4.82 kB raw / 1.17 kB gzip, with no new package or remote asset.
+
 ## Validation
 
 ```sh

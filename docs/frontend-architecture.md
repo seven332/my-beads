@@ -568,6 +568,23 @@ The normalized pitch, diameter, bore and height are illustrative, not millimeter
 measurements. Lighting changes the shaded appearance; the palette data and exports
 remain unchanged. There is no 3D editing or fusion simulation.
 
+`preview-3d-environment.ts` generates a neutral `RoomEnvironment` PMREM once for
+each preview context, with 64-pixel cube faces packed into a 336 × 256 half-float
+atlas. Camera, theme and resize updates reuse it. Theme changes affect only the
+background, not the environment or material colors. Environment intensity 0.35
+and white key/fill intensities 1.3/0.25 replace the hemisphere lighting when the
+environment is available; bead roughness stays 0.48. This balances broad plastic
+highlights without introducing tone mapping, shadows or remote assets.
+
+The source room's instanced meshes, geometry and materials and the generator's
+intermediate targets/shaders are disposed immediately after conversion. The
+returned target belongs to the mounted preview and is detached/disposed before
+renderer teardown. Initialization failure also loses the context, reclaiming any
+target allocated internally by Three.js before an exception prevented its return.
+Contexts without a renderable half-float color-buffer extension retain the original
+direct/hemisphere lighting. Unexpected conversion failures use the existing
+preview error/retry path. No cross-context cache or extra animation loop is added.
+
 Radial segments decrease from 20 to 12 above 4096 cells and to 8 above 16384 cells;
 all beads and pegs remain present, including 65,536 beads and 67,600 board pegs for
 a full 256 × 256 pattern. The framebuffer is capped

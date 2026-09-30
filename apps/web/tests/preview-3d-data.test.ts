@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { Color, Matrix4, Raycaster, Vector3 } from "three";
+import { Color, Matrix4, Raycaster, Texture, Vector3 } from "three";
 import { defaultPalette } from "@my-beads/core";
 import {
   previewBuffer,
@@ -68,6 +68,28 @@ it("builds hollow beads, matching pegs, and a full board even for blank patterns
   expect(blank.beads.count).toBe(0);
   expect(blank.pegs.count).toBe(42);
   blank.dispose();
+});
+
+it("preserves every palette instance color and bead placement with environment lighting", () => {
+  const grid = [Object.keys(defaultPalette.colors)];
+  const environment = new Texture();
+  const direct = createPegboardScene(grid);
+  const lit = createPegboardScene(grid, environment);
+  expect(lit.scene.environment).toBe(environment);
+  expect(lit.beads.instanceColor!.array).toEqual(direct.beads.instanceColor!.array);
+  expect(lit.beads.instanceMatrix.array).toEqual(direct.beads.instanceMatrix.array);
+  expect(lit.pegs.instanceMatrix.array).toEqual(direct.pegs.instanceMatrix.array);
+  expect(lit.beads.geometry.getAttribute("position").array).toEqual(
+    direct.beads.geometry.getAttribute("position").array,
+  );
+  const color = new Color();
+  grid[0].forEach((code, index) => {
+    lit.beads.getColorAt(index, color);
+    expect(color.getHexString().toUpperCase()).toBe(defaultPalette.colors[code].slice(1));
+  });
+  lit.dispose();
+  direct.dispose();
+  environment.dispose();
 });
 
 it("starts content two cells from the top-left board edge and alternates guides every five cells", () => {

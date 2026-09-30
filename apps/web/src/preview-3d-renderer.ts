@@ -14,11 +14,14 @@ import {
   MeshStandardMaterial,
   PerspectiveCamera,
   Scene,
+  type Texture,
   Vector2,
   Vector3,
   WebGLRenderer,
+  type WebGLRenderTarget,
 } from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { createPreviewEnvironment } from "./preview-3d-environment.js";
 import type { PatternGrid } from "@my-beads/core";
 import type { Theme } from "./theme-preference.js";
 import type { PreviewAction } from "./preview-3d-controller.js";
@@ -59,10 +62,12 @@ function guideGeometry(
 }
 
 /** CPU scene construction is separate from WebGL so placement/resources can be tested directly. */
-export function createPegboardScene(grid: PatternGrid) {
+export function createPegboardScene(grid: PatternGrid, environment: Texture | null = null) {
   const data = previewData(grid);
   const layout = pegboardLayout(data.width, data.height);
   const scene = new Scene();
+  scene.environment = environment;
+  scene.environmentIntensity = 0.35;
   const { segments } = previewQuality(data.width * data.height);
   const { radius, hole, height, pegRadius, pegHeight } = beadShape;
   const beadGeometry = new LatheGeometry(
@@ -111,11 +116,12 @@ export function createPegboardScene(grid: PatternGrid) {
   });
   const guides = new Mesh(gridGeometry, gridMaterial);
   guides.position.y = 0.002;
-  scene.add(board, guides, pegs, beads, new HemisphereLight("#ffffff", "#696657", 2.1));
-  const key = new DirectionalLight("#ffffff", 2.7);
+  scene.add(board, guides, pegs, beads);
+  if (!environment) scene.add(new HemisphereLight("#ffffff", "#696657", 2.1));
+  const key = new DirectionalLight("#ffffff", environment ? 1.3 : 2.7);
   key.position.set(-3, 7, 5);
   scene.add(key);
-  const fill = new DirectionalLight("#ffffff", 0.8);
+  const fill = new DirectionalLight("#ffffff", environment ? 0.25 : 0.8);
   fill.position.set(4, 3, -5);
   scene.add(fill);
   return {
@@ -148,6 +154,7 @@ export function mountPreview3D(
   report: (status: PreviewStatus) => void,
 ) {
   let renderer: WebGLRenderer | undefined;
+  let environment: WebGLRenderTarget | null = null;
   let model: ReturnType<typeof createPegboardScene> | undefined;
   let controls: OrbitControls | undefined;
   let observer: ResizeObserver | undefined;
@@ -168,6 +175,8 @@ export function mountPreview3D(
     document.removeEventListener("visibilitychange", schedule);
     canvas.removeEventListener("webglcontextlost", lost);
     controls?.dispose();
+    if (model) model.scene.environment = null;
+    environment?.dispose();
     model?.dispose();
     renderer?.dispose();
     renderer?.forceContextLoss();
@@ -261,7 +270,8 @@ export function mountPreview3D(
       powerPreference: "low-power",
     });
     canvas.addEventListener("webglcontextlost", lost);
-    model = createPegboardScene(grid);
+    environment = createPreviewEnvironment(renderer);
+    model = createPegboardScene(grid, environment?.texture);
     controls = new OrbitControls(camera, canvas);
     controls.enableDamping = false;
     controls.minPolarAngle = 0.05;
