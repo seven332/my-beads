@@ -12,8 +12,11 @@ import {
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
+  NeutralToneMapping,
+  NoToneMapping,
   PerspectiveCamera,
   Scene,
+  SRGBColorSpace,
   type Texture,
   Vector2,
   Vector3,
@@ -110,6 +113,8 @@ export function createPegboardScene(grid: PatternGrid, environment: Texture | nu
   const gridGeometry = guideGeometry(layout.width, layout.depth, layout.guides);
   const gridMaterial = new MeshBasicMaterial({
     color: "#8b917b",
+    // Counting marks are unlit reference colors, independent of scene exposure.
+    toneMapped: false,
     polygonOffset: true,
     polygonOffsetFactor: -1,
     polygonOffsetUnits: -1,
@@ -269,8 +274,12 @@ export function mountPreview3D(
       alpha: false,
       powerPreference: "low-power",
     });
+    renderer.outputColorSpace = SRGBColorSpace;
     canvas.addEventListener("webglcontextlost", lost);
     environment = createPreviewEnvironment(renderer);
+    // The direct-only fallback lacks the broad highlights needed by Neutral's dark curve.
+    renderer.toneMapping = environment ? NeutralToneMapping : NoToneMapping;
+    renderer.toneMappingExposure = environment ? 1.1 : 1;
     model = createPegboardScene(grid, environment?.texture);
     controls = new OrbitControls(camera, canvas);
     controls.enableDamping = false;

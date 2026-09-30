@@ -162,11 +162,68 @@ and maximum-board views are `issue-96-{chromium,webkit}-{50-sparse,256-full}-*.p
 The preview lazy chunk
 grows by about 4.82 kB raw / 1.17 kB gzip, with no new package or remote asset.
 
+## Neutral output comparison — 2026-09-30
+
+Issue #97 uses the merged environment-lighting renderer at `d2aa0aa` as its
+baseline. The selected policy is `NeutralToneMapping` at exposure 1.1 when an
+environment is available, with explicit sRGB output. The direct-only capability
+fallback retains `NoToneMapping` and exposure 1. Unlit counting marks bypass tone
+mapping, and the solid theme backgrounds keep their clear-color output path.
+
+Generated H7/H5/H4/H2/B15/D22/F13/A7 strips were compared in both browsers/themes
+at fitted and close views, with both lighting paths. Exposures 0.9, 1, 1.1 and 1.5
+were inspected. Neutral increases saturation and darkens the darkest surfaces;
+1.1 retained more rim/hole detail than 0.9/1 while keeping controlled white
+highlights. At 1.5 the board and white surfaces became too bright. The direct-only
+rig lost black-hole readability under Neutral, so retaining its original output
+was preferable to altering its lights or the palette. This is a visual tradeoff,
+not a promise that shaded pixels equal unlit swatches. Background/guide colors
+are checked with native framebuffer reads; these tests have no screenshot baseline.
+
+Screenshots are under `codex-work/screenshots/issue-97-{baseline,neutral09,neutral1,neutral11,neutral15,final}-*.png`.
+Whole-canvas element screenshots include the floating controls; their white-pixel
+counts must not be interpreted as scene-highlight clipping measurements.
+
+Fresh baseline/candidate runs used the unchanged protocol on the same M4 Pro,
+headless browsers, 1440 × 1000 viewport, DPR 1 and 1198 × 758 framebuffer as above,
+with `PREVIEW_BENCHMARK_DEVICE=local-m4-pro`. Each selected case has three repeats,
+with no concurrent test/build workload. Both comparison commands passed.
+
+| Case / backend                   | First-session ready, before → after | Per-report warm median, before → after | Paced orbit P95, before → after |
+| -------------------------------- | ----------------------------------- | -------------------------------------- | ------------------------------- |
+| 50-sparse / Chromium SwiftShader | 160.1 → 166 ms                      | 134.2 → 136.5 ms                       | 117 → 117.1 ms                  |
+| 50-sparse / WebKit Apple GPU     | 75 → 78 ms                          | 48.5 → 49 ms                           | 17 → 18 ms                      |
+| 256-full / WebKit Apple GPU      | 104 → 110 ms                        | 76.5 → 75.5 ms                         | 17 → 18 ms                      |
+
+Values are medians across the three reports. The first-opening draw-containing
+RAF CPU P95 medians changed from 74.5 to 83.2 ms, 18 to 20 ms and 27 to 29 ms,
+respectively. That callback includes first-visible-render shader work and driver
+submission, not isolated shader compilation or GPU completion. Orbit CPU P95
+stayed 0.3 ms in software Chromium; WebKit's 1–2 ms readings are too coarse to
+claim an improvement. The small startup cost buys the selected output appearance;
+paced intervals include automation and must not be converted to displayed FPS.
+
+Visible draws/triangles remain four / 194,668 for 50-sparse and four / 9,530,388
+for 256-full. The observed per-context resource counts match the baseline:
+peak textures/framebuffers 7/5, live after opening 6/4 plus one depth renderbuffer,
+and four live programs. Tone mapping adds no allocation or render pass. Idle draws
+remain zero and all native handles are released on close. Additional single-run
+50-blank, 50-full and 17×100-sparse cases cover both browsers; these are behavioral
+coverage rather than repeated performance comparisons.
+
+Raw reports: `codex-work/benchmarks/issue-97-{baseline,candidate}-small/` and
+`issue-97-{baseline,candidate}-large/`; compare each matching pair with
+`pnpm benchmark:3d:compare`. Extra cases are in `issue-97-candidate-edges/`.
+The preview lazy chunk grew by about 0.08 kB raw / 0.03 kB gzip.
+No maximum-grid software-Chromium comparison, physical-phone run or native GPU
+timer result was produced for this slice. Do not extend the measured results to
+those cases or to the complete matrix.
+
 ## Validation
 
 ```sh
 pnpm --filter @my-beads/web test preview-benchmark.test.ts
-pnpm test:e2e preview-benchmark.spec.ts preview-environment.spec.ts preview-3d.spec.ts preview-rendering.spec.ts --workers 2 --retries 0
+pnpm test:e2e preview-benchmark.spec.ts preview-environment.spec.ts preview-output.spec.ts preview-3d.spec.ts preview-rendering.spec.ts --workers 2 --retries 0
 ```
 
 The repository's format/lint/typecheck/package tests/build and production smoke commands still apply. No `templates/` files are used by the benchmark or its tests.
