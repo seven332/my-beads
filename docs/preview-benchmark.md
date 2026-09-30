@@ -166,7 +166,7 @@ grows by about 4.82 kB raw / 1.17 kB gzip, with no new package or remote asset.
 
 ```sh
 pnpm --filter @my-beads/web test preview-benchmark.test.ts
-pnpm test:e2e preview-benchmark.spec.ts preview-3d.spec.ts preview-rendering.spec.ts --workers 2 --retries 0
+pnpm test:e2e preview-benchmark.spec.ts preview-environment.spec.ts preview-3d.spec.ts preview-rendering.spec.ts --workers 2 --retries 0
 ```
 
 The repository's format/lint/typecheck/package tests/build and production smoke commands still apply. No `templates/` files are used by the benchmark or its tests.
