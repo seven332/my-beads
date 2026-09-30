@@ -43,9 +43,12 @@ test("reuses a bounded environment across camera, theme and resize, and releases
     const context = before.contexts[cycle];
     const targets = context.allocations.filter((item) => item.width > 16 || item.height > 16);
     expect(targets.length).toBeGreaterThan(0);
-    expect(targets.every((item) => item.width === 336 && item.height === 256)).toBe(true);
+    // Environment atlas plus the local and 7×6-cell receiver AO maps.
+    expect(new Set(targets.map((item) => `${item.width}x${item.height}`))).toEqual(
+      new Set(["336x256", "16x32", "84x72"]),
+    );
     // Only the pegboard's native buffers remain; the room's instance buffer is gone.
-    expect(context.resources.Buffer.live).toBe(16);
+    expect(context.resources.Buffer.live).toBe(21);
     expect(context.resources.Texture.deleted).toBeGreaterThan(0);
     const offscreen = (snapshot: typeof before) =>
       snapshot.frames.flatMap((frame) => frame.viewports).filter((view) => view.target !== 0)
@@ -102,7 +105,14 @@ test("keeps direct lighting usable when half-float color targets are unsupported
   const initial = await read(page);
   expect(initial.frames.some((frame) => frame.draws === 4)).toBe(true);
   expect(
-    initial.contexts[0].allocations.every((item) => item.width <= 16 && item.height <= 16),
+    new Set(
+      initial.contexts[0].allocations
+        .filter((item) => item.width > 16 || item.height > 16)
+        .map((item) => `${item.width}x${item.height}`),
+    ),
+  ).toEqual(new Set(["16x32", "84x72"]));
+  expect(
+    initial.frames.flatMap((frame) => frame.viewports).every((view) => view.target === 0),
   ).toBe(true);
   await dialog.getByRole("button", { name: "Rotate left" }).click();
   await settle(page);

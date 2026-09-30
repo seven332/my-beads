@@ -72,9 +72,17 @@ test("draws every instance on demand, changes the camera, and releases GPU resou
       probe.deleted++;
       return remove.call(this, buffer);
     };
+    // Material/program ordering does not identify the camera: observe its named uniform.
+    const cameraUniforms = new WeakSet<WebGLUniformLocation>();
+    const location = gl.getUniformLocation;
+    gl.getUniformLocation = function (program, name) {
+      const result = location.call(this, program, name);
+      if (result && name === "viewMatrix") cameraUniforms.add(result);
+      return result;
+    };
     const matrix = gl.uniformMatrix4fv;
     gl.uniformMatrix4fv = function (...args) {
-      probe.camera = Array.from(args[2]).join(",");
+      if (args[0] && cameraUniforms.has(args[0])) probe.camera = Array.from(args[2]).join(",");
       return matrix.apply(this, args);
     };
   });
@@ -95,6 +103,7 @@ test("draws every instance on demand, changes the camera, and releases GPU resou
   const dialog = await openPreview(page, true);
   await frames();
   const first = await read();
+  expect(first.camera).not.toBe("");
   expect(first.instances).toContain(3);
   // The 3 by 2 pattern sits on a 7 by 6 peg lattice, including the two-cell border.
   expect(first.instances).toContain(42);

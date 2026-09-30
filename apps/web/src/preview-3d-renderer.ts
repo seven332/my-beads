@@ -10,7 +10,6 @@ import {
   LatheGeometry,
   Matrix4,
   Mesh,
-  MeshBasicMaterial,
   MeshStandardMaterial,
   NeutralToneMapping,
   NoToneMapping,
@@ -25,6 +24,11 @@ import {
 } from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { createPreviewEnvironment } from "./preview-3d-environment.js";
+import {
+  createPreviewOcclusion,
+  setBoardOcclusionUV,
+  setLocalOcclusionUV,
+} from "./preview-3d-occlusion.js";
 import type { PatternGrid } from "@my-beads/core";
 import type { Theme } from "./theme-preference.js";
 import type { PreviewAction } from "./preview-3d-controller.js";
@@ -61,13 +65,19 @@ function guideGeometry(
       positions.push(left, 0, top, right, 0, bottom, right, 0, top);
     }
   }
-  return new BufferGeometry().setAttribute("position", new Float32BufferAttribute(positions, 3));
+  const geometry = new BufferGeometry().setAttribute(
+    "position",
+    new Float32BufferAttribute(positions, 3),
+  );
+  geometry.computeVertexNormals();
+  return geometry;
 }
 
 /** CPU scene construction is separate from WebGL so placement/resources can be tested directly. */
 export function createPegboardScene(grid: PatternGrid, environment: Texture | null = null) {
   const data = previewData(grid);
   const layout = pegboardLayout(data.width, data.height);
+  const occlusion = createPreviewOcclusion(grid);
   const scene = new Scene();
   scene.environment = environment;
   scene.environmentIntensity = 0.35;
@@ -86,7 +96,12 @@ export function createPegboardScene(grid: PatternGrid, environment: Texture | nu
     ].map(([x, y]) => new Vector2(x, y)),
     segments,
   );
-  const beadMaterial = new MeshStandardMaterial({ roughness: 0.48, metalness: 0 });
+  setLocalOcclusionUV(beadGeometry, "bead");
+  const beadMaterial = new MeshStandardMaterial({
+    roughness: 0.48,
+    metalness: 0,
+    aoMap: occlusion.local,
+  });
   const beads = new InstancedMesh(beadGeometry, beadMaterial, data.beads.length);
   const transform = new Matrix4();
   const color = new Color();
@@ -98,9 +113,19 @@ export function createPegboardScene(grid: PatternGrid, environment: Texture | nu
   if (beads.instanceColor) beads.instanceColor.needsUpdate = true;
 
   const pegGeometry = new CylinderGeometry(pegRadius * 0.75, pegRadius, pegHeight, 8);
-  const boardMaterial = new MeshStandardMaterial({ color: "#dad9cc", roughness: 0.8 });
+  setLocalOcclusionUV(pegGeometry, "peg");
+  const pegMaterial = new MeshStandardMaterial({
+    color: "#dad9cc",
+    roughness: 0.8,
+    aoMap: occlusion.local,
+  });
+  const boardMaterial = new MeshStandardMaterial({
+    color: "#dad9cc",
+    roughness: 0.8,
+    aoMap: occlusion.board,
+  });
   // The two-cell margin is part of the peg lattice; content pegs start at board index (2, 2).
-  const pegs = new InstancedMesh(pegGeometry, boardMaterial, layout.width * layout.depth);
+  const pegs = new InstancedMesh(pegGeometry, pegMaterial, layout.width * layout.depth);
   for (let row = 0; row < layout.depth; row++)
     for (let column = 0; column < layout.width; column++) {
       const { x, z } = pegPosition(column, row, layout.width, layout.depth);
@@ -108,13 +133,15 @@ export function createPegboardScene(grid: PatternGrid, environment: Texture | nu
     }
   pegs.instanceMatrix.needsUpdate = true;
   const boardGeometry = new BoxGeometry(layout.width, 0.24, layout.depth);
+  setBoardOcclusionUV(boardGeometry, layout.width, layout.depth);
   const board = new Mesh(boardGeometry, boardMaterial);
   board.position.y = -0.12;
   const gridGeometry = guideGeometry(layout.width, layout.depth, layout.guides);
-  const gridMaterial = new MeshBasicMaterial({
+  setBoardOcclusionUV(gridGeometry, layout.width, layout.depth);
+  const gridMaterial = new MeshStandardMaterial({
     color: "#8b917b",
-    // Counting marks are unlit reference colors, independent of scene exposure.
-    toneMapped: false,
+    roughness: 0.8,
+    aoMap: occlusion.board,
     polygonOffset: true,
     polygonOffsetFactor: -1,
     polygonOffsetUnits: -1,
@@ -145,8 +172,11 @@ export function createPegboardScene(grid: PatternGrid, environment: Texture | nu
       boardGeometry.dispose();
       gridGeometry.dispose();
       beadMaterial.dispose();
+      pegMaterial.dispose();
       boardMaterial.dispose();
       gridMaterial.dispose();
+      occlusion.local.dispose();
+      occlusion.board.dispose();
       scene.clear();
     },
   };

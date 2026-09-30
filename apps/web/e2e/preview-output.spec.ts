@@ -3,8 +3,12 @@ import { openPreview, supportsWebGL } from "./preview-helpers.js";
 
 interface OutputSample {
   background: number[];
-  guidePixels: number;
-  programs: { neutral: boolean; srgb: boolean; exposure: number | null }[];
+  programs: {
+    neutral: boolean;
+    srgb: boolean;
+    exposure: number | null;
+    occlusion: number | null;
+  }[];
 }
 declare global {
   interface Window {
@@ -30,10 +34,12 @@ function observeOutput() {
       .find((shader) => gl.getShaderParameter(shader, gl.SHADER_TYPE) === gl.FRAGMENT_SHADER)!;
     const source = gl.getShaderSource(fragment)!;
     const exposure = gl.getUniformLocation(program, "toneMappingExposure");
+    const occlusion = gl.getUniformLocation(program, "aoMapIntensity");
     programs.set(program, {
       neutral: /return NeutralToneMapping\( color \)/.test(source),
       srgb: /linearToOutputTexel[^}]+sRGBTransferOETF/.test(source),
       exposure: exposure === null ? null : gl.getUniform(program, exposure),
+      occlusion: occlusion === null ? null : gl.getUniform(program, occlusion),
     });
   }
   const gl = WebGL2RenderingContext.prototype;
@@ -60,27 +66,10 @@ function observeOutput() {
       const context = drawn;
       drawn = undefined;
       // Read in the drawing callback, before the non-preserved buffer is presented/cleared.
-      const pixels = new Uint8Array(context.drawingBufferWidth * context.drawingBufferHeight * 4);
-      context.readPixels(
-        0,
-        0,
-        context.drawingBufferWidth,
-        context.drawingBufferHeight,
-        context.RGBA,
-        context.UNSIGNED_BYTE,
-        pixels,
-      );
-      let guidePixels = 0;
-      for (let i = 0; i < pixels.length; i += 4)
-        if (
-          Math.abs(pixels[i] - 139) <= 1 &&
-          Math.abs(pixels[i + 1] - 145) <= 1 &&
-          Math.abs(pixels[i + 2] - 123) <= 1
-        )
-          guidePixels++;
+      const pixels = new Uint8Array(4);
+      context.readPixels(0, 0, 1, 1, context.RGBA, context.UNSIGNED_BYTE, pixels);
       window.previewOutput = {
         background: Array.from(pixels.slice(0, 3)),
-        guidePixels,
         programs: [...programs.values()],
       };
     });
@@ -134,12 +123,12 @@ for (const fallback of [false, true])
         .poll(() => page.evaluate(() => window.previewOutput?.background))
         .toEqual(background);
       const output = (await page.evaluate(() => window.previewOutput))!;
-      expect(output.guidePixels).toBeGreaterThan(10);
-      // Board, pegs and beads share the mapper; counting marks keep their unlit color.
-      expect(output.programs).toHaveLength(4);
+      // Lit markings share the board program; all surfaces use indirect-light occlusion.
+      expect(output.programs).toHaveLength(3);
       expect(output.programs.filter((program) => program.neutral)).toHaveLength(neutral ? 3 : 0);
       expect(output.programs.every((program) => program.srgb)).toBe(true);
       for (const program of output.programs) {
+        expect(program.occlusion).toBe(1);
         if (program.neutral) expect(program.exposure).toBeCloseTo(1.1, 5);
         else expect(program.exposure).toBeNull();
       }

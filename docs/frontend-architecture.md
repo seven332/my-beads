@@ -563,7 +563,8 @@ Empty pattern borders and peg/bead coordinates remain unchanged.
 All guide strokes are batched into one triangle mesh with world-space widths and
 dash segments clipped at the board edges. A small surface lift and polygon offset prevent coplanar
 flicker; normal depth testing lets beads occlude the markings. Guide geometry and
-material share the scene's disposal lifetime, with no texture or idle animation.
+material share the scene's disposal lifetime. The markings reuse the board's AO
+texture described below and add no idle animation.
 The normalized pitch, diameter, bore and height are illustrative, not millimeter
 measurements. Lighting changes the shaded appearance; the palette data and exports
 remain unchanged. There is no 3D editing or fusion simulation.
@@ -592,14 +593,41 @@ or extra target. Palette hex values still enter Three.js's linear working space
 once; instance data and exports remain unchanged. The PMREM stays linear and is
 generated before selecting the visible output policy.
 
-Unlit counting guides set `toneMapped: false`, retaining their authored `#8b917b`
-color through normal sRGB output conversion. Solid light/dark background colors
-use the renderer's clear-color path, which bypasses tone mapping. Neither becomes
-an exposure-dependent reference color. The direct-only capability fallback keeps
+Solid light/dark background colors use the renderer's clear-color path, which
+bypasses tone mapping. The direct-only capability fallback keeps
 `NoToneMapping` and exposure 1: Neutral reduced its black-bead hole readability in
 visual comparisons. This is a deliberate compatibility policy, not a theme switch.
-Native-WebGL browser tests check both paths, actual background/guide pixels and
-the linked material shaders without screenshot baselines or production test hooks.
+Native-WebGL browser tests check both paths, actual background pixels and the linked
+material shaders without screenshot baselines or production test hooks.
+
+`preview-3d-occlusion.ts` creates two byte red-channel, non-color visibility maps
+once per scene. A shared 16 × 32 map uses secondary radius/height UVs for bead
+cavities and outer bases; pegs use its outer-height edge, leaving their tops fully
+visible to ambient light. This is shape-local shading, not neighboring-bead AO.
+The board field tiles soft peg contacts over the entire lattice and adds finite
+bead footprints only at occupied cells. Their support extends 0.22 pitch beyond a
+bead's outer radius. Strongest-contact composition keeps visibility at or above
+0.6 even in dense patterns; distant empty areas receive no bead contribution.
+The field has up to 12 texels per pitch, capped at 2048 texels per axis. A full
+256 × 256 document uses 1820 × 1820 bytes before mipmaps. Board mipmaps stabilize
+minification; the small smooth local map uses linear filtering without mipmaps.
+
+Standard-material AO attenuates indirect diffuse and the library's roughness-aware
+indirect specular term. It does not multiply direct lighting, change material
+colors or add geometry/opacity across holes. Board sides and underside use constant
+UVs into a neutral corner, while the top projects the field in board coordinates.
+Counting guides now have upward normals and a standard material sharing the same
+receiver map, roughness and tone-mapping policy as the board. This deliberately
+replaces the earlier unlit-guide treatment so markings do not appear self-lit in
+contact regions. Their authored color stays `#8b917b`; shaded pixels vary with light.
+
+Maps are shared within the scene, reused across camera/theme/resize changes and
+disposed with the scene, separately from materials. There is no shader patch,
+additional mesh, render target or rendering loop. Later directional shadows should
+attenuate direct light separately; combined contrast must be reviewed against
+these bounded indirect terms rather than applying another dark screen overlay.
+Generated tests cover coordinates, holes, sparse/edge/narrow/full fields, density
+bounds, uploaded data, map reuse and cleanup after a mipmap initialization failure.
 
 Radial segments decrease from 20 to 12 above 4096 cells and to 8 above 16384 cells;
 all beads and pegs remain present, including 65,536 beads and 67,600 board pegs for
