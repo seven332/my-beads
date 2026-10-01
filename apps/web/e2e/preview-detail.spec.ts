@@ -6,10 +6,10 @@ import { openPreview, supportsWebGL } from "./preview-helpers.js";
 test.use({ deviceScaleFactor: 1 });
 
 const read = (page: Page) => page.evaluate(() => window.previewBenchmark.snapshot());
-async function settle(page: Page) {
-  await page.evaluate(async () => {
-    for (let i = 0; i < 4; i++) await new Promise(requestAnimationFrame);
-  });
+async function settle(page: Page, count = 4) {
+  await page.evaluate(async (count) => {
+    for (let i = 0; i < count; i++) await new Promise(requestAnimationFrame);
+  }, count);
 }
 async function setup(page: Page) {
   await page.addInitScript(installPreviewProbe);
@@ -45,10 +45,15 @@ test("changes submitted detail with zoom, reuses warmed variants and releases ev
   const initial = await read(page);
   const exercise = async () => {
     await dialog.getByRole("button", { name: "Reset view" }).click();
-    for (let i = 0; i < 8; i++)
+    await settle(page, 1);
+    for (let i = 0; i < 8; i++) {
       await dialog.getByRole("button", { name: "Zoom out", exact: true }).click();
-    for (let i = 0; i < 13; i++)
+      await settle(page, 1);
+    }
+    for (let i = 0; i < 13; i++) {
       await dialog.getByRole("button", { name: "Zoom in", exact: true }).click();
+      await settle(page, 1);
+    }
     await settle(page);
   };
   await exercise();
