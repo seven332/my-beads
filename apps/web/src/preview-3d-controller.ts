@@ -8,12 +8,13 @@ interface Owner {
   id: number;
   canvas: HTMLCanvasElement;
   theme: Theme;
+  shadows: boolean;
   renderer?: ReturnType<typeof mountPreview3D>;
 }
 
 /** Own the async module and GPU lifetime independently from the editor's Canvas 2D. */
 export function createPreviewController(
-  report: (id: number, status: PreviewStatus) => void,
+  report: (id: number, status: PreviewStatus, shadowsAvailable?: boolean) => void,
   load: PreviewLoader = () => import("./preview-3d-renderer.js"),
 ) {
   let current: Owner | undefined;
@@ -32,13 +33,17 @@ export function createPreviewController(
       if (current?.canvas !== canvas || current?.id !== session?.id) release();
       if (!canvas || !session) return;
       if (current) {
+        if (current.shadows !== session.shadows) {
+          current.shadows = session.shadows;
+          current.renderer?.shadows(session.shadows);
+        }
         if (current.theme !== theme) {
           current.theme = theme;
           current.renderer?.theme(theme);
         }
         return;
       }
-      const owner: Owner = { id: session.id, canvas, theme };
+      const owner: Owner = { id: session.id, canvas, theme, shadows: session.shadows };
       current = owner;
       function status(value: PreviewStatus) {
         // Also handles synchronous failures during mount without reentering render/watch.
@@ -48,7 +53,7 @@ export function createPreviewController(
             owner.renderer?.destroy();
             owner.renderer = undefined;
           }
-          report(owner.id, value);
+          report(owner.id, value, owner.renderer?.shadowsAvailable);
         });
       }
       Promise.resolve()

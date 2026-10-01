@@ -82,6 +82,10 @@
   height: 44px;
   padding: 10px;
 }
+.preview-controls button[aria-pressed="true"] {
+  color: var(--ui-on-primary);
+  background: var(--ui-primary);
+}
 .preview-footer {
   padding: 12px 24px;
   color: var(--ui-secondary);

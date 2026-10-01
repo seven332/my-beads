@@ -1,6 +1,6 @@
 import { html, nothing } from "lit-html";
 import { ref } from "lit-html/directives/ref.js";
-import { RotateCcw, RotateCw, Minus, Plus, Scan, X } from "@lucide/icons";
+import { RotateCcw, RotateCw, Minus, Plus, Scan, Sun, X } from "@lucide/icons";
 import type { Translate } from "./i18n/index.js";
 import type { ViewRefs } from "./view-lifecycle.js";
 import type { PreviewSession } from "./preview-3d-state.js";
@@ -13,6 +13,7 @@ export interface PreviewActions {
   openPreview(): void;
   closePreview(): void;
   previewAction(action: PreviewAction): void;
+  togglePreviewShadows(): void;
 }
 export function previewView(
   session: PreviewSession | null,
@@ -90,11 +91,28 @@ export function previewView(
               },
             ),
           )}
+          ${iconButton(
+            t(($) => $.preview.shadows),
+            Sun,
+            {
+              disabled: session.status !== "ready" || !session.shadowsAvailable,
+              pressed: session.shadows,
+              title: session.shadowsAvailable
+                ? t(($) => $.preview.shadowsHelp)
+                : t(($) => $.preview.shadowsUnavailable),
+              onClick: actions.togglePreviewShadows,
+            },
+          )}
         </div>
       </div>
       <footer class="preview-footer" id="preview-help">
         <p>${t(($) => $.preview.help)}</p>
-        <p>${t(($) => $.preview.note)}</p>
+        <p>
+          ${t(($) => $.preview.note)}
+          ${session.status === "ready" && !session.shadowsAvailable
+            ? t(($) => $.preview.shadowsUnavailable)
+            : t(($) => $.preview.shadowsHelp)}
+        </p>
       </footer>`,
   );
 }

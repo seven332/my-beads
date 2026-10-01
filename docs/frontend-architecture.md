@@ -667,6 +667,33 @@ upload instance data. Teardown releases each batch's instance resources and then
 the shared geometries/materials/textures once. Trade-offs and native measured
 counts are recorded in `docs/preview-benchmark.md`.
 
+`preview-3d-shadows.ts` owns an optional cached PCF shadow from the existing fixed
+key light. Every preview starts with shadows off. The translated, pressed-state
+control belongs only to the preview session; it never enters a document or draft.
+The controller synchronizes it without recreating the renderer. Full-board light
+bounds include all casters, the spare peg margin and filter padding, independently
+of main-camera culling. Beads/pegs cast and receive; both slab and counting guides
+receive the same lighting. The fill light stays unshadowed.
+
+Availability requires at least 16 shadow texels per pitch on both light-camera
+axes, using the smallest 1024/2048 map that meets that density and the hardware
+texture limit. A square 88×88 pattern fits; 89×89 does not. Narrow patterns can
+still qualify. This is a quality bound, not a device-speed guarantee. Default-off
+and the performance hint provide the slower-device fallback; large boards retain
+contact AO. The map is regenerated on enable or an actual geometry-tier change,
+not ordinary camera/theme/viewport changes at the same detail. Lights, scene and
+light bounds are immutable during a session; a new document gets a new owner.
+Disabling immediately releases the target and receiver filtering. Closing,
+replacement and failure also dispose the shadow target before the renderer.
+Allocation/context failures use the existing translated close/reopen flow, with
+shadows off on retry. There is no polling, accumulation or idle animation.
+
+The separate opt-in `benchmark:shadows` diagnostic imports the same scene and
+shadow-fit modules but is not part of the production entry or normal timing
+matrix. It measures cache generation and recurring filtering separately, including
+offscreen casters and partial-allocation teardown. See the measurement guide for
+its distinct protocol, comparisons and physical-device limitations.
+
 The framebuffer is capped
 at 2 million pixels, 4096 pixels per axis and 2× density. OrbitControls has no damping
 or automatic rotation: camera, theme, visibility and resize events schedule frames,

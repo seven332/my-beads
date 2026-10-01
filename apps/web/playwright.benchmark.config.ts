@@ -4,7 +4,7 @@ import production from "./playwright.production.config.js";
 export default defineConfig({
   ...production,
   testDir: "./benchmarks",
-  testMatch: "**/*.spec.ts",
+  testMatch: "preview.spec.ts",
   fullyParallel: false,
   workers: 1,
   retries: 0,

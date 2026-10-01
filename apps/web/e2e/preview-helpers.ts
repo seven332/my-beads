@@ -26,6 +26,12 @@ export async function checkBuiltPreview(page: Page) {
   const supported = await supportsWebGL(page);
   const dialog = await openPreview(page, supported);
   if (supported) {
+    const shadows = dialog.getByRole("button", { name: "Cast shadows", exact: true });
+    await expect(shadows).toHaveAttribute("aria-pressed", "false");
+    if (await shadows.isEnabled()) {
+      await shadows.click();
+      await expect(shadows).toHaveAttribute("aria-pressed", "true");
+    }
     await dialog.getByRole("button", { name: "Rotate left" }).click();
     await dialog.getByRole("button", { name: "Reset view" }).click();
   } else await expect(dialog.getByRole("alert")).toContainText("keep editing");
