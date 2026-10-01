@@ -1,9 +1,15 @@
 {
   "preview": {
     "open": "3D 预览",
-    "heading": "拼豆板上的效果",
+    "heading": "3D 预览",
     "close": "关闭 3D 预览",
     "canvas": "3D 拼豆板预览",
+    "fusedCanvas": "3D 熨烫成品预览",
+    "mode": "预览模式",
+    "board": "板上摆豆",
+    "fused": "熨烫成品",
+    "empty": "在编辑器中添加拼豆后，即可预览成品。",
+    "fusedNote": "完全闭孔的熨烫成品。外观仅供示意，不代表实际熨烫结果。",
     "controls": "3D 视角控制",
     "left": "向左旋转",
     "right": "向右旋转",

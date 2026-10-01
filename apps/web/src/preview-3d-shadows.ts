@@ -63,7 +63,6 @@ export function createPreviewShadows(
   model.scene.add(key.target);
   renderer.shadowMap.type = PCFShadowMap;
   renderer.shadowMap.autoUpdate = false;
-  const surfaces = [...model.beads, ...model.pegs, model.board, model.guides];
   let enabled = false;
   let disposed = false;
 
@@ -79,8 +78,8 @@ export function createPreviewShadows(
       enabled = value;
       renderer.shadowMap.enabled = value;
       key.castShadow = value;
-      for (const mesh of [...model.beads, ...model.pegs]) mesh.castShadow = value;
-      for (const mesh of surfaces) mesh.receiveShadow = value;
+      for (const mesh of model.casters) mesh.castShadow = value;
+      for (const mesh of [...model.casters, model.board, model.guides]) mesh.receiveShadow = value;
       if (value) {
         renderer.shadowMap.needsUpdate = true;
         key.shadow.needsUpdate = true;

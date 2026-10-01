@@ -1,9 +1,15 @@
 {
   "preview": {
     "open": "3D preview",
-    "heading": "Beads on the board",
+    "heading": "3D preview",
     "close": "Close 3D preview",
     "canvas": "3D pegboard preview",
+    "fusedCanvas": "3D fused artwork preview",
+    "mode": "Preview mode",
+    "board": "On board",
+    "fused": "Fused",
+    "empty": "Add beads in the editor to preview the finished artwork.",
+    "fusedNote": "Fully fused artwork. Appearance is illustrative, not a prediction of ironing results.",
     "controls": "3D view controls",
     "left": "Rotate left",
     "right": "Rotate right",

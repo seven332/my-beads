@@ -1,5 +1,6 @@
 import {
   BoxGeometry,
+  Box3,
   BufferGeometry,
   Color,
   DirectionalLight,
@@ -31,8 +32,9 @@ import {
 import type { PatternGrid } from "@my-beads/core";
 import type { Theme } from "./theme-preference.js";
 import type { PreviewAction } from "./preview-3d-controller.js";
-import type { PreviewStatus } from "./preview-3d-state.js";
+import type { PreviewMode, PreviewStatus } from "./preview-3d-state.js";
 import { beadShape, pegboardLayout, previewBuffer, previewData } from "./preview-3d-data.js";
+import { createFusedPreview } from "./preview-3d-fused.js";
 
 /** One mesh keeps physical stroke widths without WebGL's one-pixel line limitation. */
 function guideGeometry(
@@ -118,6 +120,12 @@ export function createPegboardScene(grid: PatternGrid, environment: Texture | nu
   scene.add(fill);
   const fixedTriangles =
     boardGeometry.index!.count / 3 + gridGeometry.getAttribute("position").count / 3;
+  const boardBounds = new Box3(
+    new Vector3(-layout.width / 2, -0.24, -layout.depth / 2),
+    new Vector3(layout.width / 2, beadShape.height, layout.depth / 2),
+  );
+  let mode: PreviewMode = "board";
+  let fused: ReturnType<typeof createFusedPreview> | undefined;
   return {
     scene,
     beads,
@@ -127,8 +135,33 @@ export function createPegboardScene(grid: PatternGrid, environment: Texture | nu
     key,
     width: layout.width,
     depth: layout.depth,
+    get bounds() {
+      return mode === "fused" ? fused!.bounds : boardBounds;
+    },
+    get casters() {
+      return [...beads, ...pegs, ...(fused?.meshes ?? [])];
+    },
+    get fused() {
+      return fused;
+    },
+    setMode(next: PreviewMode) {
+      if (next === mode) return false;
+      if (next === "fused" && !fused) {
+        fused = createFusedPreview(grid);
+        for (const mesh of fused.meshes) {
+          mesh.castShadow = key.castShadow;
+          mesh.receiveShadow = key.castShadow;
+          scene.add(mesh);
+        }
+      }
+      mode = next;
+      for (const mesh of [board, guides, ...beads, ...pegs]) mesh.visible = mode === "board";
+      for (const mesh of fused?.meshes ?? []) mesh.visible = mode === "fused";
+      return true;
+    },
     /** Returns true only when geometry changes; future shadow caches must then invalidate. */
     updateDetail(camera: PerspectiveCamera, bufferHeight: number) {
+      if (mode === "fused") return false;
       const next = selectPreviewDetail(
         projectedPitch(camera, layout.width, layout.depth, bufferHeight),
         beadCount,
@@ -146,6 +179,7 @@ export function createPegboardScene(grid: PatternGrid, environment: Texture | nu
       return changed;
     },
     dispose() {
+      fused?.dispose();
       for (const mesh of beads) mesh.dispose();
       for (const mesh of pegs) mesh.dispose();
       geometries.dispose();
@@ -227,7 +261,10 @@ export function mountPreview3D(
   }
   function fit() {
     if (!model || !controls) return;
-    controls.target.set(0, 0.25, 0);
+    const bounds = model.bounds;
+    bounds.getCenter(controls.target);
+    // Preserve the existing on-board view; the fused view centers its own occupied bounds.
+    if (model.board.visible) controls.target.y = 0.25;
     camera.position.copy(controls.target).add(direction);
     camera.lookAt(controls.target);
     camera.updateMatrixWorld();
@@ -235,9 +272,9 @@ export function mountPreview3D(
     const up = new Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
     const tan = Math.tan((camera.fov * Math.PI) / 360);
     let distance = 0;
-    for (const x of [-model.width / 2, model.width / 2])
-      for (const z of [-model.depth / 2, model.depth / 2])
-        for (const y of [-0.24, beadShape.height]) {
+    for (const x of [bounds.min.x, bounds.max.x])
+      for (const z of [bounds.min.z, bounds.max.z])
+        for (const y of [bounds.min.y, bounds.max.y]) {
           const corner = new Vector3(x, y, z).sub(controls.target);
           distance = Math.max(
             distance,
@@ -254,6 +291,7 @@ export function mountPreview3D(
     camera.far = Math.max(100, fitDistance * 6);
     camera.updateProjectionMatrix();
     camera.position.copy(controls.target).addScaledVector(direction, fitDistance);
+    controls.cursor.copy(controls.target);
     controls.update();
     schedule();
   }
@@ -312,6 +350,16 @@ export function mountPreview3D(
   }
   return {
     theme,
+    mode(value: PreviewMode) {
+      if (destroyed || !model) return;
+      try {
+        if (!model.setMode(value)) return;
+        shadows?.invalidate();
+        fit();
+      } catch {
+        fail();
+      }
+    },
     shadowsAvailable: shadows.available,
     shadows(enabled: boolean) {
       if (destroyed) return;

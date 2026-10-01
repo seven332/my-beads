@@ -8,6 +8,7 @@ const session: PreviewSession = {
   title: "Preview",
   beads: 1,
   status: "loading",
+  mode: "board",
   shadows: false,
   shadowsAvailable: false,
 };
@@ -16,6 +17,7 @@ const renderer = () => ({
   action: vi.fn(),
   destroy: vi.fn(),
   shadows: vi.fn(),
+  mode: vi.fn(),
   shadowsAvailable: true,
 });
 
@@ -61,6 +63,12 @@ it("rejects late loading and notifications, disposes on close, and uses the late
     "light",
   );
   expect(live.shadows).toHaveBeenCalledWith(true);
+  controller.sync(canvas, { ...session, id: 2, status: "ready", mode: "fused" }, "light");
+  expect(live.mode).toHaveBeenLastCalledWith("fused");
+  expect(live.destroy).not.toHaveBeenCalled();
+  const modeCalls = live.mode.mock.calls.length;
+  controller.sync(canvas, { ...session, id: 2, status: "ready", mode: "fused" }, "light");
+  expect(live.mode).toHaveBeenCalledTimes(modeCalls);
   controller.destroy();
   controller.destroy();
   expect(live.destroy).toHaveBeenCalledOnce();

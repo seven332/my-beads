@@ -1,5 +1,5 @@
 import type { Theme } from "./theme-preference.js";
-import type { PreviewSession, PreviewStatus } from "./preview-3d-state.js";
+import type { PreviewMode, PreviewSession, PreviewStatus } from "./preview-3d-state.js";
 import type { mountPreview3D } from "./preview-3d-renderer.js";
 
 export type PreviewAction = "left" | "right" | "in" | "out" | "reset";
@@ -9,6 +9,7 @@ interface Owner {
   canvas: HTMLCanvasElement;
   theme: Theme;
   shadows: boolean;
+  mode: PreviewMode;
   renderer?: ReturnType<typeof mountPreview3D>;
 }
 
@@ -33,6 +34,10 @@ export function createPreviewController(
       if (current?.canvas !== canvas || current?.id !== session?.id) release();
       if (!canvas || !session) return;
       if (current) {
+        if (current.mode !== session.mode) {
+          current.mode = session.mode;
+          current.renderer?.mode(session.mode);
+        }
         if (current.shadows !== session.shadows) {
           current.shadows = session.shadows;
           current.renderer?.shadows(session.shadows);
@@ -43,7 +48,13 @@ export function createPreviewController(
         }
         return;
       }
-      const owner: Owner = { id: session.id, canvas, theme, shadows: session.shadows };
+      const owner: Owner = {
+        id: session.id,
+        canvas,
+        theme,
+        shadows: session.shadows,
+        mode: session.mode,
+      };
       current = owner;
       function status(value: PreviewStatus) {
         // Also handles synchronous failures during mount without reentering render/watch.
@@ -61,6 +72,7 @@ export function createPreviewController(
         .then((module) => {
           if (current !== owner || !module) return;
           owner.renderer = module.mountPreview3D(canvas, session.grid, owner.theme, status);
+          owner.renderer.mode(owner.mode);
         })
         .catch(() => status("failed"));
     },
