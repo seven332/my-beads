@@ -546,6 +546,91 @@ CSS grows 38.88→39.17 kB raw. The experiment page and runner are not emitted i
 the production build. Existing large-board software latency remains a limitation
 of the combined #94 work, even with shadows unavailable there.
 
+## Fully fused preview — 2026-10-01
+
+Issue #109 adds an **On board / Fused** switch. The default on-board path does
+not construct or upload fused geometry. The first switch builds it synchronously;
+later switches reuse it in the same context. This deliberately trades retained
+geometry memory for inexpensive repeated switching. Both models are released
+when the preview closes or fails.
+
+```sh
+pnpm benchmark:fused --project=webkit --repeat-each=3 --output=../../codex-work/benchmarks/fused-webkit
+pnpm benchmark:fused --project=chromium --grep 'motif|50-sparse' --repeat-each=3 --output=../../codex-work/benchmarks/fused-chromium
+```
+
+This opt-in suite uses the production editor and existing native WebGL probe.
+It owns port 4174, runs one worker, and generates four fixtures: a small motif,
+50×50 sparse, 256×256 full, and 256×256 checkerboard. Its distinct protocol is
+`fused-v1:1440x1000:dpr1:one-context:3-mode-pairs:12-orbit-buttons`.
+Each session alternates modes three times and measures 12 paced rotation inputs
+in each mode. Switch CPU time includes synchronous geometry/state/view work but
+excludes the scheduled render callback and GPU upload. The first fused render
+is reported separately. Reset and screenshot phases are excluded from orbit
+statistics. First-repeat motif captures cover top/oblique views, both themes and
+desktop/mobile viewports under `codex-work/screenshots/issue-109-*`.
+
+Reports include source revision/dirty state, host/browser/renderer identity,
+raw frames and handles, and checks for one context, idle rendering, unchanged
+draft and complete teardown. They compare modes in one build; they are **not**
+inputs to `benchmark:3d:compare` and do not establish a before/after speedup.
+Paced intervals include Playwright and RAF synchronization, not just rendering.
+
+The static geometry uses at most 16 spatial meshes and one vertex-color material.
+CPU checks retain every occupied cell and verify shared-edge closure, empty
+cutouts, diagonal separation and conservative culling bounds. At 256×256,
+the full fixture has 1,603,488 triangles and 81,024,192 attribute/index bytes;
+the checkerboard has 2,359,296 triangles and 73,138,176 bytes. These are raw
+typed-array sizes, not total JS heap or VRAM: the renderer also retains the board
+model and GPU copies. A loose all-pattern bound is 38 vertices and 72 triangles
+per occupied cell (under 140 MiB of fused attributes/indices at the grid limit).
+No extra texture or render target is introduced by fused geometry.
+
+Native browser regressions verify that a small fused scene submits only its own
+mesh in both visible and enabled-shadow passes. Stable camera gestures reuse
+the map; switching invalidates it. Buffer counts remain stable after warm
+mode switches. Upload failure releases the context and both models; reopening
+starts on board again. These are behavioral/resource assertions, not screenshot
+baselines or timing thresholds. No physical-phone performance guarantee is made.
+
+Three repeats on the same Apple M4 Pro / 48 GiB host, WebKit 26.6 / Apple GPU,
+headless at DPR 1, produced the following medians. Shadows stayed off. The
+measurements used the #109 worktree based on `ad75e9c` (reported as dirty), with
+raw reports under `codex-work/benchmarks/issue-109-fused-final-webkit/`.
+This was a shared desktop with uncontrolled background load, so the timings are
+observations rather than a stable device performance target.
+
+| Fixture              | First fused switch CPU | First fused render CPU | Warm fused switch CPU range | Board → fused draws / triangles |
+| -------------------- | ---------------------- | ---------------------- | --------------------------- | ------------------------------- |
+| Motif, 196 beads     | 18 ms                  | 21 ms                  | 3–6 ms                      | 4 / 76,744 → 1 / 6,708          |
+| 50×50 sparse         | 21 ms                  | 22 ms                  | 3–7 ms                      | 4 / 131,244 → 1 / 25,776        |
+| 256×256 full         | 657 ms                 | 49 ms                  | 4–5 ms                      | 52 / 6,613,780 → 16 / 1,603,488 |
+| 256×256 checkerboard | 722 ms                 | 47 ms                  | 4–6 ms                      | 52 / 3,861,268 → 16 / 2,359,296 |
+
+First-render CPU is separate from switch CPU and includes initial buffer/shader
+submission. It is not GPU completion time. Fused orbit callback P95 was 1–3 ms;
+the protocol's paced intervals are not FPS measurements. The initial exploratory
+run had faster maximum-grid construction (178–199 ms); the repeated matrix above
+is the reported result, not that best run. Large first switches visibly pause
+the main thread and may take longer on slower devices. Subsequent mode switches
+avoid reconstruction. Maximum live buffer/VAO handles were 157/68 across the two
+retained models; texture/framebuffer peaks remained 8/5. Every measured close
+returned live handles to zero. No GPU timer was available.
+
+Chromium 153.0.8010.12 on the same host used ANGLE/SwiftShader software rendering.
+Three repeats of the motif and 50×50 sparse cases passed, with first-switch CPU
+medians of 14.4/15.4 ms, first-render CPU medians of 18.0/5.9 ms and warm switches
+of 2.6–4.5 ms. Submission timings do not measure software GPU completion.
+Reports are in `issue-109-fused-final-chromium/`. Maximum-grid software timings
+and physical phones were not measured; mobile images emulate viewport size only.
+Top/oblique screenshots in both engines show closed surfaces without pegboard
+artifacts, readable color boundaries and visible thickness. Subtle edge facets
+remain part of the bounded geometric approximation, not a measured plastic model.
+
+The lazy renderer grows from 571.83 to 574.86 kB raw (143.44 → 144.64 kB gzip).
+Main JS grows from 196.01 to 197.24 kB raw (66.48 → 66.88 kB gzip) for the mode
+control and translations. The diagnostic remains outside the production bundle.
+
 ## Validation
 
 ```sh

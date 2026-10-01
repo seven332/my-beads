@@ -23,6 +23,7 @@ const gpu = {
   action: vi.fn(),
   destroy: vi.fn(),
   shadows: vi.fn(),
+  mode: vi.fn(),
   shadowsAvailable: true,
 };
 const load = vi.fn<PreviewLoader>(async () => ({
@@ -92,6 +93,12 @@ it("loads only on demand, isolates camera/shortcuts/drafts, restores focus and r
   expect(app.store.get(editor$).canUndo).toBe(true);
   const before = app.store.get(editor$);
   const draft = values.get(DRAFT_KEY);
+  click(".preview-modes button:last-child");
+  expect(app.store.get(previewSession$)?.mode).toBe("fused");
+  expect(gpu.mode).toHaveBeenLastCalledWith("fused");
+  expect(host.querySelector(".preview-canvas")?.getAttribute("aria-label")).toBe(
+    "3D fused artwork preview",
+  );
   click('.preview-controls [aria-label="Cast shadows"]');
   expect(gpu.shadows).toHaveBeenCalledWith(true);
   expect(host.querySelector('[aria-label="Cast shadows"]')?.getAttribute("aria-pressed")).toBe(
@@ -104,7 +111,8 @@ it("loads only on demand, isolates camera/shortcuts/drafts, restores focus and r
     close.dispatchEvent(new KeyboardEvent("keydown", { key, ctrlKey: key === "z", bubbles: true }));
   app.store.set(selectLocale$, "zh-CN");
   expect(host.querySelector('[aria-label="投影"]')?.getAttribute("aria-pressed")).toBe("true");
-  expect(host.querySelector(".preview-footer")?.textContent).toContain("未熨烫");
+  expect(host.querySelector(".preview-footer")?.textContent).toContain("完全闭孔");
+  expect(host.querySelector(".preview-modes")?.textContent).toContain("熨烫成品");
   click('[aria-label="关闭 3D 预览"]');
   expect(host.querySelector(".pattern-canvas")).toBe(canvas);
   expect(document.activeElement).toBe(host.querySelector(".preview-open"));
@@ -121,6 +129,7 @@ it("loads only on demand, isolates camera/shortcuts/drafts, restores focus and r
   app.store.set(moveViewport$, 12, -18);
   const preserved = app.store.get(editor$);
   click(".preview-open");
+  expect(app.store.get(previewSession$)?.mode).toBe("board");
   expect(app.store.get(previewSession$)?.beads).toBe(1);
   host.querySelector(".preview-dialog")!.dispatchEvent(new Event("cancel", { cancelable: true }));
   expect(app.store.get(editor$)).toBe(preserved);

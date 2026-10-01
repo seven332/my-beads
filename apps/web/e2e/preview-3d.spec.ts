@@ -29,7 +29,8 @@ test("previews the current board and isolates viewing from editing, history, dra
   const dialog = await openPreview(page, supported);
   await expect(dialog.locator(".preview-summary")).toContainText("3 × 3 cells · 4 beads");
   if (supported) {
-    const scene = dialog.getByRole("img", { name: "3D pegboard preview" });
+    await dialog.getByRole("button", { name: "Fused", exact: true }).click();
+    const scene = dialog.getByRole("img", { name: "3D fused artwork preview" });
     const box = (await scene.boundingBox())!;
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
@@ -151,7 +152,7 @@ test("mobile Chinese dark preview fits the viewport and provides touch-sized con
   await page.getByRole("button", { name: "Create blank grid" }).click();
   await selectChoice(page.getByRole("combobox", { name: "Language", exact: true }), "zh-CN");
   await page.getByRole("button", { name: "3D 预览", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "拼豆板上的效果" });
+  const dialog = page.getByRole("dialog", { name: "3D 预览" });
   await expect(dialog).toBeVisible();
   const box = (await dialog.boundingBox())!;
   expect(box.x).toBe(0);

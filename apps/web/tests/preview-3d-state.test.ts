@@ -7,6 +7,7 @@ import {
   previewSession$,
   reportPreview$,
   togglePreviewShadows$,
+  selectPreviewMode$,
 } from "../src/preview-3d-state.js";
 
 it("only opens in the editor and commits a live stroke exactly once before the snapshot", () => {
@@ -28,6 +29,29 @@ it("only opens in the editor and commits a live stroke exactly once before the s
   expect(store.get(state.editor$).canUndo).toBe(false);
   store.set(state.redo$);
   expect(store.get(state.editor$).beads).toBe(3);
+});
+
+it("switches only ready sessions and keeps mode out of the document and subsequent sessions", () => {
+  const store = createStore();
+  store.set(state.newDocument$, 2, 2);
+  store.set(openPreview$);
+  const id = store.get(previewSession$)!.id;
+  const document = store.get(state.committedDocument$);
+  store.set(selectPreviewMode$, "fused");
+  expect(store.get(previewSession$)?.mode).toBe("board");
+  store.set(reportPreview$, id, "ready", true);
+  store.set(selectPreviewMode$, "fused");
+  const selected = store.get(previewSession$);
+  store.set(selectPreviewMode$, "fused");
+  expect(store.get(previewSession$)).toBe(selected);
+  expect(selected?.mode).toBe("fused");
+  expect(store.get(state.committedDocument$)).toBe(document);
+  store.set(reportPreview$, id, "failed");
+  store.set(selectPreviewMode$, "board");
+  expect(store.get(previewSession$)?.mode).toBe("fused");
+  store.set(closePreview$);
+  store.set(openPreview$);
+  expect(store.get(previewSession$)?.mode).toBe("board");
 });
 
 it("keeps shadows session-only, requires readiness/support and resets after failure or reopen", () => {

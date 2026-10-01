@@ -16,7 +16,7 @@ My Beads uses the **MARD 221** palette and supports **English and Simplified Chi
 
 Search the palette by MARD code or hex color. When a hex color has no exact match, compare recommendations based on color difference and preserving chroma.
 
-Open **3D preview** in the editor to inspect your pattern as hollow, unfused beads on a pegboard. Drag to rotate, scroll or pinch to zoom, and use **Reset view** to fit the board again. Viewing leaves your pattern and editing history intact. The preview uses illustrative proportions, requires WebGL2, and does not simulate ironing or melting.
+Open **3D preview** in the editor and switch between **On board**, with hollow beads on a pegboard, and **Fused**, with a solid finished piece and no board. Fused mode closes bead holes and gaps within filled areas while preserving your pattern's empty cells and separate parts. Drag to rotate, scroll or pinch to zoom, and use **Reset view** to fit the current object. Viewing leaves your pattern and editing history intact. The preview requires WebGL2; its proportions and fused appearance are illustrative, not a prediction of actual ironing results.
 
 The board includes two rows of unused pegs around every side of the pattern. Content starts two cells from the board's top-left edge. Grid guide positions start at that content boundary with solid lines, then alternate dashed and solid every five cells in both directions. Each line spans the whole board, including the spare peg border. The extra board pegs do not add cells or beads to your pattern.
 
@@ -124,7 +124,7 @@ pnpm test:production
 
 Tests live alongside their packages and use test-owned fixtures or constructed data, independently of `templates/`. See the [frontend architecture guide](docs/frontend-architecture.md) for state, rendering, translation, and testing conventions.
 
-Use `pnpm benchmark:3d` for opt-in 3D preview measurements against the production build. See the [measurement guide](docs/preview-benchmark.md) for repeated runs, report comparisons and timing limitations. Performance timings are not CI pass/fail thresholds.
+Use `pnpm benchmark:3d` for opt-in 3D preview measurements against the production build, or `pnpm benchmark:fused` to measure mode switches and the finished geometry. See the [measurement guide](docs/preview-benchmark.md) for repeated runs, report comparisons and timing limitations. Performance timings are not CI pass/fail thresholds.
 
 GitHub Actions checks pull requests and deploys the editor to GitHub Pages when changes affecting the web build reach `main`. See the [browser CI guide](docs/browser-ci.md) for filtering, sharding, and test reports, and the [deployment workflow](.github/workflows/pages.yml) for its triggers.
 

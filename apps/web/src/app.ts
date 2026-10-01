@@ -167,6 +167,7 @@ export function mountApp(
     },
     previewAction: (action) => previewController.action(action),
     togglePreviewShadows: () => store.set(preview.togglePreviewShadows$),
+    selectPreviewMode: (mode) => store.set(preview.selectPreviewMode$, mode),
     theme: (preference) => {
       store.set(selectTheme$, preference);
       appearance.save(preference);

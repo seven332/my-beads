@@ -3,10 +3,10 @@ import { ref } from "lit-html/directives/ref.js";
 import { RotateCcw, RotateCw, Minus, Plus, Scan, Sun, X } from "@lucide/icons";
 import type { Translate } from "./i18n/index.js";
 import type { ViewRefs } from "./view-lifecycle.js";
-import type { PreviewSession } from "./preview-3d-state.js";
+import type { PreviewMode, PreviewSession } from "./preview-3d-state.js";
 import type { PreviewAction } from "./preview-3d-controller.js";
 import { modal } from "./ui/dialog.js";
-import { iconButton } from "./ui/button.js";
+import { button, iconButton } from "./ui/button.js";
 
 export interface PreviewActions {
   preparePreview(): void;
@@ -14,6 +14,7 @@ export interface PreviewActions {
   closePreview(): void;
   previewAction(action: PreviewAction): void;
   togglePreviewShadows(): void;
+  selectPreviewMode(mode: PreviewMode): void;
 }
 export function previewView(
   session: PreviewSession | null,
@@ -47,27 +48,44 @@ export function previewView(
           { className: "icon-button", onClick: actions.closePreview },
         )}
       </header>
-      <div class="preview-stage" data-status=${session.status}>
+      <div class="preview-stage" data-status=${session.status} data-mode=${session.mode}>
         <canvas
           class="preview-canvas"
           ${ref(refs.previewCanvas)}
           role="img"
-          aria-label=${t(($) => $.preview.canvas)}
+          aria-label=${session.mode === "board"
+            ? t(($) => $.preview.canvas)
+            : t(($) => $.preview.fusedCanvas)}
           aria-describedby="preview-help"
           tabindex="0"
         ></canvas>
-        ${session.status !== "ready"
+        ${session.status !== "ready" || (session.mode === "fused" && session.beads === 0)
           ? html`<div
               class="preview-message"
               role=${session.status === "failed" ? "alert" : "status"}
             >
               <p>
-                ${session.status === "failed"
-                  ? t(($) => $.preview.failed)
-                  : t(($) => $.preview.loading)}
+                ${session.status === "ready"
+                  ? t(($) => $.preview.empty)
+                  : session.status === "failed"
+                    ? t(($) => $.preview.failed)
+                    : t(($) => $.preview.loading)}
               </p>
             </div>`
           : nothing}
+        <div
+          class="preview-modes floating-panel"
+          role="group"
+          aria-label=${t(($) => $.preview.mode)}
+        >
+          ${(["board", "fused"] as const).map((mode) =>
+            button(mode === "board" ? t(($) => $.preview.board) : t(($) => $.preview.fused), {
+              pressed: session.mode === mode,
+              disabled: session.status !== "ready",
+              onClick: () => actions.selectPreviewMode(mode),
+            }),
+          )}
+        </div>
         <div
           class="preview-controls floating-panel"
           role="group"
@@ -108,7 +126,7 @@ export function previewView(
       <footer class="preview-footer" id="preview-help">
         <p>${t(($) => $.preview.help)}</p>
         <p>
-          ${t(($) => $.preview.note)}
+          ${session.mode === "board" ? t(($) => $.preview.note) : t(($) => $.preview.fusedNote)}
           ${session.status === "ready" && !session.shadowsAvailable
             ? t(($) => $.preview.shadowsUnavailable)
             : t(($) => $.preview.shadowsHelp)}

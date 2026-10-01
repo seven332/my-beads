@@ -529,11 +529,12 @@ they mount the real app and state graph. jsdom lacks native dialog methods, so D
 tests adapt those methods while Chromium/WebKit exercise actual dialogs, image
 decoding, storage, reloads and exported contents. No screenshot baseline is required.
 
-## 3D pegboard preview
+## 3D preview
 
 The editor's 3D action opens a native modal over the persistent 2D canvas.
 `preview-3d-state.ts` owns only a transient session: an immutable grid snapshot,
-title/count and loading status. Opening finishes the current stroke as one history
+title/count, loading status, mode and shadow preference. Each opening starts in
+On board mode. Opening finishes the current stroke as one history
 entry; the entry's pointer-down handler releases Canvas capture before focus moves.
 Camera gestures and preview status never write document, viewport or draft state.
 Editor shortcuts are suspended until closing restores focus to the entry.
@@ -567,7 +568,32 @@ material share the scene's disposal lifetime. The markings reuse the board's AO
 texture described below and add no idle animation.
 The normalized pitch, diameter, bore and height are illustrative, not millimeter
 measurements. Lighting changes the shaded appearance; the palette data and exports
-remain unchanged. There is no 3D editing or fusion simulation.
+remain unchanged. There is no 3D editing or physical fusion simulation.
+
+`preview-3d-fused.ts` builds an illustrative fully fused result on the first mode
+switch, then reuses it within that preview session. Occupied cells have capped
+tops and bottoms, shallow seams, rounded exposed corners and side walls only
+along exposed edges. Shared edge coordinates depend on the same adjacent cells,
+so filled intersections have no holes; diagonal-only neighbors remain separate.
+Bevels stay inside occupied cells to preserve deliberate cutouts. Vertex colors
+retain each original MARD color without blending across cells. The matte plastic
+material shares the scene lighting but does not use pegboard contact AO.
+
+Static indexed meshes cover at most 64 × 64 cells each (16 meshes at 256 × 256),
+with one shared material and finite CPU geometry templates keyed by the eight
+neighbors. Bounds include every generated vertex; camera fitting uses occupied
+fused bounds rather than empty borders or the board. A blank result shows a
+translated message. Board surfaces and fused meshes have mutually exclusive
+visibility, including in shadow passes. Switching mode invalidates the cached
+shadow map; stable fused camera gestures reuse it. The existing full-board light
+envelope contains the thinner result and keeps shadow availability conservative.
+
+Both modes share one renderer/context and keep their geometry until the dialog
+closes. A first switch therefore costs CPU construction and buffer upload;
+repeated switches reuse geometry. This is synchronous and may pause on large
+patterns, especially on slower devices. Closing or failure disposes both models
+and the shared environment/shadow resources. The new geometry adds no textures,
+render targets, dependencies, idle loop, draft fields or export behavior.
 
 `preview-3d-environment.ts` generates a neutral `RoomEnvironment` PMREM once for
 each preview context, with 64-pixel cube faces packed into a 336 × 256 half-float
@@ -680,9 +706,9 @@ axes, using the smallest 1024/2048 map that meets that density and the hardware
 texture limit. A square 88×88 pattern fits; 89×89 does not. Narrow patterns can
 still qualify. This is a quality bound, not a device-speed guarantee. Default-off
 and the performance hint provide the slower-device fallback; large boards retain
-contact AO. The map is regenerated on enable or an actual geometry-tier change,
-not ordinary camera/theme/viewport changes at the same detail. Lights, scene and
-light bounds are immutable during a session; a new document gets a new owner.
+contact AO in On board mode. The map is regenerated on enable, a mode switch or an actual geometry-tier change,
+not ordinary camera/theme/viewport changes at the same detail. Lights and light
+bounds are immutable during a session; a new document gets a new owner.
 Disabling immediately releases the target and receiver filtering. Closing,
 replacement and failure also dispose the shadow target before the renderer.
 Allocation/context failures use the existing translated close/reopen flow, with

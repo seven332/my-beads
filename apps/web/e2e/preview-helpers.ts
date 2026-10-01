@@ -13,7 +13,7 @@ export async function supportsWebGL(page: Page) {
 
 export async function openPreview(page: Page, supported: boolean) {
   await page.getByRole("button", { name: "3D preview", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Beads on the board", exact: true });
+  const dialog = page.getByRole("dialog", { name: "3D preview", exact: true });
   await expect(dialog).toBeVisible();
   await expect(dialog.locator(".preview-stage")).toHaveAttribute(
     "data-status",
@@ -33,6 +33,9 @@ export async function checkBuiltPreview(page: Page) {
       await expect(shadows).toHaveAttribute("aria-pressed", "true");
     }
     await dialog.getByRole("button", { name: "Rotate left" }).click();
+    await dialog.getByRole("button", { name: "Fused", exact: true }).click();
+    await expect(dialog.getByRole("img", { name: "3D fused artwork preview" })).toBeVisible();
+    await dialog.getByRole("button", { name: "On board", exact: true }).click();
     await dialog.getByRole("button", { name: "Reset view" }).click();
   } else await expect(dialog.getByRole("alert")).toContainText("keep editing");
   await page.keyboard.press("Escape");

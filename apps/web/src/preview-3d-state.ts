@@ -3,12 +3,14 @@ import type { PatternGrid } from "@my-beads/core";
 import { editor$, finishStroke$, workflow$ } from "./state.js";
 
 export type PreviewStatus = "loading" | "ready" | "failed";
+export type PreviewMode = "board" | "fused";
 export interface PreviewSession {
   id: number;
   grid: PatternGrid;
   title: string;
   beads: number;
   status: PreviewStatus;
+  mode: PreviewMode;
   shadows: boolean;
   shadowsAvailable: boolean;
 }
@@ -28,6 +30,7 @@ export const openPreview$ = command(({ get, set }) => {
     title: model.title,
     beads: model.beads,
     status: "loading",
+    mode: "board",
     shadows: false,
     shadowsAvailable: false,
   });
@@ -49,4 +52,10 @@ export const togglePreviewShadows$ = command(({ get, set }) => {
   const session = get(sessionState$);
   if (session?.status === "ready" && session.shadowsAvailable)
     set(sessionState$, { ...session, shadows: !session.shadows });
+});
+
+export const selectPreviewMode$ = command(({ get, set }, mode: PreviewMode) => {
+  const session = get(sessionState$);
+  if (session?.status === "ready" && session.mode !== mode)
+    set(sessionState$, { ...session, mode });
 });
