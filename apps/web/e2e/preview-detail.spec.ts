@@ -3,7 +3,8 @@ import { installPreviewProbe } from "../benchmarks/probe.js";
 import { openPreview, supportsWebGL } from "./preview-helpers.js";
 
 // Match physical framebuffer size so both engines cross the same pixel-error thresholds.
-test.use({ deviceScaleFactor: 1 });
+// A small grid/viewport visits every tier without making this CI regression a throughput benchmark.
+test.use({ deviceScaleFactor: 1, viewport: { width: 480, height: 480 } });
 
 const read = (page: Page) => page.evaluate(() => window.previewBenchmark.snapshot());
 async function settle(page: Page, count = 4) {
@@ -20,7 +21,7 @@ async function setup(page: Page) {
       name: "Detail.csv",
       mimeType: "text/csv",
       buffer: Buffer.from(
-        Array.from({ length: 50 }, () => Array<string>(50).fill("H2").join(",")).join("\n"),
+        Array.from({ length: 20 }, () => Array<string>(20).fill("H2").join(",")).join("\n"),
       ),
     });
   return supportsWebGL(page);
@@ -71,10 +72,10 @@ test("changes submitted detail with zoom, reuses warmed variants and releases ev
   );
   // RoomEnvironment uses other counts; these two identify the complete document/lattice draws.
   const beads = new Set(
-    submitted.filter((draw) => draw.instances === 2500).map((draw) => draw.indices),
+    submitted.filter((draw) => draw.instances === 400).map((draw) => draw.indices),
   );
   const pegs = new Set(
-    submitted.filter((draw) => draw.instances === 2916).map((draw) => draw.indices),
+    submitted.filter((draw) => draw.instances === 576).map((draw) => draw.indices),
   );
   expect(Math.min(...beads)).toBe(6 * 14 * 3);
   expect(Math.max(...beads)).toBe(32 * 14 * 3);

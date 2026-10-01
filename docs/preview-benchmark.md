@@ -301,6 +301,15 @@ Both comparison commands accepted environment, protocol, repeats and lifecycle
 invariants. This supplies full-matrix WebKit evidence and small-case Chromium
 evidence, not repeated maximum-software-renderer or physical-phone timings.
 
+A separate single Chromium 256-full run on `73e1d83` (the same production code,
+with a test-only synchronization fix) completed all three openings, gestures and
+lifecycle/document checks in 4.4 minutes. First-ready was 167.9 ms and warm
+openings 148.1/145.2 ms; paced orbit P95 remained slow at 3649.8 ms on SwiftShader.
+This is additional maximum-size coverage, not a repeated before/after comparison
+or evidence that fewer triangles alone solve software-renderer latency. Its raw
+report is in `codex-work/benchmarks/issue-99-candidate-software-large`; matched
+view captures use `issue-99-candidate-chromium-256-full-*`.
+
 ```sh
 PREVIEW_BENCHMARK_DEVICE=local-m4-pro pnpm benchmark:3d --project=webkit --repeat-each=3 --output=../../codex-work/benchmarks/issue-99-baseline-webkit
 # Repeat on the candidate, using issue-99-candidate-webkit.
