@@ -109,17 +109,17 @@ it("prebuilds a finite set with physical bores, AO coordinates and exact triangl
 it("reuses variants without moving instances and keeps invariant bounds across transitions", () => {
   const model = createPegboardScene([["H2", "H7", "B15"]]);
   const camera = new PerspectiveCamera(40, 1, 0.05, 4000);
-  const matrices = model.beads.instanceMatrix.array.slice();
-  const colors = model.beads.instanceColor!.array.slice();
-  const material = model.beads.material;
-  const bounds = model.beads.boundingSphere!.clone();
-  const variants = new Map<number, typeof model.beads.geometry>();
+  const matrices = model.beads[0].instanceMatrix.array.slice();
+  const colors = model.beads[0].instanceColor!.array.slice();
+  const material = model.beads[0].material;
+  const bounds = model.beads[0].boundingSphere!.clone();
+  const variants = new Map<number, (typeof model.beads)[number]["geometry"]>();
   const disposed = vi.fn();
   for (const distance of [3000, 250, 150, 90, 35, 10, 35, 90, 150, 250, 3000]) {
     camera.position.set(0, distance, 0);
     camera.lookAt(0, 0, 0);
     model.updateDetail(camera, 1000);
-    const geometry = model.beads.geometry;
+    const geometry = model.beads[0].geometry;
     const segments = geometry.parameters.segments;
     if (variants.has(segments)) expect(geometry).toBe(variants.get(segments));
     else {
@@ -127,15 +127,15 @@ it("reuses variants without moving instances and keeps invariant bounds across t
       geometry.addEventListener("dispose", disposed);
     }
     expect(model.updateDetail(camera, 1000)).toBe(false);
-    expect(model.beads.instanceMatrix.array).toEqual(matrices);
-    expect(model.beads.instanceColor!.array).toEqual(colors);
-    expect(model.beads.material).toBe(material);
-    expect(model.beads.boundingSphere).toEqual(bounds);
+    expect(model.beads[0].instanceMatrix.array).toEqual(matrices);
+    expect(model.beads[0].instanceColor!.array).toEqual(colors);
+    expect(model.beads[0].material).toBe(material);
+    expect(model.beads[0].boundingSphere).toEqual(bounds);
     model.scene.updateMatrixWorld(true);
     const hole = new Raycaster(new Vector3(-0.86, 2, 0), new Vector3(0, -1, 0));
-    expect(hole.intersectObject(model.beads)).toHaveLength(0);
+    expect(hole.intersectObject(model.beads[0])).toHaveLength(0);
     expect(hole.intersectObject(model.board)).toHaveLength(1);
-    for (const mesh of [model.beads, model.pegs]) {
+    for (const mesh of [model.beads[0], model.pegs[0]]) {
       const box = mesh.boundingBox!;
       for (const x of [box.min.x, box.max.x])
         for (const y of [box.min.y, box.max.y])

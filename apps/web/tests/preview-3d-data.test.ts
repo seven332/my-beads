@@ -35,27 +35,29 @@ it("builds hollow beads, matching pegs, and a full board even for blank patterns
     [null, "H7", null],
     ["H2", null, null],
   ]);
-  expect([model.width, model.depth, model.beads.count, model.pegs.count]).toEqual([7, 6, 2, 42]);
+  expect([model.width, model.depth, model.beads[0].count, model.pegs[0].count]).toEqual([
+    7, 6, 2, 42,
+  ]);
   const matrix = new Matrix4();
-  model.beads.getMatrixAt(0, matrix);
+  model.beads[0].getMatrixAt(0, matrix);
   expect(matrix.elements.slice(12, 15)).toEqual([0, 0, -0.5]);
-  model.pegs.getMatrixAt(2 * model.width + 3, matrix);
+  model.pegs[0].getMatrixAt(2 * model.width + 3, matrix);
   expect(matrix.elements[12]).toBe(0);
   expect(matrix.elements[14]).toBe(-0.5);
   const color = new Color();
-  model.beads.getColorAt(1, color);
+  model.beads[0].getColorAt(1, color);
   expect(color.getHexString()).toBe("ffffff");
-  const positions = model.beads.geometry.getAttribute("position");
+  const positions = model.beads[0].geometry.getAttribute("position");
   for (let i = 0; i < positions.count; i++) {
     const radius = Math.hypot(positions.getX(i), positions.getZ(i));
     expect(radius).toBeGreaterThanOrEqual(beadShape.hole - 1e-6);
     expect(radius).toBeLessThanOrEqual(beadShape.radius + 1e-6);
   }
   const disposed = vi.fn();
-  model.beads.addEventListener("dispose", disposed);
-  model.pegs.addEventListener("dispose", disposed);
-  model.beads.geometry.addEventListener("dispose", disposed);
-  model.pegs.geometry.addEventListener("dispose", disposed);
+  model.beads[0].addEventListener("dispose", disposed);
+  model.pegs[0].addEventListener("dispose", disposed);
+  model.beads[0].geometry.addEventListener("dispose", disposed);
+  model.pegs[0].geometry.addEventListener("dispose", disposed);
   model.guides.geometry.addEventListener("dispose", disposed);
   model.guides.material.addEventListener("dispose", disposed);
   model.dispose();
@@ -65,8 +67,8 @@ it("builds hollow beads, matching pegs, and a full board even for blank patterns
     [null, null],
     [null, null],
   ]);
-  expect(blank.beads.count).toBe(0);
-  expect(blank.pegs.count).toBe(42);
+  expect(blank.beads).toHaveLength(0);
+  expect(blank.pegs[0].count).toBe(42);
   blank.dispose();
 });
 
@@ -76,17 +78,28 @@ it("preserves every palette instance color and bead placement with environment l
   const direct = createPegboardScene(grid);
   const lit = createPegboardScene(grid, environment);
   expect(lit.scene.environment).toBe(environment);
-  expect(lit.beads.instanceColor!.array).toEqual(direct.beads.instanceColor!.array);
-  expect(lit.beads.instanceMatrix.array).toEqual(direct.beads.instanceMatrix.array);
-  expect(lit.pegs.instanceMatrix.array).toEqual(direct.pegs.instanceMatrix.array);
-  expect(lit.beads.geometry.getAttribute("position").array).toEqual(
-    direct.beads.geometry.getAttribute("position").array,
+  expect(lit.beads.map((mesh) => mesh.instanceColor!.array)).toEqual(
+    direct.beads.map((mesh) => mesh.instanceColor!.array),
+  );
+  expect(lit.beads.map((mesh) => mesh.instanceMatrix.array)).toEqual(
+    direct.beads.map((mesh) => mesh.instanceMatrix.array),
+  );
+  expect(lit.pegs.map((mesh) => mesh.instanceMatrix.array)).toEqual(
+    direct.pegs.map((mesh) => mesh.instanceMatrix.array),
+  );
+  expect(lit.beads[0].geometry.getAttribute("position").array).toEqual(
+    direct.beads[0].geometry.getAttribute("position").array,
   );
   const color = new Color();
-  grid[0].forEach((code, index) => {
-    lit.beads.getColorAt(index, color);
-    expect(color.getHexString().toUpperCase()).toBe(defaultPalette.colors[code].slice(1));
-  });
+  let index = 0;
+  for (const mesh of lit.beads)
+    for (let instance = 0; instance < mesh.count; instance++) {
+      mesh.getColorAt(instance, color);
+      expect(color.getHexString().toUpperCase()).toBe(
+        defaultPalette.colors[grid[0][index++]].slice(1),
+      );
+    }
+  expect(index).toBe(grid[0].length);
   lit.dispose();
   direct.dispose();
   environment.dispose();
@@ -116,23 +129,23 @@ it("fills all four two-cell margins with pegs while content beads stay on their 
   const model = createPegboardScene(grid);
   const positions = new Set<string>();
   const matrix = new Matrix4();
-  for (let i = 0; i < model.pegs.count; i++) {
-    model.pegs.getMatrixAt(i, matrix);
+  for (let i = 0; i < model.pegs[0].count; i++) {
+    model.pegs[0].getMatrixAt(i, matrix);
     positions.add(`${matrix.elements[12]},${matrix.elements[14]}`);
   }
   // A complete 16 by 11 lattice, with no holes, duplicates or missing corners.
-  expect(model.pegs.count).toBe(176);
+  expect(model.pegs[0].count).toBe(176);
   expect(positions.size).toBe(176);
   for (let z = -5; z <= 5; z++)
     for (let x = -7.5; x <= 7.5; x++) expect(positions.has(`${x},${z}`)).toBe(true);
-  expect(model.beads.count).toBe(2);
+  expect(model.beads[0].count).toBe(2);
   for (const [bead, peg, x, z] of [
     [0, 34, -5.5, -3],
     [1, 141, 5.5, 3],
   ]) {
-    model.beads.getMatrixAt(bead, matrix);
+    model.beads[0].getMatrixAt(bead, matrix);
     expect(matrix.elements.slice(12, 15)).toEqual([x, 0, z]);
-    model.pegs.getMatrixAt(peg, matrix);
+    model.pegs[0].getMatrixAt(peg, matrix);
     expect([matrix.elements[12], matrix.elements[14]]).toEqual([x, z]);
   }
   model.dispose();
@@ -187,8 +200,8 @@ it.each([
       Array.from({ length: rows }, () => Array<null>(columns).fill(null)),
     );
     expect([model.width, model.depth]).toEqual([columns + 4, rows + 4]);
-    expect(model.pegs.count).toBe((columns + 4) * (rows + 4));
-    expect(model.beads.count).toBe(0);
+    expect(model.pegs.reduce((sum, mesh) => sum + mesh.count, 0)).toBe((columns + 4) * (rows + 4));
+    expect(model.beads).toHaveLength(0);
     model.board.geometry.computeBoundingBox();
     expect(model.board.geometry.boundingBox!.getSize(new Vector3()).toArray()).toEqual([
       model.width,
@@ -225,14 +238,16 @@ it("keeps all 65,536 beads with bounded geometry and framebuffer work", () => {
   const model = createPegboardScene(
     Array.from({ length: 256 }, () => Array<string>(256).fill("B15")),
   );
-  expect(model.beads.count).toBe(65536);
-  expect(model.pegs.count).toBe(67600);
-  const triangles =
-    (model.beads.geometry.index!.count / 3) * model.beads.count +
-    (model.pegs.geometry.index!.count / 3) * model.pegs.count;
+  expect(model.beads.reduce((sum, mesh) => sum + mesh.count, 0)).toBe(65536);
+  expect(model.pegs.reduce((sum, mesh) => sum + mesh.count, 0)).toBe(67600);
+  const triangles = [...model.beads, ...model.pegs].reduce(
+    (sum, mesh) => sum + (mesh.geometry.index!.count / 3) * mesh.count,
+    0,
+  );
   expect(triangles).toBeLessThan(10_000_000);
   const matrix = new Matrix4();
-  model.beads.getMatrixAt(65535, matrix);
+  const last = model.beads.at(-1)!;
+  last.getMatrixAt(last.count - 1, matrix);
   expect(matrix.elements.slice(12, 15)).toEqual([127.5, 0, 127.5]);
   model.dispose();
   for (const [width, height, dpr] of [

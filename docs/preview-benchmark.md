@@ -373,11 +373,82 @@ The lazy renderer chunk grows by 1.61 kB raw / 0.65 kB gzip. No new dependency,
 render pass, target or idle animation is added. GPU timer and physical-phone
 evidence remain unavailable.
 
+## Spatial culling — 2026-10-01 (#100)
+
+The baseline is clean main `6ea22ce` (including #99). Final candidate reports
+record that base with a dirty implementation worktree. The same M4 Pro, browsers,
+backends, viewport, framebuffer and preview-v1 protocol above are retained. Each
+run keeps its production source unchanged and uses a single benchmark worker.
+Reports are in `codex-work/benchmarks/issue-100-{baseline,final}-{webkit,chromium}`:
+three repeats of all ten WebKit cases and of Chromium 100-sparse/17x100-sparse.
+Earlier `candidate-webkit` and `trial-*` directories are separate exploratory
+sets, not mixed into the final comparison.
+
+Static spatial batches use a maximum span of 64 cells, balanced across the full
+peg lattice including margins. Empty bead batches are omitted; every bead and
+peg remains in exactly one group. Fitted nonempty draw counts are unchanged at
+4 for 50×50, increase to 10 for 100×100, and to 52 for 256×256. Blank equivalents
+are 3, 6 and 27. Fitted triangle counts and the ten-million global detail budget
+are unchanged. Native per-pass sphere tests retain conservative offscreen work;
+three-click close-up views can still submit every group.
+
+Three-repeat WebKit maximum-full trials compared 64- and 128-cell spans before
+selection. The 128 option used 20 fitted draws and 50 peak buffers; 64 used 52
+and 98. First-ready medians were 117/120 ms and warm medians 85.5/84 ms,
+respectively, against 110/78.5 ms without grouping. Orbit CPU P95 was 2 ms in all
+three variants. Along the standard pan path, 128 never removed a group, while
+64 reduced submissions to 7,133,332 triangles from 8,448,788. The smaller groups
+therefore provide useful savings within a bounded traversal/handle cost; this
+does not imply every camera view is faster.
+
+Final WebKit medians (first-ready / all six warm openings, ms) are
+75 / 48.5 → 78 / 48.5 for 50-sparse, 77 / 50.5 → 80 / 53.5 for 100-sparse,
+82 / 55 → 86 / 55 for 100-full, and 110 / 78.5 → 116 / 83 for 256-full.
+Maximum blank/sparse first-ready rises by 5/6 ms. Some startup and warm values
+fall outside the earlier repeat envelope; these are measured batch construction
+and first-use resource trade-offs, not a universal startup improvement. Orbit
+CPU P95 stays 1–2 ms and paced orbit P95 stays 17–18 ms. A few pan CPU medians
+rise by 1 ms at WebKit's coarse resolution.
+
+Chromium/SwiftShader 100-sparse first-ready/all-warm medians are
+139.9/122.7 → 140.6/120.7 ms; narrow medians are 144.5/112.4 → 138.5/112.5 ms.
+Orbit CPU P95 rises from 0.2 to 0.3 ms; paced orbit P95 is 284.3 → 300.8 ms
+for 100-sparse and 83.9 → 84.1 ms for the narrow case, within the earlier paced
+repeat ranges. These views show batch overhead without a demonstrated software
+interaction speedup. Both final comparison commands accept matching protocol,
+environment, repeat coverage and lifecycle/document invariants.
+
+Across the final WebKit matrix, maximum context buffer/VAO peaks increase from
+36/12 to 98/77. Texture, framebuffer, renderbuffer and program peaks stay
+8/5/1/5. These are handle counts, not VRAM byte estimates. Per-session instance
+buffers are bounded by 25 bead batches and 25 peg batches; the nine finite
+geometry variants remain shared. Empty boards no longer upload unused bead
+variants. Every measured opening preserves idle, release, draft and CSV checks.
+
+Separate manual eight-step zoom captures on maximum full WebKit submit
+5,408,980 triangles in 30 draws; rotation plus pan submits 5,763,860 in 32.
+These are additional deep-view observations, not changes to the comparison
+protocol. The compact native regression uses a generated 128×4 pattern and
+verifies decreased bead/peg instance totals after zoom, full restoration after
+reset, reuse of warmed resources, idle behavior and complete release. CPU tests
+enumerate complete instance/color coverage, all tier bounds and independent
+main/light frustums, including blank and narrow boards.
+
+Manual screenshots are under `codex-work/screenshots/issue-100-*`: matched
+standard fitted/close views, sparse batch boundaries, long narrow boards,
+black/white/saturated colors and both themes/engines. Deep maximum full views
+were reviewed in WebKit. No missing chunks, boundary seams or lost holes were
+observed. The lazy renderer grows by 0.58 kB raw / 0.27 kB gzip; main bundle and
+CSS sizes are unchanged. No new shader feature, render target, dependency or
+idle frame is introduced. GPU timers, physical phones and repeated maximum
+Chromium timings remain unverified; #99's software-renderer latency limitation
+still applies.
+
 ## Validation
 
 ```sh
 pnpm --filter @my-beads/web test preview-benchmark.test.ts
-pnpm test:e2e preview-benchmark.spec.ts preview-environment.spec.ts preview-output.spec.ts preview-occlusion.spec.ts preview-detail.spec.ts preview-3d.spec.ts preview-rendering.spec.ts --workers 2 --retries 0
+pnpm test:e2e preview-benchmark.spec.ts preview-environment.spec.ts preview-output.spec.ts preview-occlusion.spec.ts preview-detail.spec.ts preview-culling.spec.ts preview-3d.spec.ts preview-rendering.spec.ts --workers 2 --retries 0
 ```
 
 The repository's format/lint/typecheck/package tests/build and production smoke commands still apply. No `templates/` files are used by the benchmark or its tests.
