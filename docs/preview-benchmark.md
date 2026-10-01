@@ -1,5 +1,9 @@
 # 3D preview measurements
 
+The production preview's optional **Cast shadows** control starts off in every
+session. The normal benchmark below measures that default. Use the separate
+[shadow study](#optional-cached-shadows--2026-10-01) for controlled effect comparisons.
+
 The opt-in benchmark drives the normal production editor, with generated CSV patterns and browser-only instrumentation. It does not add monitoring to the shipped app or run the timing matrix in CI. The small probe regression runs with the ordinary browser suite; statistical and compatibility checks run with web unit tests.
 
 ## Run and compare
@@ -444,11 +448,109 @@ idle frame is introduced. GPU timers, physical phones and repeated maximum
 Chromium timings remain unverified; #99's software-renderer latency limitation
 still applies.
 
+## Optional cached shadows — 2026-10-01
+
+Issue #101 adds an optional fixed-key PCF shadow. It starts **off** each time the
+preview opens, so slower devices keep the existing contact-AO path. Availability
+requires at least 16 texels per pitch on both axes of the full-board light camera,
+including filter padding, within a 1024/2048 map and the actual hardware limit.
+This is an explicit quality policy, not a frame-rate guarantee. Square 88×88
+patterns qualify; 89×89 do not. A 17×100 narrow pattern qualifies. A 2048 map has
+27.3 texels/pitch on a 54×54 slab but only 5.7 on a 260×260 slab, so maximum-board
+cast shadows are deferred rather than raising the cap. At the cap, color/depth
+attachments nominally total 32 MiB (8 MiB at 1024), excluding driver overhead.
+
+The normal production benchmark measures shadows off. The opt-in diagnostic
+below separately evaluates both map sizes and shadows off using the same scene,
+environment, detail, batching and light-camera fit modules:
+
+```sh
+PREVIEW_BENCHMARK_DEVICE="local-desktop" pnpm benchmark:shadows --project=webkit --repeat-each=3 --output=../../codex-work/benchmarks/shadow-study-webkit
+PREVIEW_BENCHMARK_DEVICE="local-desktop" pnpm benchmark:shadows --project=chromium --grep '50-|partially' --repeat-each=3 --output=../../codex-work/benchmarks/shadow-study-chromium
+```
+
+This owns a dev server on port 4176 with no reuse. It is **not** the production
+editor startup protocol: it drives a dedicated canvas at 1198×758, DPR 1 and
+explicit camera poses. Reports use `shadow-study-v1:1198x758:dpr1:24orbit:dev-scene`,
+include source/host/browser/backend metadata, and are not inputs to the normal
+comparison command. Module loading precedes setup CPU timing. First-render CPU
+includes visible-scene shader work and, when enabled, initial shadow creation;
+it does not isolate only the map. A forced refresh at unchanged geometry after
+the cached orbit measures a warmed generation-containing render separately.
+Native framebuffer viewports and per-caster callbacks verify which frames really
+generate a map. Cached filtering remains part of every receiver draw.
+
+Three repeats on the same M4 Pro host/backends described above produced these
+medians. The first-render column excludes setup; paced P95 includes diagnostic
+transport/RAF synchronization and must not be converted to FPS.
+
+| Case/backend                      | First-render CPU, off → 2048 | Cached-orbit paced P95, off → 2048 |
+| --------------------------------- | ---------------------------- | ---------------------------------- |
+| 50-sparse, WebKit / Apple GPU     | 17 → 22 ms                   | 17 → 17 ms                         |
+| 50-full, WebKit / Apple GPU       | 17 → 22 ms                   | 17 → 18 ms                         |
+| 50-sparse, Chromium / SwiftShader | 54.0 → 62.2 ms               | 134.3 → 150.7 ms                   |
+| 50-full, Chromium / SwiftShader   | 50.6 → 61.8 ms               | 450.7 → 484.0 ms                   |
+
+Cached-orbit CPU P95 stayed 1–2 ms in WebKit and 0.2–0.3 ms in Chromium. WebKit's
+warmed forced refresh was 2–3 ms on small shadowed boards versus 0–1 ms without
+shadows; CPU submission does not reveal software GPU execution. The 1024 candidate
+showed similar recurring costs and lower spatial detail. The small software paced
+increase was repeated in each off/1024/2048 block: it supports keeping the effect
+optional, not assuming caching makes it free. No GPU timer or physical-phone
+measurement is available. Mobile screenshots are desktop viewport emulation.
+
+All 39 WebKit study cases (four fixtures × three modes × three repeats, plus
+three failure cases) and 21 Chromium cases (two small fixtures × three modes ×
+three repeats, plus failures) passed. The maximum-board experiment retained all
+50 caster batches and included 14 outside the panned main-camera frustum.
+Stable-detail camera frames generated no maps; actual tier changes refreshed
+them. Idle draws and live handles after teardown were zero, including injected
+partial allocation failure. Shadowed small scenes retain two extra textures and
+one extra framebuffer; peak programs/VAOs increased 5/12 → 7/14 in the WebKit
+diagnostic. Target disposal is explicit, with remaining renderer defaults
+separately reclaimed on context loss.
+
+Manual images show useful directional contact on small sparse/full boards;
+holes and counting guides remain readable without obvious detached shadows or
+self-shadow stripes in the reviewed fitted, top and oblique views. The 16-texel
+boundary also received a close-up inspection in the final editor. Thin shadows
+can still alias at extreme magnification, and the existing distant dense-board
+aliasing is not solved by this effect. Images are under
+`codex-work/screenshots/issue-101-*`; the final set includes both themes and
+desktop/mobile controls. Raw study reports are in
+`codex-work/benchmarks/issue-101-{webkit,chromium}/` on the 5037f33 worktree.
+
+Production tests additionally exercise the translated pressed-state control,
+default-off allocations, unavailable-board messaging, detail invalidation,
+camera reuse, repeated enable/disable release, error/retry, document/draft
+isolation and the deployed Pages path. The diagnostic is excluded from the
+production dependency graph and ordinary browser timing matrix. Its generated
+fixtures do not depend on repository templates.
+
+The final default-off production matrix passed three repeats of all ten WebKit
+cases and the same two Chromium cases used by #100 (100-sparse and 17×100-sparse).
+The comparison tool accepted matching protocols/environments/framebuffers and
+reported unchanged draw, triangle and resource counts in every case. WebKit
+first-ready medians changed by −3 to +3 ms across the matrix; its 50-full startup
+and 256-full warm medians exceeded the earlier repeat maximum by 2 ms, with some
+1 ms CPU/pacing flags at the timer's coarse resolution. These observations do
+not prove zero startup cost. Chromium 100-sparse first-ready stayed 140.6 ms,
+orbit CPU P95 stayed 0.3 ms and paced orbit P95 changed 300.8→300.4 ms. Narrow-board
+paced P95 changed 84.1→83.9 ms. No recurring additional GPU submissions or targets
+exist while disabled; no GPU-speed improvement is claimed. Reports are in
+`issue-101-final-{webkit,chromium}`, compared with `issue-100-final-*`.
+
+The lazy renderer grows 570.16→571.83 kB raw / 142.83→143.44 kB gzip. Main JS grows
+194.96→196.01 kB raw / 66.15→66.48 kB gzip for the session control/translations;
+CSS grows 38.88→39.17 kB raw. The experiment page and runner are not emitted in
+the production build. Existing large-board software latency remains a limitation
+of the combined #94 work, even with shadows unavailable there.
+
 ## Validation
 
 ```sh
 pnpm --filter @my-beads/web test preview-benchmark.test.ts
-pnpm test:e2e preview-benchmark.spec.ts preview-environment.spec.ts preview-output.spec.ts preview-occlusion.spec.ts preview-detail.spec.ts preview-culling.spec.ts preview-3d.spec.ts preview-rendering.spec.ts --workers 2 --retries 0
+pnpm test:e2e preview-benchmark.spec.ts preview-environment.spec.ts preview-output.spec.ts preview-occlusion.spec.ts preview-detail.spec.ts preview-culling.spec.ts preview-3d.spec.ts preview-rendering.spec.ts preview-shadows.spec.ts --workers 2 --retries 0
 ```
 
 The repository's format/lint/typecheck/package tests/build and production smoke commands still apply. No `templates/` files are used by the benchmark or its tests.

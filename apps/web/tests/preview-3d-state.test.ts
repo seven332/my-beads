@@ -6,6 +6,7 @@ import {
   closePreview$,
   previewSession$,
   reportPreview$,
+  togglePreviewShadows$,
 } from "../src/preview-3d-state.js";
 
 it("only opens in the editor and commits a live stroke exactly once before the snapshot", () => {
@@ -27,6 +28,29 @@ it("only opens in the editor and commits a live stroke exactly once before the s
   expect(store.get(state.editor$).canUndo).toBe(false);
   store.set(state.redo$);
   expect(store.get(state.editor$).beads).toBe(3);
+});
+
+it("keeps shadows session-only, requires readiness/support and resets after failure or reopen", () => {
+  const store = createStore();
+  store.set(state.newDocument$, 2, 2);
+  store.set(openPreview$);
+  const id = store.get(previewSession$)!.id;
+  const draft = store.get(state.committedDocument$);
+  store.set(togglePreviewShadows$);
+  expect(store.get(previewSession$)?.shadows).toBe(false);
+  store.set(reportPreview$, id, "ready", false);
+  store.set(togglePreviewShadows$);
+  expect(store.get(previewSession$)?.shadows).toBe(false);
+  store.set(reportPreview$, id, "ready", true);
+  store.set(togglePreviewShadows$);
+  expect(store.get(previewSession$)?.shadows).toBe(true);
+  expect(store.get(state.committedDocument$)).toBe(draft);
+  store.set(reportPreview$, id, "failed");
+  expect(store.get(previewSession$)?.shadows).toBe(false);
+  store.set(closePreview$);
+  store.set(openPreview$);
+  store.set(reportPreview$, id, "ready", true);
+  expect(store.get(previewSession$)).toMatchObject({ shadows: false, shadowsAvailable: false });
 });
 
 it("preserves both history directions and presentation state; rejects late status after reopen", () => {

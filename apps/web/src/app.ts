@@ -61,8 +61,8 @@ export function mountApp(
     ),
   );
   const lifetime = new AbortController();
-  const previewController = createPreviewController((id, status) => {
-    if (!lifetime.signal.aborted) store.set(preview.reportPreview$, id, status);
+  const previewController = createPreviewController((id, status, shadowsAvailable) => {
+    if (!lifetime.signal.aborted) store.set(preview.reportPreview$, id, status, shadowsAvailable);
   }, adapters.loadPreview);
   const pickerMedia = window.matchMedia("(max-width: 900px), (max-height: 600px)");
   store.set(setPickerCompact$, pickerMedia.matches);
@@ -166,6 +166,7 @@ export function mountApp(
       host.querySelector<HTMLElement>(".preview-open")?.focus({ preventScroll: true });
     },
     previewAction: (action) => previewController.action(action),
+    togglePreviewShadows: () => store.set(preview.togglePreviewShadows$),
     theme: (preference) => {
       store.set(selectTheme$, preference);
       appearance.save(preference);

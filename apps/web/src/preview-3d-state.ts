@@ -9,6 +9,8 @@ export interface PreviewSession {
   title: string;
   beads: number;
   status: PreviewStatus;
+  shadows: boolean;
+  shadowsAvailable: boolean;
 }
 const sessionState$ = state<PreviewSession | null>(null);
 const sequence$ = state(0);
@@ -26,10 +28,25 @@ export const openPreview$ = command(({ get, set }) => {
     title: model.title,
     beads: model.beads,
     status: "loading",
+    shadows: false,
+    shadowsAvailable: false,
   });
 });
 export const closePreview$ = command(({ set }) => set(sessionState$, null));
-export const reportPreview$ = command(({ get, set }, id: number, status: PreviewStatus) => {
+export const reportPreview$ = command(
+  ({ get, set }, id: number, status: PreviewStatus, shadowsAvailable = false) => {
+    const session = get(sessionState$);
+    if (session?.id === id)
+      set(sessionState$, {
+        ...session,
+        status,
+        shadowsAvailable: status === "ready" && shadowsAvailable,
+        shadows: status === "ready" && session.shadows,
+      });
+  },
+);
+export const togglePreviewShadows$ = command(({ get, set }) => {
   const session = get(sessionState$);
-  if (session?.id === id && session.status !== status) set(sessionState$, { ...session, status });
+  if (session?.status === "ready" && session.shadowsAvailable)
+    set(sessionState$, { ...session, shadows: !session.shadows });
 });

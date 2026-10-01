@@ -20,6 +20,7 @@ import {
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { createPreviewEnvironment } from "./preview-3d-environment.js";
 import { createPreviewBatches } from "./preview-3d-batches.js";
+import { createPreviewShadows } from "./preview-3d-shadows.js";
 import { createPreviewOcclusion, setBoardOcclusionUV } from "./preview-3d-occlusion.js";
 import {
   createPreviewGeometries,
@@ -123,6 +124,7 @@ export function createPegboardScene(grid: PatternGrid, environment: Texture | nu
     pegs,
     board,
     guides,
+    key,
     width: layout.width,
     depth: layout.depth,
     /** Returns true only when geometry changes; future shadow caches must then invalidate. */
@@ -169,6 +171,7 @@ export function mountPreview3D(
   let renderer: WebGLRenderer | undefined;
   let environment: WebGLRenderTarget | null = null;
   let model: ReturnType<typeof createPegboardScene> | undefined;
+  let shadows: ReturnType<typeof createPreviewShadows> | undefined;
   let controls: OrbitControls | undefined;
   let observer: ResizeObserver | undefined;
   let resolution: MediaQueryList | undefined;
@@ -188,6 +191,7 @@ export function mountPreview3D(
     document.removeEventListener("visibilitychange", schedule);
     canvas.removeEventListener("webglcontextlost", lost);
     controls?.dispose();
+    shadows?.dispose();
     if (model) model.scene.environment = null;
     environment?.dispose();
     model?.dispose();
@@ -210,7 +214,7 @@ export function mountPreview3D(
     frame = 0;
     if (destroyed || !model || !renderer || document.hidden) return;
     try {
-      model.updateDetail(camera, canvas.height);
+      if (model.updateDetail(camera, canvas.height)) shadows?.invalidate();
       renderer.render(model.scene, camera);
       if (renderer.getContext().isContextLost()) return fail();
       if (!ready) {
@@ -290,6 +294,7 @@ export function mountPreview3D(
     renderer.toneMapping = environment ? NeutralToneMapping : NoToneMapping;
     renderer.toneMappingExposure = environment ? 1.1 : 1;
     model = createPegboardScene(grid, environment?.texture);
+    shadows = createPreviewShadows(renderer, model);
     controls = new OrbitControls(camera, canvas);
     controls.enableDamping = false;
     controls.minPolarAngle = 0.05;
@@ -307,6 +312,12 @@ export function mountPreview3D(
   }
   return {
     theme,
+    shadowsAvailable: shadows.available,
+    shadows(enabled: boolean) {
+      if (destroyed) return;
+      shadows?.setEnabled(enabled);
+      schedule();
+    },
     action(action: PreviewAction) {
       if (destroyed || !controls) return;
       if (action === "reset") return fit();

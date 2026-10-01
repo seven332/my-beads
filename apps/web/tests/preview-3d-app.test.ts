@@ -18,7 +18,13 @@ import type { PreviewLoader } from "../src/preview-3d-controller.js";
 let app: ReturnType<typeof mountApp>;
 let host: HTMLElement;
 let values: Map<string, string>;
-const gpu = { theme: vi.fn(), action: vi.fn(), destroy: vi.fn() };
+const gpu = {
+  theme: vi.fn(),
+  action: vi.fn(),
+  destroy: vi.fn(),
+  shadows: vi.fn(),
+  shadowsAvailable: true,
+};
 const load = vi.fn<PreviewLoader>(async () => ({
   mountPreview3D: vi.fn((_canvas, _grid, _theme, report) => {
     report("ready");
@@ -86,12 +92,18 @@ it("loads only on demand, isolates camera/shortcuts/drafts, restores focus and r
   expect(app.store.get(editor$).canUndo).toBe(true);
   const before = app.store.get(editor$);
   const draft = values.get(DRAFT_KEY);
+  click('.preview-controls [aria-label="Cast shadows"]');
+  expect(gpu.shadows).toHaveBeenCalledWith(true);
+  expect(host.querySelector('[aria-label="Cast shadows"]')?.getAttribute("aria-pressed")).toBe(
+    "true",
+  );
   click('.preview-controls [aria-label="Rotate left"]');
   const close = host.querySelector<HTMLButtonElement>('[aria-label="Close 3D preview"]')!;
   close.focus();
   for (const key of ["e", "g", " ", "z"])
     close.dispatchEvent(new KeyboardEvent("keydown", { key, ctrlKey: key === "z", bubbles: true }));
   app.store.set(selectLocale$, "zh-CN");
+  expect(host.querySelector('[aria-label="投影"]')?.getAttribute("aria-pressed")).toBe("true");
   expect(host.querySelector(".preview-footer")?.textContent).toContain("未熨烫");
   click('[aria-label="关闭 3D 预览"]');
   expect(host.querySelector(".pattern-canvas")).toBe(canvas);

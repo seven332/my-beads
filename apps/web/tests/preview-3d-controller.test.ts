@@ -8,8 +8,16 @@ const session: PreviewSession = {
   title: "Preview",
   beads: 1,
   status: "loading",
+  shadows: false,
+  shadowsAvailable: false,
 };
-const renderer = () => ({ theme: vi.fn(), action: vi.fn(), destroy: vi.fn() });
+const renderer = () => ({
+  theme: vi.fn(),
+  action: vi.fn(),
+  destroy: vi.fn(),
+  shadows: vi.fn(),
+  shadowsAvailable: true,
+});
 
 it("rejects late loading and notifications, disposes on close, and uses the latest theme", async () => {
   const report = vi.fn();
@@ -39,7 +47,7 @@ it("rejects late loading and notifications, disposes on close, and uses the late
   }));
   controller.sync(canvas, { ...session, id: 2 }, "light");
   controller.sync(canvas, { ...session, id: 2 }, "dark");
-  await vi.waitFor(() => expect(report).toHaveBeenCalledWith(2, "ready"));
+  await vi.waitFor(() => expect(report).toHaveBeenCalledWith(2, "ready", true));
   // Wait for the reopened renderer to settle before checking the old module;
   // an immediate negative assertion could pass before its continuation ran.
   expect(mount).not.toHaveBeenCalled();
@@ -47,12 +55,18 @@ it("rejects late loading and notifications, disposes on close, and uses the late
   expect(live.action).toHaveBeenCalledWith("left");
   controller.sync(canvas, { ...session, id: 2 }, "light");
   expect(live.theme).toHaveBeenCalledWith("light");
+  controller.sync(
+    canvas,
+    { ...session, id: 2, status: "ready", shadows: true, shadowsAvailable: true },
+    "light",
+  );
+  expect(live.shadows).toHaveBeenCalledWith(true);
   controller.destroy();
   controller.destroy();
   expect(live.destroy).toHaveBeenCalledOnce();
   status("failed");
   await Promise.resolve();
-  expect(report).not.toHaveBeenCalledWith(2, "failed");
+  expect(report.mock.calls.some((call) => call[0] === 2 && call[1] === "failed")).toBe(false);
 });
 
 it("reports import/init failures and releases a renderer after context failure", async () => {
@@ -67,7 +81,7 @@ it("reports import/init failures and releases a renderer after context failure",
     const report = vi.fn();
     const controller = createPreviewController(report, load);
     controller.sync(document.createElement("canvas"), session, "light");
-    await vi.waitFor(() => expect(report).toHaveBeenCalledWith(1, "failed"));
+    await vi.waitFor(() => expect(report).toHaveBeenCalledWith(1, "failed", undefined));
     controller.destroy();
   }
   const report = vi.fn();
