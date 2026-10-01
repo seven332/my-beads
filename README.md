@@ -126,6 +126,6 @@ Tests live alongside their packages and use test-owned fixtures or constructed d
 
 Use `pnpm benchmark:3d` for opt-in 3D preview measurements against the production build, or `pnpm benchmark:fused` to measure mode switches and the finished geometry. See the [measurement guide](docs/preview-benchmark.md) for repeated runs, report comparisons and timing limitations. Performance timings are not CI pass/fail thresholds.
 
-GitHub Actions checks pull requests and deploys the editor to GitHub Pages when changes affecting the web build reach `main`. See the [browser CI guide](docs/browser-ci.md) for filtering, sharding, and test reports, and the [deployment workflow](.github/workflows/pages.yml) for its triggers.
+GitHub Actions checks pull requests and deploys the editor to GitHub Pages when changes affecting the web build reach `main`. Checks owns verification; the independent Pages workflow builds and publishes without repeating tests. See the [browser CI guide](docs/browser-ci.md) for filtering, sharding, and test reports, and the [deployment workflow](.github/workflows/pages.yml) for its triggers.
 
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).

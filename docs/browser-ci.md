@@ -36,11 +36,10 @@ CI records a trace on the first retry; local tests keep `retain-on-failure`. Eac
 HTML report with per-test durations and its test results, even when a retry succeeds. Artifacts are
 retained for seven days:
 
-| Artifact                         | Contents                                        |
-| -------------------------------- | ----------------------------------------------- |
-| `browser-e2e-1`, `browser-e2e-2` | E2E report and results for one shard            |
-| `browser-production`             | Production smoke report and results             |
-| `pages-browser-production`       | Production verification from the Pages workflow |
+| Artifact                         | Contents                             |
+| -------------------------------- | ------------------------------------ |
+| `browser-e2e-1`, `browser-e2e-2` | E2E report and results for one shard |
+| `browser-production`             | Production smoke report and results  |
 
 After downloading and extracting an artifact, open its HTML report from the repository root:
 
@@ -58,6 +57,9 @@ skips, failures, and cancellations cannot turn into a successful check.
 
 New commits cancel older Checks runs for the same pull request. Main checks run independently. Pages
 still deploys only from main under its existing path filters and deployment concurrency policy.
+The independent Pages workflow installs dependencies, builds the web app and publishes it. It does
+not repeat lint, type checks, unit tests or browser tests, and does not wait for Checks to complete.
+For manual publication, run **Deploy Pages** on **main**.
 
 ## Local verification
 

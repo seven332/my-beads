@@ -827,8 +827,10 @@ for change detection, reports, and local shard commands.
 
 `pages.yml` filters main pushes by declared web/core/build inputs and also allows
 main-only manual runs. Shared dependency files trigger conservatively; this is
-path filtering rather than a byte-equivalence check. A read-only build job validates
-the artifact before uploading only `apps/web/dist`. A dependent deployment job
+path filtering rather than a byte-equivalence check. Checks owns lint, type checks,
+unit tests and browser verification. Pages runs independently without waiting for
+Checks; its read-only build job installs dependencies, builds the web app and uploads
+only `apps/web/dist`. A dependent deployment job
 owns Pages/OIDC permissions and the `github-pages` environment. Main runs share a
 concurrency group without canceling the active deployment; rejected manual runs
 use separate groups so they cannot displace a queued main update. Keep the
