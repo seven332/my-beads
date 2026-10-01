@@ -51,11 +51,6 @@ export function previewData(grid: PatternGrid) {
   return { width, height, beads };
 }
 
-/** Bound GPU work without deleting positions, including blank-board pegs. */
-export function previewQuality(cells: number) {
-  return { segments: cells > 16384 ? 8 : cells > 4096 ? 12 : 20 };
-}
-
 export function previewBuffer(width: number, height: number, dpr: number) {
   const ratio = Math.min(
     dpr || 1,

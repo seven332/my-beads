@@ -1,13 +1,12 @@
 import {
+  Box3,
   BoxGeometry,
   BufferGeometry,
   Color,
-  CylinderGeometry,
   DirectionalLight,
   Float32BufferAttribute,
   HemisphereLight,
   InstancedMesh,
-  LatheGeometry,
   Matrix4,
   Mesh,
   MeshStandardMaterial,
@@ -16,19 +15,21 @@ import {
   PerspectiveCamera,
   Scene,
   SRGBColorSpace,
+  Sphere,
   type Texture,
-  Vector2,
   Vector3,
   WebGLRenderer,
   type WebGLRenderTarget,
 } from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { createPreviewEnvironment } from "./preview-3d-environment.js";
+import { createPreviewOcclusion, setBoardOcclusionUV } from "./preview-3d-occlusion.js";
 import {
-  createPreviewOcclusion,
-  setBoardOcclusionUV,
-  setLocalOcclusionUV,
-} from "./preview-3d-occlusion.js";
+  createPreviewGeometries,
+  projectedPitch,
+  selectPreviewDetail,
+  type PreviewDetail,
+} from "./preview-3d-detail.js";
 import type { PatternGrid } from "@my-beads/core";
 import type { Theme } from "./theme-preference.js";
 import type { PreviewAction } from "./preview-3d-controller.js";
@@ -39,7 +40,6 @@ import {
   pegboardLayout,
   previewBuffer,
   previewData,
-  previewQuality,
 } from "./preview-3d-data.js";
 
 /** One mesh keeps physical stroke widths without WebGL's one-pixel line limitation. */
@@ -81,28 +81,15 @@ export function createPegboardScene(grid: PatternGrid, environment: Texture | nu
   const scene = new Scene();
   scene.environment = environment;
   scene.environmentIntensity = 0.35;
-  const { segments } = previewQuality(data.width * data.height);
-  const { radius, hole, height, pegRadius, pegHeight } = beadShape;
-  const beadGeometry = new LatheGeometry(
-    [
-      [hole, 0],
-      [radius - 0.02, 0],
-      [radius, 0.02],
-      [radius, height - 0.02],
-      [radius - 0.02, height],
-      [hole + 0.02, height],
-      [hole, height - 0.02],
-      [hole, 0],
-    ].map(([x, y]) => new Vector2(x, y)),
-    segments,
-  );
-  setLocalOcclusionUV(beadGeometry, "bead");
+  const { height, pegRadius, pegHeight } = beadShape;
+  const geometries = createPreviewGeometries();
+  let detail: PreviewDetail | undefined;
   const beadMaterial = new MeshStandardMaterial({
     roughness: 0.48,
     metalness: 0,
     aoMap: occlusion.local,
   });
-  const beads = new InstancedMesh(beadGeometry, beadMaterial, data.beads.length);
+  const beads = new InstancedMesh(geometries.beads.get(6)!, beadMaterial, data.beads.length);
   const transform = new Matrix4();
   const color = new Color();
   data.beads.forEach((bead, index) => {
@@ -112,8 +99,6 @@ export function createPegboardScene(grid: PatternGrid, environment: Texture | nu
   beads.instanceMatrix.needsUpdate = true;
   if (beads.instanceColor) beads.instanceColor.needsUpdate = true;
 
-  const pegGeometry = new CylinderGeometry(pegRadius * 0.75, pegRadius, pegHeight, 8);
-  setLocalOcclusionUV(pegGeometry, "peg");
   const pegMaterial = new MeshStandardMaterial({
     color: "#dad9cc",
     roughness: 0.8,
@@ -125,13 +110,24 @@ export function createPegboardScene(grid: PatternGrid, environment: Texture | nu
     aoMap: occlusion.board,
   });
   // The two-cell margin is part of the peg lattice; content pegs start at board index (2, 2).
-  const pegs = new InstancedMesh(pegGeometry, pegMaterial, layout.width * layout.depth);
+  const pegs = new InstancedMesh(geometries.pegs.get(4)!, pegMaterial, layout.width * layout.depth);
   for (let row = 0; row < layout.depth; row++)
     for (let column = 0; column < layout.width; column++) {
       const { x, z } = pegPosition(column, row, layout.width, layout.depth);
       pegs.setMatrixAt(row * layout.width + column, transform.makeTranslation(x, pegHeight / 2, z));
     }
   pegs.instanceMatrix.needsUpdate = true;
+  // Every variant fits these bounds; changing detail never scans or omits instances.
+  for (const [mesh, width, depth, radius, top] of [
+    [beads, data.width, data.height, beadShape.radius, height],
+    [pegs, layout.width, layout.depth, pegRadius, pegHeight],
+  ] as const) {
+    mesh.boundingBox = new Box3(
+      new Vector3(-(width - 1) / 2 - radius, 0, -(depth - 1) / 2 - radius),
+      new Vector3((width - 1) / 2 + radius, top, (depth - 1) / 2 + radius),
+    );
+    mesh.boundingSphere = mesh.boundingBox.getBoundingSphere(new Sphere());
+  }
   const boardGeometry = new BoxGeometry(layout.width, 0.24, layout.depth);
   setBoardOcclusionUV(boardGeometry, layout.width, layout.depth);
   const board = new Mesh(boardGeometry, boardMaterial);
@@ -156,6 +152,8 @@ export function createPegboardScene(grid: PatternGrid, environment: Texture | nu
   const fill = new DirectionalLight("#ffffff", environment ? 0.25 : 0.8);
   fill.position.set(4, 3, -5);
   scene.add(fill);
+  const fixedTriangles =
+    boardGeometry.index!.count / 3 + gridGeometry.getAttribute("position").count / 3;
   return {
     scene,
     beads,
@@ -164,11 +162,27 @@ export function createPegboardScene(grid: PatternGrid, environment: Texture | nu
     guides,
     width: layout.width,
     depth: layout.depth,
+    /** Returns true only when geometry changes; future shadow caches must then invalidate. */
+    updateDetail(camera: PerspectiveCamera, bufferHeight: number) {
+      const next = selectPreviewDetail(
+        projectedPitch(camera, layout.width, layout.depth, bufferHeight),
+        beads.count,
+        pegs.count,
+        fixedTriangles,
+        detail,
+      );
+      const changed =
+        beads.geometry !== geometries.beads.get(next.bead) ||
+        pegs.geometry !== geometries.pegs.get(next.peg);
+      beads.geometry = geometries.beads.get(next.bead)!;
+      pegs.geometry = geometries.pegs.get(next.peg)!;
+      detail = next;
+      return changed;
+    },
     dispose() {
       beads.dispose();
       pegs.dispose();
-      beadGeometry.dispose();
-      pegGeometry.dispose();
+      geometries.dispose();
       boardGeometry.dispose();
       gridGeometry.dispose();
       beadMaterial.dispose();
@@ -232,6 +246,7 @@ export function mountPreview3D(
     frame = 0;
     if (destroyed || !model || !renderer || document.hidden) return;
     try {
+      model.updateDetail(camera, canvas.height);
       renderer.render(model.scene, camera);
       if (renderer.getContext().isContextLost()) return fail();
       if (!ready) {

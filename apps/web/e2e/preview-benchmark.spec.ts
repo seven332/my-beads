@@ -24,8 +24,8 @@ test("benchmark probe counts actual scene submissions and context-owned resource
   const read = () => page.evaluate(() => window.previewBenchmark.snapshot());
   await frames();
   const snapshot = await read();
-  // 3 hollow beads (280 triangles each), 42 pegs (32 each), slab (12), guides (4).
-  expect(snapshot.frames.some((frame) => frame.draws === 4 && frame.triangles === 2200)).toBe(true);
+  // Tiny fitted board: 3 beads at 32 segments (448 each), 42 pegs at 12 (48 each), slab/grid (16).
+  expect(snapshot.frames.some((frame) => frame.draws === 4 && frame.triangles === 3376)).toBe(true);
   expect(snapshot.contexts).toHaveLength(1);
   expect(snapshot.contexts[0].resources.Buffer.live).toBeGreaterThan(0);
   expect(snapshot.contexts[0].buffer.width).toBeGreaterThan(0);

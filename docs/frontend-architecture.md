@@ -629,9 +629,26 @@ these bounded indirect terms rather than applying another dark screen overlay.
 Generated tests cover coordinates, holes, sparse/edge/narrow/full fields, density
 bounds, uploaded data, map reuse and cleanup after a mipmap initialization failure.
 
-Radial segments decrease from 20 to 12 above 4096 cells and to 8 above 16384 cells;
-all beads and pegs remain present, including 65,536 beads and 67,600 board pegs for
-a full 256 × 256 pattern. The framebuffer is capped
+`preview-3d-detail.ts` selects shared radial geometry from five bead tiers
+(6/8/12/20/32 segments) and four peg tiers (4/6/8/12). Selection uses actual
+framebuffer pixels and the nearest camera-space depth of the shape envelope,
+with a nominal 0.35-pixel silhouette error and a 20% hysteresis band. This is
+conservative at oblique angles and when panned off center. A hard ten-million
+triangle ceiling includes every bead, peg, board and guide triangle; when needed,
+the policy chooses a lower pair by combined radial shape error. Dense maximum
+close-ups remain budget-limited. All beads and pegs remain present, including
+65,536 beads and 67,600 board pegs for a full 256 × 256 pattern.
+
+The nine CPU geometry variants are built once with their AO UVs. GPU buffers are
+uploaded on first use and reused when revisiting a tier; materials, instance
+matrices and palette colors remain shared and unchanged. Fixed conservative mesh
+bounds cover all variants without an instance scan during transitions. Every
+variant is disposed with the scene. Detail updates happen only immediately before
+an already scheduled render; `updateDetail` reports actual geometry changes so a
+future shadow owner can invalidate cached maps. Camera motion alone must not
+invalidate a shadow cache unless a relevant geometry tier changes.
+
+The framebuffer is capped
 at 2 million pixels, 4096 pixels per axis and 2× density. OrbitControls has no damping
 or automatic rotation: camera, theme, visibility and resize events schedule frames,
 with no idle animation loop. Teardown cancels frames and releases controls, observers,

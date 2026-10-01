@@ -288,11 +288,87 @@ The preview lazy chunk grows by about 2.00 kB raw / 0.72 kB gzip. No new package
 network asset, physical-phone measurement or full repeated browser/scenario matrix
 is included in this slice.
 
+## Projected detail comparison — 2026-10-01
+
+Issue #99 compares main `a9e2e66` with the projected-detail candidate on the same
+M4 Pro, headless Chromium 153.0.8010.12 / SwiftShader and WebKit 26.6 / Apple GPU.
+The unchanged protocol uses DPR 1, 1440 × 1000 viewport and 1198 × 758 framebuffer.
+Baseline reports are clean at that revision; candidate reports record the same
+base with a dirty implementation worktree. No source changed during either run.
+There are three repeats of all ten cases in WebKit and three repeats of 50-sparse
+in Chromium, in `codex-work/benchmarks/issue-99-{baseline,candidate}-{webkit,chromium}`.
+Both comparison commands accepted environment, protocol, repeats and lifecycle
+invariants. This supplies full-matrix WebKit evidence and small-case Chromium
+evidence, not repeated maximum-software-renderer or physical-phone timings.
+
+```sh
+PREVIEW_BENCHMARK_DEVICE=local-m4-pro pnpm benchmark:3d --project=webkit --repeat-each=3 --output=../../codex-work/benchmarks/issue-99-baseline-webkit
+# Repeat on the candidate, using issue-99-candidate-webkit.
+# Select --project=chromium --grep 50-sparse for the Chromium comparison.
+pnpm benchmark:3d:compare codex-work/benchmarks/issue-99-baseline-webkit codex-work/benchmarks/issue-99-candidate-webkit
+pnpm benchmark:3d:compare codex-work/benchmarks/issue-99-baseline-chromium codex-work/benchmarks/issue-99-candidate-chromium
+```
+
+Visible submitted triangles include the slab and guides. All nonempty fitted
+cases still use four draws. Counts are repeat-stable; both measured browsers
+agree for 50-sparse.
+
+| Case          | Fitted before → after | Close-up before → after |
+| ------------- | --------------------- | ----------------------- |
+| 50-sparse     | 194,668 → 131,244     | 194,668 → 194,668       |
+| 50-full       | 794,428 → 491,100     | 794,428 → 794,428       |
+| 100-sparse    | 590,400 → 337,320     | 590,400 → 663,920       |
+| 100-full      | 2,030,328 → 1,297,272 | 2,030,328 → 3,063,800   |
+| 256-blank     | 2,190,356 → 1,108,756 | 2,190,356 → 1,108,756   |
+| 256-sparse    | 3,238,900 → 1,895,164 | 3,238,900 → 2,157,300   |
+| 256-full      | 9,530,388 → 6,613,780 | 9,530,388 → 8,448,788   |
+| 17×100-sparse | 138,802 → 76,642      | 138,802 → 138,802       |
+
+Higher close-up work on 100-cell boards is intentional: the old 12-segment area
+policy becomes a 20-segment bead tier when projected size warrants it. Small
+closer views can reach 32 bead / 12 peg segments. All tiers preserve physical
+bores; the ten-million ceiling includes every instance and fixed mesh. The
+closest-envelope estimate can overestimate off-center detail; spatial culling
+remains #100's responsibility.
+
+Median first-ready / warm-ready times (ms) are 74 / 43 → 75 / 44 for WebKit
+50-sparse, 86 / 50 → 84 / 50 for 100-full, and 118 / 78 → 114 / 73 for 256-full.
+WebKit 50-full increases from 76 / 44 to 82 / 48, outside its earlier repeat
+envelope; 50-blank warm increases by 2 ms and narrow warm by 1 ms. These small
+startup costs remain visible in the evidence rather than being called a universal
+speedup. Nine finite CPU variants replace two geometries; additional GPU uploads
+occur only when first visiting a tier. The intended gain is bounded distant work
+and better close silhouettes, with measured interaction retained.
+
+Across the WebKit matrix, median orbit CPU P95 remains 1–2 ms, and paced orbit
+P95 is 17 ms on the candidate (baseline 17–18 ms). A few single-render/close-up
+CPU medians rise by 1 ms outside the coarse WebKit repeat envelope. Chromium
+50-sparse first-ready / warm-ready changes from 140.1 / 116.5 to 136.7 / 111.0 ms;
+paced orbit P95 is 117.4 → 117.6 ms and orbit CPU P95 is 0.3 → 0.2 ms. These are
+instrumented CPU and automation-paced intervals, not GPU completion or FPS.
+
+Maximum context buffer peaks across WebKit cases rise from 24 to 36, and Chromium
+50-sparse from 24 to 31. Texture/framebuffer/renderbuffer/program/VAO peaks remain
+8/5/1/5/12, including environment setup. The scene has at most nine geometry
+variants (56 live buffers if every tier is uploaded); the native zoom regression
+visits and revisits tiers without additional programs or repeated allocations.
+Every measured opening remained idle after settling and released all native
+handles on close, with draft, viewport and CSV unchanged. Native failure injection
+also verifies cleanup/reopening after a new geometry upload fails.
+
+Manual matched captures are under `codex-work/screenshots/issue-99-*`: fitted and
+close 50-sparse in both engines, maximum full in WebKit, and black/white/saturated
+strips plus a one-column board in both themes/engines. Close silhouettes and pegs
+are rounder, holes remain open, and fitted large-board composition is preserved.
+The lazy renderer chunk grows by 1.61 kB raw / 0.65 kB gzip. No new dependency,
+render pass, target or idle animation is added. GPU timer and physical-phone
+evidence remain unavailable.
+
 ## Validation
 
 ```sh
 pnpm --filter @my-beads/web test preview-benchmark.test.ts
-pnpm test:e2e preview-benchmark.spec.ts preview-environment.spec.ts preview-output.spec.ts preview-occlusion.spec.ts preview-3d.spec.ts preview-rendering.spec.ts --workers 2 --retries 0
+pnpm test:e2e preview-benchmark.spec.ts preview-environment.spec.ts preview-output.spec.ts preview-occlusion.spec.ts preview-detail.spec.ts preview-3d.spec.ts preview-rendering.spec.ts --workers 2 --retries 0
 ```
 
 The repository's format/lint/typecheck/package tests/build and production smoke commands still apply. No `templates/` files are used by the benchmark or its tests.
