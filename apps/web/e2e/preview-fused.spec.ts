@@ -41,6 +41,7 @@ test("reuses one context and fused buffers, omits board draws, and refreshes onl
   await dialog.getByRole("button", { name: "Rotate left" }).click();
   await settle(page);
   const orbit = (await read(page)).frames.filter((frame) => frame.phase === "orbit" && frame.draws);
+  expect(orbit.length).toBeGreaterThan(0);
   expect(
     orbit.every((frame) => frame.draws === 1 && frame.viewports.every((view) => view.target === 0)),
   ).toBe(true);
