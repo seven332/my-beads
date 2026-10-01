@@ -1,13 +1,10 @@
 import {
-  Box3,
   BoxGeometry,
   BufferGeometry,
   Color,
   DirectionalLight,
   Float32BufferAttribute,
   HemisphereLight,
-  InstancedMesh,
-  Matrix4,
   Mesh,
   MeshStandardMaterial,
   NeutralToneMapping,
@@ -15,7 +12,6 @@ import {
   PerspectiveCamera,
   Scene,
   SRGBColorSpace,
-  Sphere,
   type Texture,
   Vector3,
   WebGLRenderer,
@@ -23,6 +19,7 @@ import {
 } from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { createPreviewEnvironment } from "./preview-3d-environment.js";
+import { createPreviewBatches } from "./preview-3d-batches.js";
 import { createPreviewOcclusion, setBoardOcclusionUV } from "./preview-3d-occlusion.js";
 import {
   createPreviewGeometries,
@@ -34,13 +31,7 @@ import type { PatternGrid } from "@my-beads/core";
 import type { Theme } from "./theme-preference.js";
 import type { PreviewAction } from "./preview-3d-controller.js";
 import type { PreviewStatus } from "./preview-3d-state.js";
-import {
-  beadShape,
-  pegPosition,
-  pegboardLayout,
-  previewBuffer,
-  previewData,
-} from "./preview-3d-data.js";
+import { beadShape, pegboardLayout, previewBuffer, previewData } from "./preview-3d-data.js";
 
 /** One mesh keeps physical stroke widths without WebGL's one-pixel line limitation. */
 function guideGeometry(
@@ -76,12 +67,12 @@ function guideGeometry(
 /** CPU scene construction is separate from WebGL so placement/resources can be tested directly. */
 export function createPegboardScene(grid: PatternGrid, environment: Texture | null = null) {
   const data = previewData(grid);
+  const beadCount = data.beads.length;
   const layout = pegboardLayout(data.width, data.height);
   const occlusion = createPreviewOcclusion(grid);
   const scene = new Scene();
   scene.environment = environment;
   scene.environmentIntensity = 0.35;
-  const { height, pegRadius, pegHeight } = beadShape;
   const geometries = createPreviewGeometries();
   let detail: PreviewDetail | undefined;
   const beadMaterial = new MeshStandardMaterial({
@@ -89,16 +80,6 @@ export function createPegboardScene(grid: PatternGrid, environment: Texture | nu
     metalness: 0,
     aoMap: occlusion.local,
   });
-  const beads = new InstancedMesh(geometries.beads.get(6)!, beadMaterial, data.beads.length);
-  const transform = new Matrix4();
-  const color = new Color();
-  data.beads.forEach((bead, index) => {
-    beads.setMatrixAt(index, transform.makeTranslation(bead.x, 0, bead.z));
-    beads.setColorAt(index, color.set(bead.color));
-  });
-  beads.instanceMatrix.needsUpdate = true;
-  if (beads.instanceColor) beads.instanceColor.needsUpdate = true;
-
   const pegMaterial = new MeshStandardMaterial({
     color: "#dad9cc",
     roughness: 0.8,
@@ -109,25 +90,7 @@ export function createPegboardScene(grid: PatternGrid, environment: Texture | nu
     roughness: 0.8,
     aoMap: occlusion.board,
   });
-  // The two-cell margin is part of the peg lattice; content pegs start at board index (2, 2).
-  const pegs = new InstancedMesh(geometries.pegs.get(4)!, pegMaterial, layout.width * layout.depth);
-  for (let row = 0; row < layout.depth; row++)
-    for (let column = 0; column < layout.width; column++) {
-      const { x, z } = pegPosition(column, row, layout.width, layout.depth);
-      pegs.setMatrixAt(row * layout.width + column, transform.makeTranslation(x, pegHeight / 2, z));
-    }
-  pegs.instanceMatrix.needsUpdate = true;
-  // Every variant fits these bounds; changing detail never scans or omits instances.
-  for (const [mesh, width, depth, radius, top] of [
-    [beads, data.width, data.height, beadShape.radius, height],
-    [pegs, layout.width, layout.depth, pegRadius, pegHeight],
-  ] as const) {
-    mesh.boundingBox = new Box3(
-      new Vector3(-(width - 1) / 2 - radius, 0, -(depth - 1) / 2 - radius),
-      new Vector3((width - 1) / 2 + radius, top, (depth - 1) / 2 + radius),
-    );
-    mesh.boundingSphere = mesh.boundingBox.getBoundingSphere(new Sphere());
-  }
+  const { beads, pegs } = createPreviewBatches(data, layout, geometries, beadMaterial, pegMaterial);
   const boardGeometry = new BoxGeometry(layout.width, 0.24, layout.depth);
   setBoardOcclusionUV(boardGeometry, layout.width, layout.depth);
   const board = new Mesh(boardGeometry, boardMaterial);
@@ -144,7 +107,7 @@ export function createPegboardScene(grid: PatternGrid, environment: Texture | nu
   });
   const guides = new Mesh(gridGeometry, gridMaterial);
   guides.position.y = 0.002;
-  scene.add(board, guides, pegs, beads);
+  scene.add(board, guides, ...pegs, ...beads);
   if (!environment) scene.add(new HemisphereLight("#ffffff", "#696657", 2.1));
   const key = new DirectionalLight("#ffffff", environment ? 1.3 : 2.7);
   key.position.set(-3, 7, 5);
@@ -166,22 +129,23 @@ export function createPegboardScene(grid: PatternGrid, environment: Texture | nu
     updateDetail(camera: PerspectiveCamera, bufferHeight: number) {
       const next = selectPreviewDetail(
         projectedPitch(camera, layout.width, layout.depth, bufferHeight),
-        beads.count,
-        pegs.count,
+        beadCount,
+        layout.width * layout.depth,
         fixedTriangles,
         detail,
       );
       const changed =
-        beads.geometry !== geometries.beads.get(next.bead) ||
-        pegs.geometry !== geometries.pegs.get(next.peg);
-      beads.geometry = geometries.beads.get(next.bead)!;
-      pegs.geometry = geometries.pegs.get(next.peg)!;
+        (beads.length > 0 && next.bead !== (detail?.bead ?? 6)) || next.peg !== (detail?.peg ?? 4);
+      if (changed) {
+        for (const mesh of beads) mesh.geometry = geometries.beads.get(next.bead)!;
+        for (const mesh of pegs) mesh.geometry = geometries.pegs.get(next.peg)!;
+      }
       detail = next;
       return changed;
     },
     dispose() {
-      beads.dispose();
-      pegs.dispose();
+      for (const mesh of beads) mesh.dispose();
+      for (const mesh of pegs) mesh.dispose();
       geometries.dispose();
       boardGeometry.dispose();
       gridGeometry.dispose();

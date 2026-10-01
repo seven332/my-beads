@@ -12,8 +12,8 @@ function sample(texture: DataTexture, u: number, v: number) {
 
 it("shades cavity depth and outer bases while preserving upper rims and peg tops", () => {
   const model = createPegboardScene([["H2"]]);
-  const texture = model.beads.material.aoMap as DataTexture;
-  expect(model.pegs.material.aoMap).toBe(texture);
+  const texture = model.beads[0].material.aoMap as DataTexture;
+  expect(model.pegs[0].material.aoMap).toBe(texture);
   expect(texture.colorSpace).toBe(NoColorSpace);
   expect(texture.channel).toBe(1);
   expect(sample(texture, 0, 0)).toBeLessThan(sample(texture, 1, 0));
@@ -21,7 +21,7 @@ it("shades cavity depth and outer bases while preserving upper rims and peg tops
   expect(sample(texture, 0, 0.5)).toBeGreaterThan(sample(texture, 0, 0));
   for (const u of [0, 0.5, 1]) expect(sample(texture, u, 1)).toBe(255);
 
-  for (const mesh of [model.beads, model.pegs]) {
+  for (const mesh of [model.beads[0], model.pegs[0]]) {
     const positions = mesh.geometry.getAttribute("position");
     const uv = mesh.geometry.getAttribute("uv1");
     let top = -Infinity;
@@ -38,7 +38,7 @@ it("shades cavity depth and outer bases while preserving upper rims and peg tops
   }
   model.scene.updateMatrixWorld(true);
   const hole = new Raycaster(new Vector3(0.14, 2, 0), new Vector3(0, -1, 0));
-  expect(hole.intersectObject(model.beads)).toHaveLength(0);
+  expect(hole.intersectObject(model.beads[0])).toHaveLength(0);
   expect(hole.intersectObject(model.board)[0].point.y).toBeCloseTo(0);
   model.dispose();
 });
@@ -122,7 +122,7 @@ it("gives board markings the same receiver coordinates and releases both shared 
   }
   const disposed = vi.fn();
   field.addEventListener("dispose", disposed);
-  model.beads.material.aoMap!.addEventListener("dispose", disposed);
+  model.beads[0].material.aoMap!.addEventListener("dispose", disposed);
   model.dispose();
   expect(disposed).toHaveBeenCalledTimes(2);
 });

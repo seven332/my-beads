@@ -648,6 +648,25 @@ an already scheduled render; `updateDetail` reports actual geometry changes so a
 future shadow owner can invalidate cached maps. Camera motion alone must not
 invalidate a shadow cache unless a relevant geometry tier changes.
 
+`preview-3d-batches.ts` partitions the complete peg lattice into static rectangular
+regions of at most 64 cells per axis. Axes are balanced across their regions;
+a 50 × 50 pattern keeps one region, and the maximum 260 × 260 lattice uses 25.
+Occupied beads use the same regions, with empty bead batches omitted. Every bead
+and margin/content peg remains present exactly once. Geometries and materials are
+shared; only instance matrices/colors belong to each batch. The maximum fitted
+scene uses 52 draws including the unchanged slab and full-board guides.
+
+Each batch has a fixed conservative box/sphere covering its actual instance
+centers, every radial tier and full height, including Float32 rounding. Three.js
+tests that sphere independently in each camera/light pass; the application never
+hides a batch based on the main camera. This preserves offscreen shadow casters
+for a future light. Conservative bounds can retain offscreen work, especially in
+shallow near views. The detail budget still counts every instance, avoiding a
+feedback loop between culling and quality. Camera movement does not rebuild or
+upload instance data. Teardown releases each batch's instance resources and then
+the shared geometries/materials/textures once. Trade-offs and native measured
+counts are recorded in `docs/preview-benchmark.md`.
+
 The framebuffer is capped
 at 2 million pixels, 4096 pixels per axis and 2× density. OrbitControls has no damping
 or automatic rotation: camera, theme, visibility and resize events schedule frames,
