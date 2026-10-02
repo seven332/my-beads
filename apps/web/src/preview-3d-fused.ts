@@ -3,7 +3,6 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
-  Float32BufferAttribute,
   Mesh,
   MeshStandardMaterial,
   Vector3,
@@ -11,8 +10,8 @@ import {
 import { defaultPalette, type PatternGrid } from "@my-beads/core";
 import { pegPosition } from "./preview-3d-data.js";
 
-/** Illustrative cooled plastic; all bevels stay inside occupied cells. */
-export const fusedShape = { height: 0.45, rim: 0.07, seam: 0.004 };
+/** Illustrative cooled plastic: flattened beads spread slightly beyond their original footprint. */
+export const fusedShape = { height: 0.45, radius: 0.56, rim: 0.08, seam: 0.012, bend: 0.035 };
 const neighbors = [
   [1, 0],
   [0, 1],
@@ -25,8 +24,9 @@ const neighbors = [
 ];
 
 /** Shared edge coordinates depend on the same incident cells on either side. */
-function cellGeometry(mask: number) {
-  const { height, rim, seam } = fusedShape;
+function cellGeometry(mask: number, phase: number) {
+  const { height, radius, rim, seam, bend } = fusedShape;
+  const neck = Math.sqrt(radius * radius - 0.25);
   const positions: number[] = [0, height, 0];
   const indices: number[] = [];
   const contour: [number, number, number][] = [];
@@ -44,21 +44,26 @@ function cellGeometry(mask: number) {
     const acrossZ = has(0, z);
     const incoming = x === z ? acrossZ : acrossX;
     const outgoing = x === z ? acrossX : acrossZ;
-    const inset = !acrossX && !acrossZ ? rim * (1 - Math.SQRT1_2) : 0;
+    // Three or four incident beads meet at one junction. A pair joins at the
+    // intersection of the spread disks; exposed corners retain the round bead shape.
+    const junction = (acrossX && acrossZ) || ((acrossX || acrossZ) && has(x, z));
     const end = (first: boolean): [number, number, number] => {
       const alongX = (x === z) === first;
+      const adjacent = first ? incoming : outgoing;
+      const along = junction ? 0.25 : adjacent ? neck / 2 : radius * Math.sin(Math.PI / 12);
+      const across = adjacent ? 0.5 : radius * Math.cos(Math.PI / 12);
       return [
-        x * (alongX ? 0.5 - rim : 0.5),
-        height - ((first ? incoming : outgoing) ? seam : rim),
-        z * (alongX ? 0.5 : 0.5 - rim),
+        x * (alongX ? along : across),
+        height - (adjacent ? seam + (junction ? 0 : (rim - seam) / 4) : rim),
+        z * (alongX ? across : along),
       ];
     };
     contour.push(
       end(true),
       [
-        x * (0.5 - inset),
+        x * (junction || acrossX ? 0.5 : acrossZ ? neck : radius * Math.SQRT1_2),
         height - (acrossX && acrossZ && has(x, z) ? seam : rim),
-        z * (0.5 - inset),
+        z * (junction || acrossZ ? 0.5 : acrossX ? neck : radius * Math.SQRT1_2),
       ],
       end(false),
     );
@@ -80,8 +85,20 @@ function cellGeometry(mask: number) {
     if (exposed[i])
       indices.push(outer + i, bottom + i, bottom + next, outer + i, bottom + next, outer + next);
   }
+  // A small continuous warp softens color boundaries as well as the silhouette.
+  // The four lattice phases give neighbors identical coordinates without per-cell
+  // randomness, overlapping surfaces or extra vertices. Centers stay in place.
+  for (let i = 0; i < positions.length; i += 3) {
+    const x = positions[i];
+    const z = positions[i + 2];
+    const sx = Math.sin(Math.PI * x) * (phase & 1 ? -1 : 1);
+    const sz = Math.sin(Math.PI * z) * (phase & 2 ? -1 : 1);
+    positions[i] += bend * sx * (Math.sin(2 * Math.PI * z) + 0.3 * sz);
+    positions[i + 2] += bend * sz * (Math.sin(2 * Math.PI * x) - 0.3 * sx);
+  }
   const geometry = new BufferGeometry();
-  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  // CPU templates keep precision until final placement in the region's Float32 buffer.
+  geometry.setAttribute("position", new BufferAttribute(new Float64Array(positions), 3));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   return geometry;
@@ -111,10 +128,12 @@ export function createFusedPreview(grid: PatternGrid) {
             neighbors.forEach(([dx, dz], index) => {
               if (grid[row + dz]?.[column + dx] != null) mask |= 1 << index;
             });
-            let geometry = templates.get(mask);
+            const phase = (column & 1) | ((row & 1) << 1);
+            const key = mask * 4 + phase;
+            let geometry = templates.get(key);
             if (!geometry) {
-              geometry = cellGeometry(mask);
-              templates.set(mask, geometry);
+              geometry = cellGeometry(mask, phase);
+              templates.set(key, geometry);
             }
             vertices += geometry.getAttribute("position").count;
             count += geometry.index!.count;

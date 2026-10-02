@@ -572,16 +572,20 @@ remain unchanged. There is no 3D editing or physical fusion simulation.
 
 `preview-3d-fused.ts` builds an illustrative fully fused result on the first mode
 switch, then reuses it within that preview session. Occupied cells have capped
-tops and bottoms, shallow seams, rounded exposed corners and side walls only
-along exposed edges. Shared edge coordinates depend on the same adjacent cells,
+tops and bottoms, shallow surface relief, rounded rims that spread laterally,
+and side walls only along exposed edges. Shared edge coordinates depend on the same adjacent cells,
 so filled intersections have no holes; diagonal-only neighbors remain separate.
-Bevels stay inside occupied cells to preserve deliberate cutouts. Vertex colors
-retain each original MARD color without blending across cells. The matte plastic
+Exposed rims extend slightly beyond the original cell borders while deliberate
+cutouts remain open. A small continuous lattice warp bends color boundaries;
+neighboring patches use identical coordinates and bead centers stay in place.
+Vertex colors retain each original MARD color without blending across cells. The matte plastic
 material shares the scene lighting but does not use pegboard contact AO.
 
 Static indexed meshes cover at most 64 × 64 cells each (16 meshes at 256 × 256),
 with one shared material and finite CPU geometry templates keyed by the eight
-neighbors. Bounds include every generated vertex; camera fitting uses occupied
+neighbors and four lattice phases (at most 1,024 templates). Each occupied cell
+uses at most 38 vertices and 72 triangles. Bounds include every generated vertex;
+camera fitting uses occupied
 fused bounds rather than empty borders or the board. A blank result shows a
 translated message. Board surfaces and fused meshes have mutually exclusive
 visibility, including in shadow passes. Switching mode invalidates the cached
