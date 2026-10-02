@@ -15,13 +15,21 @@ function ray(model: ReturnType<typeof createFusedPreview>, x: number, z: number,
 function expectClosed(model: ReturnType<typeof createFusedPreview>) {
   const edges = new Map<string, { count: number; direction: number }>();
   const degenerate: string[] = [];
+  const collapsed: number[] = [];
+  const a = new Vector3();
+  const b = new Vector3();
+  const c = new Vector3();
   for (const mesh of model.meshes) {
     const p = mesh.geometry.getAttribute("position");
     const keys = Array.from({ length: p.count }, (_, i) =>
       [p.getX(i), p.getY(i), p.getZ(i)].map((v) => v.toFixed(5)).join(","),
     );
     const indices = mesh.geometry.index!.array;
-    for (let i = 0; i < indices.length; i += 3)
+    for (let i = 0; i < indices.length; i += 3) {
+      a.fromBufferAttribute(p, indices[i]);
+      b.fromBufferAttribute(p, indices[i + 1]);
+      c.fromBufferAttribute(p, indices[i + 2]);
+      if (b.sub(a).cross(c.sub(a)).lengthSq() < 1e-12) collapsed.push(i);
       for (let edge = 0; edge < 3; edge++) {
         const a = keys[indices[i + edge]];
         const b = keys[indices[i + ((edge + 1) % 3)]];
@@ -32,8 +40,10 @@ function expectClosed(model: ReturnType<typeof createFusedPreview>) {
         entry.direction += a < b ? 1 : -1;
         edges.set(key, entry);
       }
+    }
   }
   expect(degenerate).toEqual([]);
+  expect(collapsed).toEqual([]);
   expect(
     [...edges.entries()].filter(([, edge]) => edge.count !== 2 || edge.direction !== 0),
   ).toEqual([]);
@@ -108,10 +118,39 @@ it("closes filled intersections while retaining deliberate cutouts and exact pal
     ["H2", null, "H2"],
     ["H2", "H2", "H2"],
   ]);
-  for (const x of [-0.49, 0, 0.49])
-    for (const z of [-0.49, 0, 0.49]) expect(ray(ring, x, z)).toHaveLength(0);
+  // Melted rims may overhang the cell border, but deliberate openings stay open.
+  for (const x of [-0.4, 0, 0.4])
+    for (const z of [-0.4, 0, 0.4]) expect(ray(ring, x, z)).toHaveLength(0);
   expectClosed(ring);
   ring.dispose();
+});
+
+it("spreads round exposed beads and bends shared color boundaries without moving their centers", () => {
+  const single = createFusedPreview([["H2"]]);
+  expect(single.bounds.min.x).toBeLessThan(-0.5);
+  expect(single.bounds.max.x).toBeGreaterThan(0.5);
+  expect(ray(single, 0.51, 0)).not.toHaveLength(0);
+  expect(ray(single, 0.48, 0.48)).toHaveLength(0);
+  expect(ray(single, 0, 0)[0].point.y).toBeCloseTo(fusedShape.height);
+  expectClosed(single);
+  single.dispose();
+
+  const full = createFusedPreview(Array.from({ length: 3 }, () => ["H2", "H2", "H7", "H7"]));
+  const c = new Color();
+  const hitColor = (x: number, z: number) => {
+    const hit = ray(full, x, z)[0];
+    expect(hit).toBeDefined();
+    const colors = full.meshes[0].geometry.getAttribute("color");
+    c.fromBufferAttribute(colors, hit.face!.a);
+    return `#${c.getHexString().toUpperCase()}`;
+  };
+  // Both samples would lie in the opposite color if the contact were a straight grid edge.
+  expect(hitColor(-0.01, 0.25)).toBe(defaultPalette.colors.H7);
+  expect(hitColor(0.01, -0.25)).toBe(defaultPalette.colors.H2);
+  expect(hitColor(-0.5, 0)).toBe(defaultPalette.colors.H2);
+  expect(hitColor(0.5, 0)).toBe(defaultPalette.colors.H7);
+  expectClosed(full);
+  full.dispose();
 });
 
 it("joins regions exactly, supports narrow/blank grids and contains every generated vertex", () => {
