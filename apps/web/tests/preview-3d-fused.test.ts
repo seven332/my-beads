@@ -127,10 +127,10 @@ it("closes filled intersections while retaining deliberate cutouts and exact pal
 
 it("spreads round exposed beads and bends shared color boundaries without moving their centers", () => {
   const single = createFusedPreview([["H2"]]);
-  expect(single.bounds.min.x).toBeLessThan(-0.5);
-  expect(single.bounds.max.x).toBeGreaterThan(0.5);
-  expect(ray(single, 0.51, 0)).not.toHaveLength(0);
-  expect(ray(single, 0.48, 0.48)).toHaveLength(0);
+  expect(single.bounds.min.x).toBeLessThan(-0.71);
+  expect(single.bounds.max.x).toBeGreaterThan(0.71);
+  expect(ray(single, 0.7, 0)).not.toHaveLength(0);
+  expect(ray(single, 0.58, 0.58)).toHaveLength(0);
   expect(ray(single, 0, 0)[0].point.y).toBeCloseTo(fusedShape.height);
   expectClosed(single);
   single.dispose();
@@ -151,6 +151,42 @@ it("spreads round exposed beads and bends shared color boundaries without moving
   expect(hitColor(0.5, 0)).toBe(defaultPalette.colors.H7);
   expectClosed(full);
   full.dispose();
+});
+
+it("expands into free space while retaining constrained contacts and diagonal gaps", () => {
+  const isolated = createFusedPreview([
+    [null, null, null],
+    [null, "H2", null],
+    [null, null, null],
+  ]);
+  expect(ray(isolated, 0.48, 0.48)).not.toHaveLength(0);
+  isolated.dispose();
+
+  const diagonal = createFusedPreview([
+    [null, null, null],
+    [null, "H2", null],
+    [null, null, "H7"],
+  ]);
+  expect(ray(diagonal, 0.42, 0.42)).toHaveLength(0);
+  expect(ray(diagonal, 0.5, 0.5)).toHaveLength(0);
+  expect(ray(diagonal, -0.7, 0)).not.toHaveLength(0);
+  expectClosed(diagonal);
+  diagonal.dispose();
+
+  const pair = createFusedPreview([["H2", "H7"]]);
+  // The free end reaches farther, while the neighbor contact retains its narrow neck.
+  expect(ray(pair, -1.2, 0)).not.toHaveLength(0);
+  expect(ray(pair, 0, 0.2)).not.toHaveLength(0);
+  expect(ray(pair, 0, 0.4)).toHaveLength(0);
+  expectClosed(pair);
+  pair.dispose();
+
+  const separated = createFusedPreview([["H2", null, "H7"]]);
+  expect(ray(separated, -0.3, 0)).not.toHaveLength(0);
+  expect(ray(separated, 0.3, 0)).not.toHaveLength(0);
+  for (const x of [-0.15, 0, 0.15]) expect(ray(separated, x, 0)).toHaveLength(0);
+  expectClosed(separated);
+  separated.dispose();
 });
 
 it("joins regions exactly, supports narrow/blank grids and contains every generated vertex", () => {

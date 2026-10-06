@@ -10,8 +10,15 @@ import {
 import { defaultPalette, type PatternGrid } from "@my-beads/core";
 import { pegPosition } from "./preview-3d-data.js";
 
-/** Illustrative cooled plastic: flattened beads spread slightly beyond their original footprint. */
-export const fusedShape = { height: 0.45, radius: 0.56, rim: 0.08, seam: 0.012, bend: 0.035 };
+/** Illustrative cooled plastic: unobstructed rims spread farther than neighboring contacts. */
+export const fusedShape = {
+  height: 0.45,
+  contactRadius: 0.56,
+  freeRadius: 0.76,
+  rim: 0.08,
+  seam: 0.012,
+  bend: 0.035,
+};
 const neighbors = [
   [1, 0],
   [0, 1],
@@ -25,8 +32,8 @@ const neighbors = [
 
 /** Shared edge coordinates depend on the same incident cells on either side. */
 function cellGeometry(mask: number, phase: number) {
-  const { height, radius, rim, seam, bend } = fusedShape;
-  const neck = Math.sqrt(radius * radius - 0.25);
+  const { height, contactRadius, freeRadius, rim, seam, bend } = fusedShape;
+  const neck = Math.sqrt(contactRadius * contactRadius - 0.25);
   const positions: number[] = [0, height, 0];
   const indices: number[] = [];
   const contour: [number, number, number][] = [];
@@ -42,11 +49,15 @@ function cellGeometry(mask: number, phase: number) {
   ]) {
     const acrossX = has(x, 0);
     const acrossZ = has(0, z);
+    // A clear quadrant permits more outward flow. Keep diagonal-only beads apart
+    // and contact coordinates unchanged, including at three-bead junctions.
+    const diagonal = has(x, z);
+    const radius = diagonal ? contactRadius : freeRadius;
     const incoming = x === z ? acrossZ : acrossX;
     const outgoing = x === z ? acrossX : acrossZ;
     // Three or four incident beads meet at one junction. A pair joins at the
     // intersection of the spread disks; exposed corners retain the round bead shape.
-    const junction = (acrossX && acrossZ) || ((acrossX || acrossZ) && has(x, z));
+    const junction = (acrossX && acrossZ) || ((acrossX || acrossZ) && diagonal);
     const end = (first: boolean): [number, number, number] => {
       const alongX = (x === z) === first;
       const adjacent = first ? incoming : outgoing;
@@ -62,7 +73,7 @@ function cellGeometry(mask: number, phase: number) {
       end(true),
       [
         x * (junction || acrossX ? 0.5 : acrossZ ? neck : radius * Math.SQRT1_2),
-        height - (acrossX && acrossZ && has(x, z) ? seam : rim),
+        height - (acrossX && acrossZ && diagonal ? seam : rim),
         z * (junction || acrossZ ? 0.5 : acrossX ? neck : radius * Math.SQRT1_2),
       ],
       end(false),

@@ -575,8 +575,11 @@ switch, then reuses it within that preview session. Occupied cells have capped
 tops and bottoms, shallow surface relief, rounded rims that spread laterally,
 and side walls only along exposed edges. Shared edge coordinates depend on the same adjacent cells,
 so filled intersections have no holes; diagonal-only neighbors remain separate.
-Exposed rims extend slightly beyond the original cell borders while deliberate
-cutouts remain open. A small continuous lattice warp bends color boundaries;
+Unobstructed rims spread farther into empty space than constrained contacts.
+Each corner uses a free radius of 0.76 rather than the contact radius of 0.56
+unless a diagonal bead limits its clearance;
+shared contacts retain their original coordinates and deliberate cutouts remain open.
+A small continuous lattice warp bends color boundaries;
 neighboring patches use identical coordinates and bead centers stay in place.
 Vertex colors retain each original MARD color without blending across cells. The matte plastic
 material shares the scene lighting but does not use pegboard contact AO.
