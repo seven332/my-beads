@@ -125,12 +125,17 @@ export function previewView(
       </div>
       <footer class="preview-footer" id="preview-help">
         <p>${t(($) => $.preview.help)}</p>
-        <p>
-          ${session.mode === "board" ? t(($) => $.preview.note) : t(($) => $.preview.fusedNote)}
-          ${session.status === "ready" && !session.shadowsAvailable
-            ? t(($) => $.preview.shadowsUnavailable)
-            : t(($) => $.preview.shadowsHelp)}
-        </p>
+        <div class="preview-notes">
+          ${(["board", "fused"] as const).map(
+            (mode) =>
+              html`<p aria-hidden=${session.mode !== mode}>
+                ${mode === "board" ? t(($) => $.preview.note) : t(($) => $.preview.fusedNote)}
+                ${session.status === "ready" && !session.shadowsAvailable
+                  ? t(($) => $.preview.shadowsUnavailable)
+                  : t(($) => $.preview.shadowsHelp)}
+              </p>`,
+          )}
+        </div>
       </footer>`,
   );
 }

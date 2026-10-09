@@ -355,7 +355,7 @@ export function mountPreview3D(
       try {
         if (!model.setMode(value)) return;
         shadows?.invalidate();
-        fit();
+        schedule();
       } catch {
         fail();
       }

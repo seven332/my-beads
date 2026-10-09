@@ -587,9 +587,13 @@ material shares the scene lighting but does not use pegboard contact AO.
 Static indexed meshes cover at most 64 × 64 cells each (16 meshes at 256 × 256),
 with one shared material and finite CPU geometry templates keyed by the eight
 neighbors and four lattice phases (at most 1,024 templates). Each occupied cell
-uses at most 38 vertices and 72 triangles. Bounds include every generated vertex;
-camera fitting uses occupied
-fused bounds rather than empty borders or the board. A blank result shows a
+uses at most 38 vertices and 72 triangles. Bounds include every generated vertex.
+Mode switches retain the camera pose, orbit target, zoom and pan; they schedule a
+new draw without fitting. Both mode notes share one grid area and reserve their
+maximum wrapped height so changing the active note cannot resize the canvas.
+The inactive note is visually hidden and excluded from the accessibility tree.
+Explicit **Reset view** and aspect-ratio changes fit the current object, using
+occupied fused bounds rather than empty borders or the board in Fused mode. A blank result shows a
 translated message. Board surfaces and fused meshes have mutually exclusive
 visibility, including in shadow passes. Switching mode invalidates the cached
 shadow map; stable fused camera gestures reuse it. The existing full-board light
