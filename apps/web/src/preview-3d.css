@@ -109,6 +109,16 @@
 .preview-footer p {
   margin: 0;
 }
+.preview-notes {
+  display: grid;
+}
+.preview-notes p {
+  grid-area: 1 / 1;
+}
+/* Reserve both notes' wrapped height so mode changes cannot resize the canvas. */
+.preview-notes [aria-hidden="true"] {
+  visibility: hidden;
+}
 @media (max-width: 600px), (max-height: 500px) {
   .preview-dialog {
     width: 100vw;
